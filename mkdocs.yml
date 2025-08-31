@@ -90,13 +90,12 @@ nav:
   - Головна: index.md
   - Лекції:
       - lectures/index.md
-      - "Лекція 1. Вступ у сучасну веб-розробку": lectures/lecture-01.md
+      - "Лекція 1. Вступ до сучасної веброзробки": lectures/lecture-01.md
   - Лабораторні роботи:
       - labs/index.md
-      - "Лабораторна 1. Розробка швидкого прототипу вебзастосунку на Replit": labs/lab-01.md
   - Презентації:
       - presentations/index.md
-      - "Вступ у сучасну веб-розробку": presentations/presentation-01.md
+      - "Вступ до сучасної веброзробки": presentations/presentation-01.md
 
 # Extra CSS
 extra_css:
