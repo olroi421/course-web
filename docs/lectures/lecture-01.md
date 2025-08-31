@@ -350,11 +350,13 @@ graph LR
 Детальний розгляд важливих кодів:
 
 **2xx Success:**
+
 - **200 OK**: успішний запит;
 - **201 Created**: ресурс створено;
 - **204 No Content**: успішно, але немає контенту для повернення.
 
 **4xx Client Error:**
+
 - **400 Bad Request**: некоректний запит;
 - **401 Unauthorized**: потрібна автентифікація;
 - **403 Forbidden**: доступ заборонено;
@@ -362,6 +364,7 @@ graph LR
 - **422 Unprocessable Entity**: помилки валідації.
 
 **5xx Server Error:**
+
 - **500 Internal Server Error**: помилка сервера;
 - **502 Bad Gateway**: помилка проксі-сервера;
 - **503 Service Unavailable**: сервер тимчасово недоступний.
@@ -509,13 +512,15 @@ https://api.example.com/v1/users/123/posts # Пости користувача
 https://api.example.com/v1/posts/456/comments # Коментарі до посту
 ```
 
-**Переваги REST:**
+Переваги REST:
+
 - ✅ Простота та зрозумілість;
 - ✅ Використання стандартних HTTP методів;
 - ✅ Кешування на рівні HTTP;
 - ✅ Широка підтримка інструментів.
 
-**Недоліки REST:**
+Недоліки REST:
+
 - ❌ Over-fetching: отримання зайвих даних;
 - ❌ Under-fetching: недостатньо даних в одному запиті;
 - ❌ Множинні запити для складних даних;
@@ -1039,7 +1044,8 @@ graph TB
 
 #### Приклад MEAN додатку:
 
-**Backend (Express.js + Node.js):**
+Backend (Express.js + Node.js):
+
 ```javascript
 // server.js
 const express = require('express');
@@ -1089,7 +1095,8 @@ app.listen(3000, () => {
 });
 ```
 
-**Frontend (Angular):**
+Frontend (Angular):
+
 ```typescript
 // user.service.ts
 import { Injectable } from '@angular/core';
@@ -1248,7 +1255,8 @@ graph TB
 
 #### Приклад Next.js додатку:
 
-**Файлова структура:**
+Файлова структура:
+
 ```
 nextjs-app/
 ├── pages/                         # Сторінки (до Next.js 13)
@@ -1276,7 +1284,8 @@ nextjs-app/
     └── images/
 ```
 
-**API маршрут:**
+API маршрут:
+
 ```javascript
 // app/api/users/route.js (Next.js 13+)
 import { NextResponse } from 'next/server';
@@ -1319,7 +1328,8 @@ export async function POST(request) {
 }
 ```
 
-**SSR сторінка:**
+SSR сторінка:
+
 ```jsx
 // app/users/[id]/page.js
 async function getUser(id) {
