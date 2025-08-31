@@ -1,11 +1,11 @@
-site_name: Основи програмної інженерії
-site_description: Повний курс з основ програмної інженерії з лекціями, лабораторними роботами та презентаціями
+site_name: Веб-програмування
+site_description: Повний курс з веб-програмування з лекціями, лабораторними роботами та презентаціями
 site_author: Олександр Ройко
-site_url: https://olroi421.github.io/course-opi/
+site_url: https://olroi421.github.io/course-web/
 
 # Repository
-repo_name: olroi421/course-opi
-repo_url: https://github.com/olroi421/course-opi
+repo_name: olroi421/course-web
+repo_url: https://github.com/olroi421/course-web
 
 # Copyright
 copyright: Copyright &copy; 2025 Олександр Ройко
@@ -30,24 +30,24 @@ theme:
     # Автоматична тема (за замовчуванням)
     - media: "(prefers-color-scheme)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: purple
+      accent: purple
       toggle:
         icon: material/brightness-auto
         name: Перемкнути на світлу тему
     # Світла тема
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: purple
+      accent: purple
       toggle:
         icon: material/brightness-7
         name: Перемкнути на темну тему
     # Темна тема
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: purple
+      accent: purple
       toggle:
         icon: material/brightness-4
         name: Перемкнути на автоматичну тему
