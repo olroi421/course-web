@@ -1,0 +1,109 @@
+site_name: Основи програмної інженерії
+site_description: Повний курс з основ програмної інженерії з лекціями, лабораторними роботами та презентаціями
+site_author: Олександр Ройко
+site_url: https://olroi421.github.io/course-opi/
+
+# Repository
+repo_name: olroi421/course-opi
+repo_url: https://github.com/olroi421/course-opi
+
+# Copyright
+copyright: Copyright &copy; 2025 Олександр Ройко
+
+theme:
+  name: material
+  language: uk
+  icon:
+    logo: fontawesome/solid/laptop-code
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    # Автоматична тема (за замовчуванням)
+    - media: "(prefers-color-scheme)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-auto
+        name: Перемкнути на світлу тему
+    # Світла тема
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Перемкнути на темну тему
+    # Темна тема
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Перемкнути на автоматичну тему
+
+# Plugins
+plugins:
+  - search:
+      lang: uk
+  - mermaid2
+
+# Extensions
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.mark
+  - pymdownx.caret
+  - pymdownx.tilde
+  - pymdownx.keys
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - md_in_html
+  - toc:
+      permalink: true
+
+# Navigation
+nav:
+  - Головна: index.md
+  - Лекції:
+      - lectures/index.md
+      - "Лекція 1. Вступ до програмної інженерії та її місце в IT": lectures/lecture-01.md
+  - Лабораторні роботи:
+      - labs/index.md
+      - "Лабораторна 1. Розробка швидкого прототипу вебзастосунку на Replit": labs/lab-01.md
+  - Презентації:
+      - presentations/index.md
+      - "Вступ до програмної інженерії та її місце в IT": presentations/presentation-01.md
+
+# Extra CSS
+extra_css:
+  - stylesheets/extra.css
+
+# Extra JavaScript
+extra_js:
+  - javascripts/theme-persistence.js
+  - javascripts/mermaid-zoom.js
+  - https://unpkg.com/mermaid/dist/mermaid.min.js
