@@ -91,6 +91,7 @@ nav:
   - Лекції:
       - lectures/index.md
       - "Лекція 1. Вступ до сучасної веброзробки": lectures/lecture-01.md
+      - "Лекція 2. JavaScript ES6+ та асинхронне програмування": lectures/lecture-02.md
   - Лабораторні роботи:
       - labs/index.md
   - Презентації:
