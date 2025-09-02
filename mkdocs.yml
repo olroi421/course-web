@@ -96,6 +96,7 @@ nav:
   - Презентації:
       - presentations/index.md
       - "Вступ до сучасної веброзробки": presentations/presentation-01.md
+      - "JavaScript ES6+ та асинхронне програмування": presentations/presentation-02.md
 
 # Extra CSS
 extra_css:
