@@ -94,6 +94,7 @@ nav:
       - "Лекція 2. JavaScript ES6+ та асинхронне програмування": lectures/lecture-02.md
   - Лабораторні роботи:
       - labs/index.md
+      - "Лабораторна робота 1.  Розроблення backend архітектури та основного функціоналу": labs/lab-01.md
   - Презентації:
       - presentations/index.md
       - "Вступ до сучасної веброзробки": presentations/presentation-01.md
