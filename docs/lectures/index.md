@@ -5,6 +5,7 @@
 1. [Вступ до сучасної веброзробки](lecture-01.md)
 2. [JavaScript ES6+ та асинхронне програмування](lecture-02.md)
 3. [Node.js основи та NPM](lecture-03.md)
+4. [Express.js фреймворк](lecture-04.md)
 
 ## Як працювати з лекціями
 

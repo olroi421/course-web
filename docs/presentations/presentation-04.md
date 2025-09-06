@@ -100,10 +100,6 @@ graph LR
     D --> E[Route Handler<br/>Бізнес логіка]
     E --> F[Response]
 
-    style B fill:#e1f5fe
-    style C fill:#f3e5f5
-    style D fill:#e8f5e8
-    style E fill:#fff3e0
 ```
 
 ### Middleware функції:
@@ -271,7 +267,7 @@ app.get('/', (req, res) => {
 </ul>
 ```
 
----
+
 
 ## Express Router
 
@@ -321,10 +317,10 @@ graph TB
     D --> D1[userController.js]
     D --> D2[postController.js]
 
-    style A fill:#ff9800
-    style B fill:#4caf50
-    style C fill:#2196f3
-    style D fill:#9c27b0
+
+
+
+
 ```
 
 ### MVC Архітектура:
@@ -576,14 +572,6 @@ graph TD
     D --> E[Автентифікація/Авторизація]
     E --> F[Тестування API]
     F --> G[Деплоймент та DevOps]
-
-    style A fill:#4caf50
-    style B fill:#2196f3
-    style C fill:#ff9800
-    style D fill:#9c27b0
-    style E fill:#f44336
-    style F fill:#795548
-    style G fill:#607d8b
 ```
 
 ### Наступні кроки:
