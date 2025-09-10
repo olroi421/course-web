@@ -6,3 +6,4 @@
 2. [JavaScript ES6+ та асинхронне програмування](presentation-02.md)
 3. [Node.js основи та NPM](presentation-03.md)
 4. [Express.js фреймворк](presentation-04.md)
+5. [Бази даних та ORM](presentation-05.md)
