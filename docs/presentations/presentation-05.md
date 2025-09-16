@@ -389,9 +389,6 @@ graph TB
     E -->|Miss| G[Database Query]
     G --> H[Update All Caches<br/>Return Data]
 
-    style C fill:#e1f5fe
-    style E fill:#f3e5f5
-    style G fill:#fff3e0
 ```
 
 ## Кешування: Реалізація
