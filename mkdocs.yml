@@ -99,6 +99,7 @@ nav:
       - "Лекція 3. Node.js основи та NPM": lectures/lecture-03.md
       - "Лекція 4. Express.js фреймворк": lectures/lecture-04.md
       - "Лекція 5. Бази даних та ORM": lectures/lecture-05.md
+      - "Лекція 6. RESTful API дизайн": lectures/lecture-06.md
   - Лабораторні роботи:
       - labs/index.md
       - "Лабораторна робота 1.  Розроблення backend архітектури та основного функціоналу": labs/lab-01.md
@@ -109,6 +110,7 @@ nav:
       - "Node.js основи та NPM": presentations/presentation-03.md
       - "Express.js фреймворк": presentations/presentation-04.md
       - "Бази даних та ORM": presentations/presentation-05.md
+      - "RESTful API дизайн": presentations/presentation-06.md
 # Extra CSS
 extra_css:
   - stylesheets/extra.css

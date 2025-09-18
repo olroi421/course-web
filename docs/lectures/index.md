@@ -7,6 +7,7 @@
 3. [Node.js основи та NPM](lecture-03.md)
 4. [Express.js фреймворк](lecture-04.md)
 5. [Бази даних та ORM](lecture-05.md)
+6. [RESTful API дизайн](lecture-06.md)
 
 
 
