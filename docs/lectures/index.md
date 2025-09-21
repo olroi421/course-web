@@ -8,8 +8,7 @@
 4. [Express.js фреймворк](lecture-04.md)
 5. [Бази даних та ORM](lecture-05.md)
 6. [RESTful API дизайн](lecture-06.md)
-
-
+7. [Аутентифікація та безпека](lecture-07.md)
 
 
 ## Як працювати з лекціями

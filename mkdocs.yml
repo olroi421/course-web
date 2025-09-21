@@ -100,6 +100,7 @@ nav:
       - "Лекція 4. Express.js фреймворк": lectures/lecture-04.md
       - "Лекція 5. Бази даних та ORM": lectures/lecture-05.md
       - "Лекція 6. RESTful API дизайн": lectures/lecture-06.md
+      - "Лекція 7. Аутентифікація та безпека": lectures/lecture-07.md
   - Лабораторні роботи:
       - labs/index.md
       - "Лабораторна робота 1.  Розроблення backend архітектури та основного функціоналу": labs/lab-01.md
@@ -111,6 +112,7 @@ nav:
       - "Express.js фреймворк": presentations/presentation-04.md
       - "Бази даних та ORM": presentations/presentation-05.md
       - "RESTful API дизайн": presentations/presentation-06.md
+      - "Аутентифікація та безпека": presentations/presentation-07.md
 # Extra CSS
 extra_css:
   - stylesheets/extra.css
