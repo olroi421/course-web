@@ -12,7 +12,7 @@
 ## 6 принципів REST
 
 ```mermaid
-graph TD
+graph LR
     A[REST Принципи] --> B[Client-Server]
     A --> C[Stateless]
     A --> D[Cacheable]
