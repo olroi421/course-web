@@ -101,6 +101,7 @@ nav:
       - "Лекція 5. Бази даних та ORM": lectures/lecture-05.md
       - "Лекція 6. RESTful API дизайн": lectures/lecture-06.md
       - "Лекція 7. Аутентифікація та безпека": lectures/lecture-07.md
+      - "Лекція 8. Тестування та деплой backend": lectures/lecture-08.md
   - Лабораторні роботи:
       - labs/index.md
       - "Лабораторна робота 1.  Розроблення backend архітектури та основного функціоналу": labs/lab-01.md
@@ -113,6 +114,7 @@ nav:
       - "Бази даних та ORM": presentations/presentation-05.md
       - "RESTful API дизайн": presentations/presentation-06.md
       - "Аутентифікація та безпека": presentations/presentation-07.md
+      - "Тестування та деплой backend": presentations/presentation-08.md
 # Extra CSS
 extra_css:
   - stylesheets/extra.css
