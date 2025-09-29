@@ -345,1098 +345,1067 @@ app.use(cors({
 
 1. Переконайтеся, що проєкт з лабораторної роботи 1 працює коректно.
 2. Встановіть необхідні додаткові залежності:
-
-```bash
-npm install jsonwebtoken bcrypt multer swagger-jsdoc swagger-ui-express helmet express-rate-limit cors
-npm install --save-dev @types/jsonwebtoken @types/bcrypt @types/multer
-```
-
+    ```bash
+    npm install jsonwebtoken bcrypt multer swagger-jsdoc swagger-ui-express helmet express-rate-limit cors
+    npm install --save-dev @types/jsonwebtoken @types/bcrypt @types/multer
+    ```
 3. Створіть додаткові змінні середовища у файлі `.env`:
-
-```
-JWT_SECRET=your-secret-key-here
-JWT_EXPIRES_IN=7d
-REFRESH_TOKEN_SECRET=your-refresh-secret-here
-REFRESH_TOKEN_EXPIRES_IN=30d
-UPLOAD_DIR=uploads
-MAX_FILE_SIZE=5242880
-```
+    ```
+    JWT_SECRET=your-secret-key-here
+    JWT_EXPIRES_IN=7d
+    REFRESH_TOKEN_SECRET=your-refresh-secret-here
+    REFRESH_TOKEN_EXPIRES_IN=30d
+    UPLOAD_DIR=uploads
+    MAX_FILE_SIZE=5242880
+    ```
 
 ### Крок 2. Оновлення моделей даних
 
 1. Оновіть Prisma схему, додавши поля для аутентифікації та файлів:
+    ```prisma
+    model User {
+      id        Int      @id @default(autoincrement())
+      email     String   @unique
+      password  String
+      name      String
+      role      Role     @default(USER)
+      avatar    String?
+      createdAt DateTime @default(now())
+      updatedAt DateTime @updatedAt
+    }
 
-```prisma
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(USER)
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+    enum Role {
+      USER
+      ADMIN
+      MODERATOR
+    }
 
-enum Role {
-  USER
-  ADMIN
-  MODERATOR
-}
-
-model File {
-  id          Int      @id @default(autoincrement())
-  filename    String
-  originalName String
-  mimetype    String
-  size        Int
-  path        String
-  uploadedBy  Int
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [uploadedBy], references: [id])
-}
-```
-
+    model File {
+      id          Int      @id @default(autoincrement())
+      filename    String
+      originalName String
+      mimetype    String
+      size        Int
+      path        String
+      uploadedBy  Int
+      createdAt   DateTime @default(now())
+      user        User     @relation(fields: [uploadedBy], references: [id])
+    }
+    ```
 2. Виконайте міграцію бази даних:
-
-```bash
-npx prisma migrate dev --name add-auth-and-files
-```
+    ```bash
+    npx prisma migrate dev --name add-auth-and-files
+    ```
 
 ### Крок 3. Створення utility функцій
-
 1. Створіть файл `src/utils/jwt.js` для роботи з JWT:
+    ```javascript
+    const jwt = require('jsonwebtoken');
 
-```javascript
-const jwt = require('jsonwebtoken');
-
-function generateAccessToken(userId, role) {
-    return jwt.sign(
-        { userId, role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-    );
-}
-
-function generateRefreshToken(userId) {
-    return jwt.sign(
-        { userId },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN }
-    );
-}
-
-function verifyAccessToken(token) {
-    try {
-        return jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-        throw new Error('Недійсний токен доступу');
+    function generateAccessToken(userId, role) {
+        return jwt.sign(
+            { userId, role },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        );
     }
-}
 
-function verifyRefreshToken(token) {
-    try {
-        return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-    } catch (error) {
-        throw new Error('Недійсний refresh токен');
+    function generateRefreshToken(userId) {
+        return jwt.sign(
+            { userId },
+            process.env.REFRESH_TOKEN_SECRET,
+            { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN }
+        );
     }
-}
 
-module.exports = {
-    generateAccessToken,
-    generateRefreshToken,
-    verifyAccessToken,
-    verifyRefreshToken
-};
-```
+    function verifyAccessToken(token) {
+        try {
+            return jwt.verify(token, process.env.JWT_SECRET);
+        } catch (error) {
+            throw new Error('Недійсний токен доступу');
+        }
+    }
 
+    function verifyRefreshToken(token) {
+        try {
+            return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+        } catch (error) {
+            throw new Error('Недійсний refresh токен');
+        }
+    }
+
+    module.exports = {
+        generateAccessToken,
+        generateRefreshToken,
+        verifyAccessToken,
+        verifyRefreshToken
+    };
+    ```
 2. Створіть файл `src/utils/password.js` для роботи з паролями:
+    ```javascript
+    const bcrypt = require('bcrypt');
 
-```javascript
-const bcrypt = require('bcrypt');
+    async function hashPassword(password) {
+        const saltRounds = 10;
+        return await bcrypt.hash(password, saltRounds);
+    }
 
-async function hashPassword(password) {
-    const saltRounds = 10;
-    return await bcrypt.hash(password, saltRounds);
-}
+    async function comparePassword(password, hashedPassword) {
+        return await bcrypt.compare(password, hashedPassword);
+    }
 
-async function comparePassword(password, hashedPassword) {
-    return await bcrypt.compare(password, hashedPassword);
-}
-
-module.exports = {
-    hashPassword,
-    comparePassword
-};
-```
+    module.exports = {
+        hashPassword,
+        comparePassword
+    };
+    ```
 
 ### Крок 4. Створення middleware
 
 1. Створіть файл `src/middleware/auth.js` для аутентифікації:
+    ```javascript
+    const { verifyAccessToken } = require('../utils/jwt');
 
-```javascript
-const { verifyAccessToken } = require('../utils/jwt');
+    function authenticate(req, res, next) {
+        try {
+            const authHeader = req.headers.authorization;
 
-function authenticate(req, res, next) {
-    try {
-        const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                return res.status(401).json({
+                    error: 'Токен аутентифікації відсутній'
+                });
+            }
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            const decoded = verifyAccessToken(token);
+
+            req.user = decoded;
+            next();
+        } catch (error) {
             return res.status(401).json({
-                error: 'Токен аутентифікації відсутній'
+                error: 'Недійсний або прострочений токен'
             });
         }
-
-        const token = authHeader.substring(7);
-        const decoded = verifyAccessToken(token);
-
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({
-            error: 'Недійсний або прострочений токен'
-        });
     }
-}
 
-module.exports = { authenticate };
-```
-
+    module.exports = { authenticate };
+    ```
 2. Створіть файл `src/middleware/authorize.js` для авторизації:
+    ```javascript
+    function authorize(...allowedRoles) {
+        return (req, res, next) => {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Необхідна аутентифікація'
+                });
+            }
 
-```javascript
-function authorize(...allowedRoles) {
-    return (req, res, next) => {
-        if (!req.user) {
-            return res.status(401).json({
-                error: 'Необхідна аутентифікація'
-            });
-        }
+            if (!allowedRoles.includes(req.user.role)) {
+                return res.status(403).json({
+                    error: 'Недостатньо прав для виконання цієї операції'
+                });
+            }
 
-        if (!allowedRoles.includes(req.user.role)) {
-            return res.status(403).json({
-                error: 'Недостатньо прав для виконання цієї операції'
-            });
-        }
+            next();
+        };
+    }
 
-        next();
-    };
-}
-
-module.exports = { authorize };
-```
-
+    module.exports = { authorize };
+    ```
 3. Створіть файл `src/middleware/upload.js` для завантаження файлів:
+    ```javascript
+    const multer = require('multer');
+    const path = require('path');
+    const fs = require('fs');
 
-```javascript
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+    const uploadDir = process.env.UPLOAD_DIR || 'uploads';
 
-const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
     }
-});
 
-const fileFilter = (req, file, cb) => {
-    const allowedMimes = [
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
+    const storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        }
+    });
 
-    if (allowedMimes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Непідтримуваний тип файлу'), false);
-    }
-};
+    const fileFilter = (req, file, cb) => {
+        const allowedMimes = [
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
 
-const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter,
-    limits: {
-        fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024
-    }
-});
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Непідтримуваний тип файлу'), false);
+        }
+    };
 
-module.exports = { upload };
-```
+    const upload = multer({
+        storage: storage,
+        fileFilter: fileFilter,
+        limits: {
+            fileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024
+        }
+    });
+
+    module.exports = { upload };
+    ```
 
 ### Крок 5. Реалізація контролерів аутентифікації
-
 1. Створіть файл `src/controllers/authController.js`:
+    ```javascript
+    const { PrismaClient } = require('@prisma/client');
+    const { hashPassword, comparePassword } = require('../utils/password');
+    const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 
-```javascript
-const { PrismaClient } = require('@prisma/client');
-const { hashPassword, comparePassword } = require('../utils/password');
-const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
+    const prisma = new PrismaClient();
 
-const prisma = new PrismaClient();
+    async function register(req, res) {
+        try {
+            const { email, password, name } = req.body;
 
-async function register(req, res) {
-    try {
-        const { email, password, name } = req.body;
-
-        if (!email || !password || !name) {
-            return res.status(400).json({
-                error: 'Email, пароль та ім\'я є обов\'язковими'
-            });
-        }
-
-        if (password.length < 8) {
-            return res.status(400).json({
-                error: 'Пароль має містити мінімум 8 символів'
-            });
-        }
-
-        const existingUser = await prisma.user.findUnique({
-            where: { email }
-        });
-
-        if (existingUser) {
-            return res.status(409).json({
-                error: 'Користувач з таким email вже існує'
-            });
-        }
-
-        const hashedPassword = await hashPassword(password);
-
-        const user = await prisma.user.create({
-            data: {
-                email,
-                password: hashedPassword,
-                name
-            },
-            select: {
-                id: true,
-                email: true,
-                name: true,
-                role: true,
-                createdAt: true
+            if (!email || !password || !name) {
+                return res.status(400).json({
+                    error: 'Email, пароль та ім\'я є обов\'язковими'
+                });
             }
-        });
 
-        const accessToken = generateAccessToken(user.id, user.role);
-        const refreshToken = generateRefreshToken(user.id);
-
-        res.status(201).json({
-            message: 'Користувача успішно зареєстровано',
-            user,
-            tokens: {
-                accessToken,
-                refreshToken
+            if (password.length < 8) {
+                return res.status(400).json({
+                    error: 'Пароль має містити мінімум 8 символів'
+                });
             }
-        });
 
-    } catch (error) {
-        console.error('Помилка реєстрації:', error);
-        res.status(500).json({
-            error: 'Помилка сервера при реєстрації'
-        });
+            const existingUser = await prisma.user.findUnique({
+                where: { email }
+            });
+
+            if (existingUser) {
+                return res.status(409).json({
+                    error: 'Користувач з таким email вже існує'
+                });
+            }
+
+            const hashedPassword = await hashPassword(password);
+
+            const user = await prisma.user.create({
+                data: {
+                    email,
+                    password: hashedPassword,
+                    name
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true,
+                    createdAt: true
+                }
+            });
+
+            const accessToken = generateAccessToken(user.id, user.role);
+            const refreshToken = generateRefreshToken(user.id);
+
+            res.status(201).json({
+                message: 'Користувача успішно зареєстровано',
+                user,
+                tokens: {
+                    accessToken,
+                    refreshToken
+                }
+            });
+
+        } catch (error) {
+            console.error('Помилка реєстрації:', error);
+            res.status(500).json({
+                error: 'Помилка сервера при реєстрації'
+            });
+        }
     }
-}
 
-async function login(req, res) {
-    try {
-        const { email, password } = req.body;
+    async function login(req, res) {
+        try {
+            const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({
-                error: 'Email та пароль є обов\'язковими'
-            });
-        }
-
-        const user = await prisma.user.findUnique({
-            where: { email }
-        });
-
-        if (!user) {
-            return res.status(401).json({
-                error: 'Невірний email або пароль'
-            });
-        }
-
-        const isPasswordValid = await comparePassword(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                error: 'Невірний email або пароль'
-            });
-        }
-
-        const accessToken = generateAccessToken(user.id, user.role);
-        const refreshToken = generateRefreshToken(user.id);
-
-        const { password: _, ...userWithoutPassword } = user;
-
-        res.json({
-            message: 'Успішний вхід',
-            user: userWithoutPassword,
-            tokens: {
-                accessToken,
-                refreshToken
+            if (!email || !password) {
+                return res.status(400).json({
+                    error: 'Email та пароль є обов\'язковими'
+                });
             }
-        });
 
-    } catch (error) {
-        console.error('Помилка входу:', error);
-        res.status(500).json({
-            error: 'Помилка сервера при вході'
-        });
-    }
-}
-
-async function refreshToken(req, res) {
-    try {
-        const { refreshToken } = req.body;
-
-        if (!refreshToken) {
-            return res.status(400).json({
-                error: 'Refresh токен відсутній'
+            const user = await prisma.user.findUnique({
+                where: { email }
             });
-        }
 
-        const decoded = verifyRefreshToken(refreshToken);
-
-        const user = await prisma.user.findUnique({
-            where: { id: decoded.userId }
-        });
-
-        if (!user) {
-            return res.status(404).json({
-                error: 'Користувача не знайдено'
-            });
-        }
-
-        const newAccessToken = generateAccessToken(user.id, user.role);
-        const newRefreshToken = generateRefreshToken(user.id);
-
-        res.json({
-            tokens: {
-                accessToken: newAccessToken,
-                refreshToken: newRefreshToken
+            if (!user) {
+                return res.status(401).json({
+                    error: 'Невірний email або пароль'
+                });
             }
-        });
 
-    } catch (error) {
-        console.error('Помилка оновлення токену:', error);
-        res.status(401).json({
-            error: 'Недійсний refresh токен'
-        });
+            const isPasswordValid = await comparePassword(password, user.password);
+
+            if (!isPasswordValid) {
+                return res.status(401).json({
+                    error: 'Невірний email або пароль'
+                });
+            }
+
+            const accessToken = generateAccessToken(user.id, user.role);
+            const refreshToken = generateRefreshToken(user.id);
+
+            const { password: _, ...userWithoutPassword } = user;
+
+            res.json({
+                message: 'Успішний вхід',
+                user: userWithoutPassword,
+                tokens: {
+                    accessToken,
+                    refreshToken
+                }
+            });
+
+        } catch (error) {
+            console.error('Помилка входу:', error);
+            res.status(500).json({
+                error: 'Помилка сервера при вході'
+            });
+        }
     }
-}
 
-module.exports = {
-    register,
-    login,
-    refreshToken
-};
-```
+    async function refreshToken(req, res) {
+        try {
+            const { refreshToken } = req.body;
+
+            if (!refreshToken) {
+                return res.status(400).json({
+                    error: 'Refresh токен відсутній'
+                });
+            }
+
+            const decoded = verifyRefreshToken(refreshToken);
+
+            const user = await prisma.user.findUnique({
+                where: { id: decoded.userId }
+            });
+
+            if (!user) {
+                return res.status(404).json({
+                    error: 'Користувача не знайдено'
+                });
+            }
+
+            const newAccessToken = generateAccessToken(user.id, user.role);
+            const newRefreshToken = generateRefreshToken(user.id);
+
+            res.json({
+                tokens: {
+                    accessToken: newAccessToken,
+                    refreshToken: newRefreshToken
+                }
+            });
+
+        } catch (error) {
+            console.error('Помилка оновлення токену:', error);
+            res.status(401).json({
+                error: 'Недійсний refresh токен'
+            });
+        }
+    }
+
+    module.exports = {
+        register,
+        login,
+        refreshToken
+    };
+    ```
 
 ### Крок 6. Додавання пошуку та фільтрації
-
 1. Розширте контролери основних сутностей методами пошуку та фільтрації. Наприклад, для продуктів:
+    ```javascript
+    async function getProducts(req, res) {
+        try {
+            const {
+                page = 1,
+                limit = 10,
+                search,
+                category,
+                minPrice,
+                maxPrice,
+                sortBy = 'createdAt',
+                order = 'desc'
+            } = req.query;
 
-```javascript
-async function getProducts(req, res) {
-    try {
-        const {
-            page = 1,
-            limit = 10,
-            search,
-            category,
-            minPrice,
-            maxPrice,
-            sortBy = 'createdAt',
-            order = 'desc'
-        } = req.query;
+            const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+            const where = {};
 
-        const where = {};
-
-        if (search) {
-            where.OR = [
-                { name: { contains: search, mode: 'insensitive' } },
-                { description: { contains: search, mode: 'insensitive' } }
-            ];
-        }
-
-        if (category) {
-            where.category = category;
-        }
-
-        if (minPrice || maxPrice) {
-            where.price = {};
-            if (minPrice) where.price.gte = parseFloat(minPrice);
-            if (maxPrice) where.price.lte = parseFloat(maxPrice);
-        }
-
-        const orderBy = {};
-        orderBy[sortBy] = order;
-
-        const [products, total] = await Promise.all([
-            prisma.product.findMany({
-                where,
-                skip,
-                take: parseInt(limit),
-                orderBy
-            }),
-            prisma.product.count({ where })
-        ]);
-
-        res.json({
-            data: products,
-            pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total,
-                totalPages: Math.ceil(total / parseInt(limit)),
-                hasMore: skip + products.length < total
+            if (search) {
+                where.OR = [
+                    { name: { contains: search, mode: 'insensitive' } },
+                    { description: { contains: search, mode: 'insensitive' } }
+                ];
             }
-        });
 
-    } catch (error) {
-        console.error('Помилка отримання продуктів:', error);
-        res.status(500).json({
-            error: 'Помилка сервера'
-        });
+            if (category) {
+                where.category = category;
+            }
+
+            if (minPrice || maxPrice) {
+                where.price = {};
+                if (minPrice) where.price.gte = parseFloat(minPrice);
+                if (maxPrice) where.price.lte = parseFloat(maxPrice);
+            }
+
+            const orderBy = {};
+            orderBy[sortBy] = order;
+
+            const [products, total] = await Promise.all([
+                prisma.product.findMany({
+                    where,
+                    skip,
+                    take: parseInt(limit),
+                    orderBy
+                }),
+                prisma.product.count({ where })
+            ]);
+
+            res.json({
+                data: products,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    total,
+                    totalPages: Math.ceil(total / parseInt(limit)),
+                    hasMore: skip + products.length < total
+                }
+            });
+
+        } catch (error) {
+            console.error('Помилка отримання продуктів:', error);
+            res.status(500).json({
+                error: 'Помилка сервера'
+            });
+        }
     }
-}
-```
+    ```
 
 ### Крок 7. Реалізація файлового сервісу
 
 1. Створіть файл `src/controllers/fileController.js`:
+    ```javascript
+    const { PrismaClient } = require('@prisma/client');
+    const fs = require('fs').promises;
+    const path = require('path');
 
-```javascript
-const { PrismaClient } = require('@prisma/client');
-const fs = require('fs').promises;
-const path = require('path');
+    const prisma = new PrismaClient();
 
-const prisma = new PrismaClient();
-
-async function uploadFile(req, res) {
-    try {
-        if (!req.file) {
-            return res.status(400).json({
-                error: 'Файл не надано'
-            });
-        }
-
-        const file = await prisma.file.create({
-            data: {
-                filename: req.file.filename,
-                originalName: req.file.originalname,
-                mimetype: req.file.mimetype,
-                size: req.file.size,
-                path: req.file.path,
-                uploadedBy: req.user.userId
+    async function uploadFile(req, res) {
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    error: 'Файл не надано'
+                });
             }
-        });
 
-        res.status(201).json({
-            message: 'Файл успішно завантажено',
-            file
-        });
+            const file = await prisma.file.create({
+                data: {
+                    filename: req.file.filename,
+                    originalName: req.file.originalname,
+                    mimetype: req.file.mimetype,
+                    size: req.file.size,
+                    path: req.file.path,
+                    uploadedBy: req.user.userId
+                }
+            });
 
-    } catch (error) {
-        console.error('Помилка завантаження файлу:', error);
+            res.status(201).json({
+                message: 'Файл успішно завантажено',
+                file
+            });
 
-        if (req.file) {
-            await fs.unlink(req.file.path).catch(console.error);
-        }
+        } catch (error) {
+            console.error('Помилка завантаження файлу:', error);
 
-        res.status(500).json({
-            error: 'Помилка сервера при завантаженні файлу'
-        });
-    }
-}
+            if (req.file) {
+                await fs.unlink(req.file.path).catch(console.error);
+            }
 
-async function getFile(req, res) {
-    try {
-        const fileId = parseInt(req.params.id);
-
-        const file = await prisma.file.findUnique({
-            where: { id: fileId }
-        });
-
-        if (!file) {
-            return res.status(404).json({
-                error: 'Файл не знайдено'
+            res.status(500).json({
+                error: 'Помилка сервера при завантаженні файлу'
             });
         }
-
-        res.sendFile(path.resolve(file.path));
-
-    } catch (error) {
-        console.error('Помилка отримання файлу:', error);
-        res.status(500).json({
-            error: 'Помилка сервера'
-        });
     }
-}
 
-async function deleteFile(req, res) {
-    try {
-        const fileId = parseInt(req.params.id);
+    async function getFile(req, res) {
+        try {
+            const fileId = parseInt(req.params.id);
 
-        const file = await prisma.file.findUnique({
-            where: { id: fileId }
-        });
+            const file = await prisma.file.findUnique({
+                where: { id: fileId }
+            });
 
-        if (!file) {
-            return res.status(404).json({
-                error: 'Файл не знайдено'
+            if (!file) {
+                return res.status(404).json({
+                    error: 'Файл не знайдено'
+                });
+            }
+
+            res.sendFile(path.resolve(file.path));
+
+        } catch (error) {
+            console.error('Помилка отримання файлу:', error);
+            res.status(500).json({
+                error: 'Помилка сервера'
             });
         }
+    }
 
-        if (file.uploadedBy !== req.user.userId && req.user.role !== 'ADMIN') {
-            return res.status(403).json({
-                error: 'Ви не маєте прав для видалення цього файлу'
+    async function deleteFile(req, res) {
+        try {
+            const fileId = parseInt(req.params.id);
+
+            const file = await prisma.file.findUnique({
+                where: { id: fileId }
+            });
+
+            if (!file) {
+                return res.status(404).json({
+                    error: 'Файл не знайдено'
+                });
+            }
+
+            if (file.uploadedBy !== req.user.userId && req.user.role !== 'ADMIN') {
+                return res.status(403).json({
+                    error: 'Ви не маєте прав для видалення цього файлу'
+                });
+            }
+
+            await fs.unlink(file.path);
+
+            await prisma.file.delete({
+                where: { id: fileId }
+            });
+
+            res.json({
+                message: 'Файл успішно видалено'
+            });
+
+        } catch (error) {
+            console.error('Помилка видалення файлу:', error);
+            res.status(500).json({
+                error: 'Помилка сервера при видаленні файлу'
             });
         }
-
-        await fs.unlink(file.path);
-
-        await prisma.file.delete({
-            where: { id: fileId }
-        });
-
-        res.json({
-            message: 'Файл успішно видалено'
-        });
-
-    } catch (error) {
-        console.error('Помилка видалення файлу:', error);
-        res.status(500).json({
-            error: 'Помилка сервера при видаленні файлу'
-        });
     }
-}
 
-module.exports = {
-    uploadFile,
-    getFile,
-    deleteFile
-};
-```
+    module.exports = {
+        uploadFile,
+        getFile,
+        deleteFile
+    };
+    ```
 
 ### Крок 8. Налаштування маршрутів
 
 1. Створіть файл `src/routes/authRoutes.js`:
+    ```javascript
+    const express = require('express');
+    const { register, login, refreshToken } = require('../controllers/authController');
 
-```javascript
-const express = require('express');
-const { register, login, refreshToken } = require('../controllers/authController');
+    const router = express.Router();
 
-const router = express.Router();
+    /**
+    * @swagger
+    * /api/auth/register:
+    *   post:
+    *     summary: Реєстрація нового користувача
+    *     tags: [Authentication]
+    *     requestBody:
+    *       required: true
+    *       content:
+    *         application/json:
+    *           schema:
+    *             type: object
+    *             required:
+    *               - email
+    *               - password
+    *               - name
+    *             properties:
+    *               email:
+    *                 type: string
+    *                 format: email
+    *               password:
+    *                 type: string
+    *                 minLength: 8
+    *               name:
+    *                 type: string
+    *     responses:
+    *       201:
+    *         description: Користувач успішно зареєстрований
+    *       400:
+    *         description: Помилка валідації даних
+    *       409:
+    *         description: Користувач вже існує
+    */
+    router.post('/register', register);
 
-/**
- * @swagger
- * /api/auth/register:
- *   post:
- *     summary: Реєстрація нового користувача
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - name
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *                 minLength: 8
- *               name:
- *                 type: string
- *     responses:
- *       201:
- *         description: Користувач успішно зареєстрований
- *       400:
- *         description: Помилка валідації даних
- *       409:
- *         description: Користувач вже існує
- */
-router.post('/register', register);
+    /**
+    * @swagger
+    * /api/auth/login:
+    *   post:
+    *     summary: Вхід користувача
+    *     tags: [Authentication]
+    *     requestBody:
+    *       required: true
+    *       content:
+    *         application/json:
+    *           schema:
+    *             type: object
+    *             required:
+    *               - email
+    *               - password
+    *             properties:
+    *               email:
+    *                 type: string
+    *                 format: email
+    *               password:
+    *                 type: string
+    *     responses:
+    *       200:
+    *         description: Успішний вхід
+    *       401:
+    *         description: Невірні дані для входу
+    */
+    router.post('/login', login);
 
-/**
- * @swagger
- * /api/auth/login:
- *   post:
- *     summary: Вхід користувача
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *               password:
- *                 type: string
- *     responses:
- *       200:
- *         description: Успішний вхід
- *       401:
- *         description: Невірні дані для входу
- */
-router.post('/login', login);
+    /**
+    * @swagger
+    * /api/auth/refresh:
+    *   post:
+    *     summary: Оновлення access токену
+    *     tags: [Authentication]
+    *     requestBody:
+    *       required: true
+    *       content:
+    *         application/json:
+    *           schema:
+    *             type: object
+    *             required:
+    *               - refreshToken
+    *             properties:
+    *               refreshToken:
+    *                 type: string
+    *     responses:
+    *       200:
+    *         description: Токен успішно оновлено
+    *       401:
+    *         description: Недійсний refresh токен
+    */
+    router.post('/refresh', refreshToken);
 
-/**
- * @swagger
- * /api/auth/refresh:
- *   post:
- *     summary: Оновлення access токену
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - refreshToken
- *             properties:
- *               refreshToken:
- *                 type: string
- *     responses:
- *       200:
- *         description: Токен успішно оновлено
- *       401:
- *         description: Недійсний refresh токен
- */
-router.post('/refresh', refreshToken);
-
-module.exports = router;
-```
-
+    module.exports = router;
+    ```
 2. Створіть файл `src/routes/fileRoutes.js`:
+    ```javascript
+    const express = require('express');
+    const { uploadFile, getFile, deleteFile } = require('../controllers/fileController');
+    const { authenticate } = require('../middleware/auth');
+    const { upload } = require('../middleware/upload');
 
-```javascript
-const express = require('express');
-const { uploadFile, getFile, deleteFile } = require('../controllers/fileController');
-const { authenticate } = require('../middleware/auth');
-const { upload } = require('../middleware/upload');
+    const router = express.Router();
 
-const router = express.Router();
+    /**
+    * @swagger
+    * /api/files/upload:
+    *   post:
+    *     summary: Завантаження файлу
+    *     tags: [Files]
+    *     security:
+    *       - bearerAuth: []
+    *     requestBody:
+    *       required: true
+    *       content:
+    *         multipart/form-data:
+    *           schema:
+    *             type: object
+    *             properties:
+    *               file:
+    *                 type: string
+    *                 format: binary
+    *     responses:
+    *       201:
+    *         description: Файл успішно завантажено
+    *       400:
+    *         description: Файл не надано або невалідний
+    *       401:
+    *         description: Необхідна аутентифікація
+    */
+    router.post('/upload', authenticate, upload.single('file'), uploadFile);
 
-/**
- * @swagger
- * /api/files/upload:
- *   post:
- *     summary: Завантаження файлу
- *     tags: [Files]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Файл успішно завантажено
- *       400:
- *         description: Файл не надано або невалідний
- *       401:
- *         description: Необхідна аутентифікація
- */
-router.post('/upload', authenticate, upload.single('file'), uploadFile);
+    /**
+    * @swagger
+    * /api/files/{id}:
+    *   get:
+    *     summary: Отримання файлу за ID
+    *     tags: [Files]
+    *     parameters:
+    *       - in: path
+    *         name: id
+    *         required: true
+    *         schema:
+    *           type: integer
+    *     responses:
+    *       200:
+    *         description: Файл успішно отримано
+    *       404:
+    *         description: Файл не знайдено
+    */
+    router.get('/:id', getFile);
 
-/**
- * @swagger
- * /api/files/{id}:
- *   get:
- *     summary: Отримання файлу за ID
- *     tags: [Files]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Файл успішно отримано
- *       404:
- *         description: Файл не знайдено
- */
-router.get('/:id', getFile);
+    /**
+    * @swagger
+    * /api/files/{id}:
+    *   delete:
+    *     summary: Видалення файлу
+    *     tags: [Files]
+    *     security:
+    *       - bearerAuth: []
+    *     parameters:
+    *       - in: path
+    *         name: id
+    *         required: true
+    *         schema:
+    *           type: integer
+    *     responses:
+    *       200:
+    *         description: Файл успішно видалено
+    *       403:
+    *         description: Недостатньо прав
+    *       404:
+    *         description: Файл не знайдено
+    */
+    router.delete('/:id', authenticate, deleteFile);
 
-/**
- * @swagger
- * /api/files/{id}:
- *   delete:
- *     summary: Видалення файлу
- *     tags: [Files]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Файл успішно видалено
- *       403:
- *         description: Недостатньо прав
- *       404:
- *         description: Файл не знайдено
- */
-router.delete('/:id', authenticate, deleteFile);
-
-module.exports = router;
-```
-
+    module.exports = router;
+    ```
 3. Оновіть існуючі маршрути, додавши захист через middleware. Наприклад, для продуктів:
+    ```javascript
+    const express = require('express');
+    const {
+        getProducts,
+        getProductById,
+        createProduct,
+        updateProduct,
+        deleteProduct
+    } = require('../controllers/productController');
+    const { authenticate } = require('../middleware/auth');
+    const { authorize } = require('../middleware/authorize');
 
-```javascript
-const express = require('express');
-const {
-    getProducts,
-    getProductById,
-    createProduct,
-    updateProduct,
-    deleteProduct
-} = require('../controllers/productController');
-const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/authorize');
+    const router = express.Router();
 
-const router = express.Router();
+    router.get('/', getProducts);
+    router.get('/:id', getProductById);
+    router.post('/', authenticate, authorize('ADMIN', 'MODERATOR'), createProduct);
+    router.put('/:id', authenticate, authorize('ADMIN', 'MODERATOR'), updateProduct);
+    router.delete('/:id', authenticate, authorize('ADMIN'), deleteProduct);
 
-router.get('/', getProducts);
-router.get('/:id', getProductById);
-router.post('/', authenticate, authorize('ADMIN', 'MODERATOR'), createProduct);
-router.put('/:id', authenticate, authorize('ADMIN', 'MODERATOR'), updateProduct);
-router.delete('/:id', authenticate, authorize('ADMIN'), deleteProduct);
-
-module.exports = router;
-```
+    module.exports = router;
+    ```
 
 ### Крок 9. Налаштування Swagger
 
 1. Створіть файл `src/config/swagger.js`:
+    ```javascript
+    const swaggerJsdoc = require('swagger-jsdoc');
 
-```javascript
-const swaggerJsdoc = require('swagger-jsdoc');
-
-const options = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'API Documentation',
-            version: '1.0.0',
-            description: 'Документація API для вебдодатку',
-            contact: {
-                name: 'API Support',
-                email: 'support@example.com'
-            }
-        },
-        servers: [
-            {
-                url: 'http://localhost:3000',
-                description: 'Development server'
-            }
-        ],
-        components: {
-            securitySchemes: {
-                bearerAuth: {
-                    type: 'http',
-                    scheme: 'bearer',
-                    bearerFormat: 'JWT',
-                    description: 'Введіть JWT токен'
+    const options = {
+        definition: {
+            openapi: '3.0.0',
+            info: {
+                title: 'API Documentation',
+                version: '1.0.0',
+                description: 'Документація API для вебдодатку',
+                contact: {
+                    name: 'API Support',
+                    email: 'support@example.com'
                 }
             },
-            schemas: {
-                Error: {
-                    type: 'object',
-                    properties: {
-                        error: {
-                            type: 'string',
-                            description: 'Повідомлення про помилку'
-                        }
+            servers: [
+                {
+                    url: 'http://localhost:3000',
+                    description: 'Development server'
+                }
+            ],
+            components: {
+                securitySchemes: {
+                    bearerAuth: {
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'JWT',
+                        description: 'Введіть JWT токен'
                     }
                 },
-                User: {
-                    type: 'object',
-                    properties: {
-                        id: {
-                            type: 'integer'
-                        },
-                        email: {
-                            type: 'string',
-                            format: 'email'
-                        },
-                        name: {
-                            type: 'string'
-                        },
-                        role: {
-                            type: 'string',
-                            enum: ['USER', 'ADMIN', 'MODERATOR']
-                        },
-                        createdAt: {
-                            type: 'string',
-                            format: 'date-time'
+                schemas: {
+                    Error: {
+                        type: 'object',
+                        properties: {
+                            error: {
+                                type: 'string',
+                                description: 'Повідомлення про помилку'
+                            }
                         }
-                    }
-                },
-                Pagination: {
-                    type: 'object',
-                    properties: {
-                        page: {
-                            type: 'integer'
-                        },
-                        limit: {
-                            type: 'integer'
-                        },
-                        total: {
-                            type: 'integer'
-                        },
-                        totalPages: {
-                            type: 'integer'
-                        },
-                        hasMore: {
-                            type: 'boolean'
+                    },
+                    User: {
+                        type: 'object',
+                        properties: {
+                            id: {
+                                type: 'integer'
+                            },
+                            email: {
+                                type: 'string',
+                                format: 'email'
+                            },
+                            name: {
+                                type: 'string'
+                            },
+                            role: {
+                                type: 'string',
+                                enum: ['USER', 'ADMIN', 'MODERATOR']
+                            },
+                            createdAt: {
+                                type: 'string',
+                                format: 'date-time'
+                            }
+                        }
+                    },
+                    Pagination: {
+                        type: 'object',
+                        properties: {
+                            page: {
+                                type: 'integer'
+                            },
+                            limit: {
+                                type: 'integer'
+                            },
+                            total: {
+                                type: 'integer'
+                            },
+                            totalPages: {
+                                type: 'integer'
+                            },
+                            hasMore: {
+                                type: 'boolean'
+                            }
                         }
                     }
                 }
-            }
-        },
-        tags: [
-            {
-                name: 'Authentication',
-                description: 'Операції аутентифікації'
             },
-            {
-                name: 'Files',
-                description: 'Управління файлами'
+            tags: [
+                {
+                    name: 'Authentication',
+                    description: 'Операції аутентифікації'
+                },
+                {
+                    name: 'Files',
+                    description: 'Управління файлами'
+                }
+            ]
+        },
+        apis: ['./src/routes/*.js']
+    };
+
+    const specs = swaggerJsdoc(options);
+
+    module.exports = specs;
+    ```
+
+    2. Оновіть файл `src/app.js`, додавши Swagger та додаткові middleware:
+
+    ```javascript
+    const express = require('express');
+    const helmet = require('helmet');
+    const cors = require('cors');
+    const rateLimit = require('express-rate-limit');
+    const swaggerUi = require('swagger-ui-express');
+    const swaggerSpecs = require('./config/swagger');
+
+    const authRoutes = require('./routes/authRoutes');
+    const fileRoutes = require('./routes/fileRoutes');
+
+    const app = express();
+
+    app.use(helmet());
+
+    app.use(cors({
+        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+        credentials: true
+    }));
+
+    const limiter = rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: 'Забагато запитів з цієї IP адреси, спробуйте пізніше'
+    });
+
+    app.use('/api/', limiter);
+
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+        explorer: true,
+        customCss: '.swagger-ui .topbar { display: none }'
+    }));
+
+    app.use('/api/auth', authRoutes);
+    app.use('/api/files', fileRoutes);
+
+    app.use((err, req, res, next) => {
+        console.error(err.stack);
+
+        if (err.name === 'MulterError') {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({
+                    error: 'Файл занадто великий'
+                });
             }
-        ]
-    },
-    apis: ['./src/routes/*.js']
-};
-
-const specs = swaggerJsdoc(options);
-
-module.exports = specs;
-```
-
-2. Оновіть файл `src/app.js`, додавши Swagger та додаткові middleware:
-
-```javascript
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./config/swagger');
-
-const authRoutes = require('./routes/authRoutes');
-const fileRoutes = require('./routes/fileRoutes');
-
-const app = express();
-
-app.use(helmet());
-
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true
-}));
-
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: 'Забагато запитів з цієї IP адреси, спробуйте пізніше'
-});
-
-app.use('/api/', limiter);
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }'
-}));
-
-app.use('/api/auth', authRoutes);
-app.use('/api/files', fileRoutes);
-
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-
-    if (err.name === 'MulterError') {
-        if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
-                error: 'Файл занадто великий'
+                error: 'Помилка завантаження файлу'
             });
         }
-        return res.status(400).json({
-            error: 'Помилка завантаження файлу'
+
+        res.status(err.status || 500).json({
+            error: err.message || 'Внутрішня помилка сервера'
         });
-    }
-
-    res.status(err.status || 500).json({
-        error: err.message || 'Внутрішня помилка сервера'
     });
-});
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Сервер запущено на порту ${PORT}`);
-    console.log(`Документація API: http://localhost:${PORT}/api-docs`);
-});
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`Сервер запущено на порту ${PORT}`);
+        console.log(`Документація API: http://localhost:${PORT}/api-docs`);
+    });
 
-module.exports = app;
-```
+    module.exports = app;
+    ```
 
 ### Крок 10. Тестування API
 
 1. Створіть файл `tests/auth.test.js` для базового тестування:
+    ```javascript
+    const request = require('supertest');
+    const app = require('../src/app');
+    const { PrismaClient } = require('@prisma/client');
 
-```javascript
-const request = require('supertest');
-const app = require('../src/app');
-const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
 
-const prisma = new PrismaClient();
+    describe('Authentication API', () => {
+        let testUser;
 
-describe('Authentication API', () => {
-    let testUser;
+        beforeAll(async () => {
+            await prisma.user.deleteMany({
+                where: { email: 'test@example.com' }
+            });
+        });
 
-    beforeAll(async () => {
-        await prisma.user.deleteMany({
-            where: { email: 'test@example.com' }
+        afterAll(async () => {
+            await prisma.$disconnect();
+        });
+
+        describe('POST /api/auth/register', () => {
+            it('повинен зареєструвати нового користувача', async () => {
+                const response = await request(app)
+                    .post('/api/auth/register')
+                    .send({
+                        email: 'test@example.com',
+                        password: 'testpassword123',
+                        name: 'Test User'
+                    });
+
+                expect(response.status).toBe(201);
+                expect(response.body).toHaveProperty('user');
+                expect(response.body).toHaveProperty('tokens');
+                expect(response.body.user.email).toBe('test@example.com');
+
+                testUser = response.body.user;
+            });
+
+            it('не повинен зареєструвати користувача з існуючим email', async () => {
+                const response = await request(app)
+                    .post('/api/auth/register')
+                    .send({
+                        email: 'test@example.com',
+                        password: 'testpassword123',
+                        name: 'Test User 2'
+                    });
+
+                expect(response.status).toBe(409);
+            });
+
+            it('не повинен зареєструвати користувача з коротким паролем', async () => {
+                const response = await request(app)
+                    .post('/api/auth/register')
+                    .send({
+                        email: 'test2@example.com',
+                        password: 'short',
+                        name: 'Test User 2'
+                    });
+
+                expect(response.status).toBe(400);
+            });
+        });
+
+        describe('POST /api/auth/login', () => {
+            it('повинен увійти з правильними credentials', async () => {
+                const response = await request(app)
+                    .post('/api/auth/login')
+                    .send({
+                        email: 'test@example.com',
+                        password: 'testpassword123'
+                    });
+
+                expect(response.status).toBe(200);
+                expect(response.body).toHaveProperty('tokens');
+                expect(response.body.tokens).toHaveProperty('accessToken');
+                expect(response.body.tokens).toHaveProperty('refreshToken');
+            });
+
+            it('не повинен увійти з невірним паролем', async () => {
+                const response = await request(app)
+                    .post('/api/auth/login')
+                    .send({
+                        email: 'test@example.com',
+                        password: 'wrongpassword'
+                    });
+
+                expect(response.status).toBe(401);
+            });
         });
     });
-
-    afterAll(async () => {
-        await prisma.$disconnect();
-    });
-
-    describe('POST /api/auth/register', () => {
-        it('повинен зареєструвати нового користувача', async () => {
-            const response = await request(app)
-                .post('/api/auth/register')
-                .send({
-                    email: 'test@example.com',
-                    password: 'testpassword123',
-                    name: 'Test User'
-                });
-
-            expect(response.status).toBe(201);
-            expect(response.body).toHaveProperty('user');
-            expect(response.body).toHaveProperty('tokens');
-            expect(response.body.user.email).toBe('test@example.com');
-
-            testUser = response.body.user;
-        });
-
-        it('не повинен зареєструвати користувача з існуючим email', async () => {
-            const response = await request(app)
-                .post('/api/auth/register')
-                .send({
-                    email: 'test@example.com',
-                    password: 'testpassword123',
-                    name: 'Test User 2'
-                });
-
-            expect(response.status).toBe(409);
-        });
-
-        it('не повинен зареєструвати користувача з коротким паролем', async () => {
-            const response = await request(app)
-                .post('/api/auth/register')
-                .send({
-                    email: 'test2@example.com',
-                    password: 'short',
-                    name: 'Test User 2'
-                });
-
-            expect(response.status).toBe(400);
-        });
-    });
-
-    describe('POST /api/auth/login', () => {
-        it('повинен увійти з правильними credentials', async () => {
-            const response = await request(app)
-                .post('/api/auth/login')
-                .send({
-                    email: 'test@example.com',
-                    password: 'testpassword123'
-                });
-
-            expect(response.status).toBe(200);
-            expect(response.body).toHaveProperty('tokens');
-            expect(response.body.tokens).toHaveProperty('accessToken');
-            expect(response.body.tokens).toHaveProperty('refreshToken');
-        });
-
-        it('не повинен увійти з невірним паролем', async () => {
-            const response = await request(app)
-                .post('/api/auth/login')
-                .send({
-                    email: 'test@example.com',
-                    password: 'wrongpassword'
-                });
-
-            expect(response.status).toBe(401);
-        });
-    });
-});
-```
-
+    ```
 2. Встановіть необхідні залежності для тестування:
-
-```bash
-npm install --save-dev jest supertest
-```
-
+    ```bash
+    npm install --save-dev jest supertest
+    ```
 3. Додайте скрипт тестування в `package.json`:
-
-```json
-{
-    "scripts": {
-        "test": "jest --detectOpenHandles --forceExit"
+    ```json
+    {
+        "scripts": {
+            "test": "jest --detectOpenHandles --forceExit"
+        }
     }
-}
-```
+    ```
 
 ### Крок 11. Створення звіту
 
@@ -1448,7 +1417,6 @@ npm install --save-dev jest supertest
     - Вставте скріншоти результатів тестування в Postman або через curl.
     - Опишіть реалізований файловий сервіс та систему пошуку.
     - Відповідайте на контрольні запитання.
-
 3. Зробіть скріншоти:
     - Swagger документації з усіма endpoints.
     - Успішної реєстрації користувача.
@@ -1463,19 +1431,15 @@ npm install --save-dev jest supertest
 1. Переконайтеся, що всі endpoints працюють коректно.
 2. Перевірте, що документація Swagger доступна за адресою `http://localhost:3000/api-docs`.
 3. Запустіть тести та переконайтеся, що вони проходять успішно:
-
-```bash
-npm test
-```
-
+    ```bash
+    npm test
+    ```
 4. Створіть коміт з усіма змінами:
-
-```bash
-git add .
-git commit -m "feat: додано аутентифікацію, авторизацію, файловий сервіс та документацію API"
-git push origin main
-```
-
+    ```bash
+    git add .
+    git commit -m "feat: додано аутентифікацію, авторизацію, файловий сервіс та документацію API"
+    git push origin main
+    ```
 5. Здайте роботу на Moodle, вставивши посилання на GitHub репозиторій.
 
 ## 📝 Критерії оцінювання
