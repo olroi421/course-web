@@ -1230,9 +1230,7 @@ app.use(cors({
 
     module.exports = specs;
     ```
-
-    2. Оновіть файл `src/app.js`, додавши Swagger та додаткові middleware:
-
+2. Оновіть файл `src/app.js`, додавши Swagger та додаткові middleware:
     ```javascript
     const express = require('express');
     const helmet = require('helmet');
