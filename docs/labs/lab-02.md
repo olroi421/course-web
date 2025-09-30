@@ -341,7 +341,7 @@ app.use(cors({
 
 ## ▶️ Хід роботи
 
-
+[:fontawesome-brands-github: Приклад реалізації лабораторної роботи](https://github.com/olroi421/course-web-project){ .md-button }
 
 ### Крок 1. Підготовка середовища
 
@@ -1409,7 +1409,7 @@ app.use(cors({
 
 ### Крок 11. Створення звіту
 
-1. Скопіюйте шаблон звіту до папки `/reports/` ([:fontawesome-solid-download: завантажити шаблон](assets/lab2-report.md){: download="lab2-report.md"}).
+1. Скопіюйте шаблон звіту до папки `/reports/` ([:fontawesome-solid-download: завантажити шаблон](assets/lab2-report.md.download){: download="lab2-report.md"}).
 2. Заповніть всі розділи звіту та зробіть скріншоти.
 
 ### Крок 12. Фіналізація та здача роботи
