@@ -9,3 +9,8 @@
 5. [Бази даних та ORM](presentation-05.md)
 6. [RESTful API дизайн](presentation-06.md)
 7. [Аутентифікація та безпека](presentation-07.md)
+8. [Тестування та деплой backend](presentation-08.md)
+9. [React основи та сучасні підходи](presentation-09.md)
+10. [React Hooks та управління станом](presentation-10.md)
+11. [Роутинг та навігація (React Router)](presentation-11.md)
+12. [Управління глобальним станом](presentation-12.md)
