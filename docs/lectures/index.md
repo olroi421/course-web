@@ -14,6 +14,10 @@
 10. [React Hooks та управління станом](lecture-10.md)
 11. [Роутинг та навігація (React Router)](lecture-11.md)
 12. [Управління глобальним станом](lecture-12.md)
+13. [Форми та валідація](lecture-13.md)
+14. [HTTP клієнт та інтеграція з backend](lecture-14.md)
+15. [Tailwind CSS та сучасна стилізація](lecture-15.md)
+16. [Тестування React компонентів](lecture-16.md)
 
 ## Як працювати з лекціями
 

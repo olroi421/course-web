@@ -106,6 +106,10 @@ nav:
       - "Лекція 10 React Hooks та управління станом": lectures/lecture-10.md
       - "Лекція 11 Роутинг та навігація (React Router)": lectures/lecture-11.md
       - "Лекція 12 Управління глобальним станом": lectures/lecture-12.md
+      - "Лекція 13 Форми та валідація": lectures/lecture-13.md
+      - "Лекція 14 HTTP клієнт та інтеграція з backend": lectures/lecture-14.md
+      - "Лекція 15 Tailwind CSS та сучасна стилізація": lectures/lecture-15.md
+      - "Лекція 16 Тестування React компонентів": lectures/lecture-16.md
   - Лабораторні роботи:
       - labs/index.md
       - "Лабораторна робота 1 Розроблення backend архітектури та основного функціоналу": labs/lab-01.md
@@ -124,6 +128,10 @@ nav:
       - "React Hooks та управління станом": presentations/presentation-10.md
       - "Роутинг та навігація (React Router)": presentations/presentation-11.md
       - "Управління глобальним станом": presentations/presentation-12.md
+      - "Форми та валідація": presentations/presentation-13.md
+      - "HTTP клієнт та інтеграція з backend": presentations/presentation-14.md
+      - "Tailwind CSS та сучасна стилізація": presentations/presentation-15.md
+      - "Тестування React компонентів": presentations/presentation-16.md
 # Extra CSS
 extra_css:
   - stylesheets/extra.css
