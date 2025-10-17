@@ -14,3 +14,7 @@
 10. [React Hooks та управління станом](presentation-10.md)
 11. [Роутинг та навігація (React Router)](presentation-11.md)
 12. [Управління глобальним станом](presentation-12.md)
+13. [Форми та валідація](presentation-13.md)
+14. [HTTP клієнт та інтеграція з backend](presentation-14.md)
+15. [Tailwind CSS та сучасна стилізація](presentation-15.md)
+16. [Тестування React компонентів](presentation-16.md)
