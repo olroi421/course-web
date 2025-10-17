@@ -265,7 +265,7 @@ export default {
     sm:w-auto       /* ≥640px: auto */
     md:w-1/2        /* ≥768px: 50% */
     lg:w-1/3        /* ≥1024px: 33% */
-    
+
     p-4             /* Всюди: 16px */
     md:p-6          /* ≥768px: 24px */
     lg:p-8          /* ≥1024px: 32px */
@@ -292,7 +292,7 @@ function Navigation() {
                 </div>
 
                 {/* Mobile button - прихований на десктопі */}
-                <button 
+                <button
                     class="md:hidden"
                     onClick={() => setIsOpen(!isOpen)}
                 >
@@ -318,7 +318,7 @@ function Navigation() {
 
 ```html
 <div class="
-    grid 
+    grid
     grid-cols-1      /* Мобільні: 1 колонка */
     sm:grid-cols-2   /* Планшети: 2 колонки */
     md:grid-cols-3   /* Середні: 3 колонки */
@@ -415,13 +415,13 @@ export default {
     .text-shadow {
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
     .gradient-text {
         background: linear-gradient(to right, #3b82f6, #8b5cf6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
-    
+
     .scrollbar-hide {
         -ms-overflow-style: none;
         scrollbar-width: none;
@@ -447,12 +447,12 @@ export default {
         @apply transition-colors duration-200;
         @apply focus:outline-none focus:ring-2;
     }
-    
+
     .card {
         @apply bg-white rounded-lg shadow-md p-6;
         @apply hover:shadow-xl transition-shadow;
     }
-    
+
     .input-field {
         @apply w-full px-4 py-2 border rounded-md;
         @apply focus:ring-2 focus:ring-blue-500;
@@ -470,28 +470,28 @@ export default {
 ## Компонентний підхід
 
 ```jsx
-function Button({ 
-    children, 
+function Button({
+    children,
     variant = 'primary',
     size = 'md',
-    ...props 
+    ...props
 }) {
     const baseStyles = 'font-semibold rounded-md transition-colors';
-    
+
     const variants = {
         primary: 'bg-blue-500 text-white hover:bg-blue-600',
         secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300',
         danger: 'bg-red-500 text-white hover:bg-red-600'
     };
-    
+
     const sizes = {
         sm: 'px-3 py-1.5 text-sm',
         md: 'px-6 py-3 text-base',
         lg: 'px-8 py-4 text-lg'
     };
-    
+
     return (
-        <button 
+        <button
             className={`${baseStyles} ${variants[variant]} ${sizes[size]}`}
             {...props}
         >
@@ -506,11 +506,11 @@ function Button({
 ## Card компонент
 
 ```jsx
-function Card({ 
-    title, 
-    description, 
+function Card({
+    title,
+    description,
     image,
-    hoverable = true 
+    hoverable = true
 }) {
     return (
         <div className={`
@@ -518,13 +518,13 @@ function Card({
             ${hoverable ? 'hover:shadow-xl transition-shadow' : ''}
         `}>
             {image && (
-                <img 
-                    src={image} 
+                <img
+                    src={image}
                     alt={title}
                     className="w-full h-48 object-cover"
                 />
             )}
-            
+
             <div className="p-6">
                 <h3 className="text-xl font-bold mb-2">
                     {title}
@@ -556,14 +556,14 @@ function Input({
                     {label}
                 </label>
             )}
-            
+
             <div className="relative">
                 {icon && (
                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
                         {icon}
                     </div>
                 )}
-                
+
                 <input
                     className={`
                         w-full px-4 py-2 rounded-md
@@ -574,7 +574,7 @@ function Input({
                     {...props}
                 />
             </div>
-            
+
             {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
         </div>
     );
@@ -623,11 +623,11 @@ function ThemeProvider({ children }) {
     <h2 class="text-gray-900 dark:text-white">
         Заголовок
     </h2>
-    
+
     <p class="text-gray-600 dark:text-gray-300">
         Опис з підтримкою теми
     </p>
-    
+
     <button class="
         bg-blue-500 dark:bg-blue-600
         hover:bg-blue-600 dark:hover:bg-blue-700
@@ -897,33 +897,3 @@ type ButtonProps = {
 4. Як налаштувати dark mode?
 5. Що таке Headless UI і навіщо він потрібен?
 6. Як Tailwind оптимізує розмір bundle?
-
----
-
-## Практичне завдання
-
-**Створіть dashboard з Tailwind:**
-- Responsive navigation з mobile menu
-- Сітка карток з hover ефектами
-- Форма з кастомними input компонентами
-- Dark/Light theme toggle
-- Modal dialog з Headless UI
-- Dropdown menu
-
-**Вимоги:**
-- Повна адаптивність (mobile → desktop)
-- Підтримка темної теми
-- Анімації переходів
-- Доступність (a11y)
-
----
-
-## Дякую за увагу! 🎉
-
-**Контакти для запитань:**
-📧 Email: [ваш email]
-💼 LinkedIn: [ваш профіль]
-🐙 GitHub: [ваш репозиторій]
-
-**Наступна тема:**
-Тестування React компонентів

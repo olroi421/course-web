@@ -134,17 +134,17 @@ import Button from './Button';
 describe('Button Component', () => {
     it('рендериться з текстом', () => {
         render(<Button>Натисни мене</Button>);
-        
+
         expect(screen.getByRole('button')).toHaveTextContent('Натисни мене');
     });
 
     it('викликає onClick при натисканні', async () => {
         const handleClick = vi.fn();
         const user = userEvent.setup();
-        
+
         render(<Button onClick={handleClick}>Click</Button>);
         await user.click(screen.getByRole('button'));
-        
+
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
 });
@@ -221,19 +221,19 @@ import userEvent from '@testing-library/user-event';
 it('тестує взаємодію користувача', async () => {
     const user = userEvent.setup();
     render(<LoginForm />);
-    
+
     // Введення тексту
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    
+
     // Клік
     await user.click(screen.getByRole('button', { name: /submit/i }));
-    
+
     // Подвійний клік
     await user.dblClick(element);
-    
+
     // Hover
     await user.hover(element);
-    
+
     // Keyboard
     await user.keyboard('{Enter}');
 });
@@ -260,7 +260,7 @@ function LoginForm({ onSubmit }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
             />
-            
+
             <label htmlFor="password">Пароль</label>
             <input
                 id="password"
@@ -268,7 +268,7 @@ function LoginForm({ onSubmit }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
             />
-            
+
             <button type="submit">Увійти</button>
         </form>
     );
@@ -283,9 +283,9 @@ function LoginForm({ onSubmit }) {
 it('відправляє правильні дані при submit', async () => {
     const handleSubmit = vi.fn();
     const user = userEvent.setup();
-    
+
     render(<LoginForm onSubmit={handleSubmit} />);
-    
+
     // Заповнення форми
     await user.type(
         screen.getByLabelText(/email/i),
@@ -295,10 +295,10 @@ it('відправляє правильні дані при submit', async () =>
         screen.getByLabelText(/пароль/i),
         'password123'
     );
-    
+
     // Відправка
     await user.click(screen.getByRole('button', { name: /увійти/i }));
-    
+
     // Перевірка
     expect(handleSubmit).toHaveBeenCalledWith({
         email: 'test@example.com',
@@ -315,22 +315,22 @@ it('відправляє правильні дані при submit', async () =>
 it('показує помилку при некоректному email', async () => {
     const user = userEvent.setup();
     render(<LoginForm />);
-    
+
     const emailInput = screen.getByLabelText(/email/i);
     await user.type(emailInput, 'invalid-email');
-    
+
     await user.click(screen.getByRole('button', { name: /увійти/i }));
-    
+
     expect(screen.getByText(/некоректний email/i)).toBeInTheDocument();
 });
 
 it('показує помилку при порожньому паролі', async () => {
     const user = userEvent.setup();
     render(<LoginForm />);
-    
+
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.click(screen.getByRole('button', { name: /увійти/i }));
-    
+
     expect(screen.getByText(/пароль обов'язковий/i)).toBeInTheDocument();
 });
 ```
@@ -382,9 +382,9 @@ describe('UserProfile', () => {
             id: 1,
             name: 'Іван Петренко'
         });
-        
+
         render(<UserProfile userId={1} />);
-        
+
         expect(await screen.findByText('Іван Петренко')).toBeInTheDocument();
     });
 });
@@ -414,7 +414,7 @@ export const handlers = [
             name: 'Іван Петренко'
         });
     }),
-    
+
     http.post('/api/users', async ({ request }) => {
         const data = await request.json();
         return HttpResponse.json({ id: 1, ...data });
@@ -453,13 +453,13 @@ afterAll(() => server.close());
 ```javascript
 it('показує loading, потім дані', async () => {
     render(<UserProfile userId={1} />);
-    
+
     // Перевірка loading стану
     expect(screen.getByText(/завантаження/i)).toBeInTheDocument();
-    
+
     // Очікування появи даних
     expect(await screen.findByText('Іван Петренко')).toBeInTheDocument();
-    
+
     // Перевірка що loading зник
     expect(screen.queryByText(/завантаження/i)).not.toBeInTheDocument();
 });
@@ -470,9 +470,9 @@ it('показує помилку при невдачі', async () => {
             return new HttpResponse(null, { status: 500 });
         })
     );
-    
+
     render(<UserProfile userId={1} />);
-    
+
     expect(await screen.findByRole('alert')).toHaveTextContent(/помилка/i);
 });
 ```
@@ -487,14 +487,14 @@ import { waitFor } from '@testing-library/react';
 it('оновлює дані після mutation', async () => {
     const user = userEvent.setup();
     render(<UserEditor userId={1} />);
-    
+
     // Чекаємо завантаження
     await screen.findByText('Іван Петренко');
-    
+
     // Редагування
     await user.type(screen.getByLabelText(/ім'я/i), 'Нове ім\'я');
     await user.click(screen.getByRole('button', { name: /зберегти/i }));
-    
+
     // Чекаємо на оновлення (може бути складна логіка)
     await waitFor(() => {
         expect(screen.getByText('Нове ім\'я')).toBeInTheDocument();
@@ -513,16 +513,16 @@ describe('Todo List Integration', () => {
     it('повний CRUD workflow', async () => {
         const user = userEvent.setup();
         render(<TodoApp />);
-        
+
         // CREATE
         await user.type(screen.getByPlaceholderText(/додати/i), 'Купити молоко');
         await user.click(screen.getByRole('button', { name: /додати/i }));
         expect(screen.getByText('Купити молоко')).toBeInTheDocument();
-        
+
         // UPDATE
         await user.click(screen.getByRole('checkbox'));
         expect(screen.getByText('Купити молоко')).toHaveClass('completed');
-        
+
         // DELETE
         await user.click(screen.getByRole('button', { name: /видалити/i }));
         expect(screen.queryByText('Купити молоко')).not.toBeInTheDocument();
@@ -569,17 +569,17 @@ import { test, expect } from '@playwright/test';
 
 test('користувач може увійти', async ({ page }) => {
     await page.goto('/login');
-    
+
     // Заповнення форми
     await page.fill('input[name="email"]', 'test@example.com');
     await page.fill('input[name="password"]', 'password123');
-    
+
     // Відправка
     await page.click('button[type="submit"]');
-    
+
     // Перевірка редіректу
     await expect(page).toHaveURL('/dashboard');
-    
+
     // Перевірка вмісту
     await expect(page.locator('text=Вітаємо')).toBeVisible();
 });
@@ -597,13 +597,13 @@ test('повний user journey', async ({ page }) => {
     await page.fill('input[name="email"]', 'ivan@example.com');
     await page.fill('input[name="password"]', 'secure123');
     await page.click('button:has-text("Зареєструватися")');
-    
+
     // Створення проєкту
     await page.goto('/projects/new');
     await page.fill('input[name="title"]', 'Новий проєкт');
     await page.fill('textarea[name="description"]', 'Опис проєкту');
     await page.click('button:has-text("Створити")');
-    
+
     // Перевірка
     await expect(page).toHaveURL(/\/projects\/\d+/);
     await expect(page.locator('h1')).toContainText('Новий проєкт');
@@ -623,19 +623,19 @@ test('API authentication', async ({ request }) => {
             password: 'password123'
         }
     });
-    
+
     expect(response.ok()).toBeTruthy();
-    
+
     const body = await response.json();
     expect(body).toHaveProperty('token');
-    
+
     // Використання токену
     const userResponse = await request.get('/api/user', {
         headers: {
             'Authorization': `Bearer ${body.token}`
         }
     });
-    
+
     expect(userResponse.ok()).toBeTruthy();
 });
 ```
@@ -670,19 +670,19 @@ describe('Counter', () => {
         render(<Counter />);
         expect(screen.getByText('0')).toBeInTheDocument();
     });
-    
+
     it('збільшується при кліку', async () => {
         const user = userEvent.setup();
         render(<Counter />);
-        
+
         await user.click(screen.getByRole('button', { name: /\+/i }));
         expect(screen.getByText('1')).toBeInTheDocument();
     });
-    
+
     it('зменшується при кліку', async () => {
         const user = userEvent.setup();
         render(<Counter />);
-        
+
         await user.click(screen.getByRole('button', { name: /-/i }));
         expect(screen.getByText('-1')).toBeInTheDocument();
     });
@@ -711,7 +711,7 @@ function Counter() {
 // REFACTOR: Покращення
 function Counter({ initialValue = 0 }) {
     const [count, setCount] = useState(initialValue);
-    
+
     const increment = () => setCount(prev => prev + 1);
     const decrement = () => setCount(prev => prev - 1);
     const reset = () => setCount(initialValue);
@@ -821,19 +821,19 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run tests
         run: npm test -- --coverage
-      
+
       - name: Upload coverage
         uses: codecov/codecov-action@v3
 ```
@@ -882,48 +882,3 @@ export default defineConfig({
 **Інструменти:**
 - [Storybook](https://storybook.js.org/) - для visual testing
 - [Chromatic](https://www.chromatic.com/) - visual regression
-
----
-
-## Питання для самоперевірки
-
-1. Що таке піраміда тестування?
-2. У чому різниця між getBy, queryBy та findBy?
-3. Навіщо використовувати userEvent замість fireEvent?
-4. Як мокувати API виклики?
-5. Що таке TDD і його переваги?
-6. Коли використовувати E2E тести?
-
----
-
-## Практичне завдання
-
-**Створіть повністю протестований Todo додаток:**
-
-**Unit тести:**
-- Компоненти TodoItem, TodoList, TodoForm
-- Валідація форми
-- Фільтрація завдань
-
-**Integration тести:**
-- Повний CRUD workflow
-- Фільтрація та сортування
-- Збереження в localStorage
-
-**E2E тести:**
-- Реєстрація → Створення todo → Виконання → Видалення
-- Множинні користувачі
-
----
-
-## Дякую за увагу! 🎉
-
-**Контакти для запитань:**
-📧 Email: [ваш email]
-💼 LinkedIn: [ваш профіль]
-🐙 GitHub: [ваш репозиторій]
-
-**Важливо пам'ятати:**
-> Хороші тести - це інвестиція в майбутнє вашого проєкту
-
-**Успіхів у тестуванні! 🚀**

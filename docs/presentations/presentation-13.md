@@ -127,7 +127,7 @@ function RegistrationForm() {
                 })}
             />
             {errors.email && <span>{errors.email.message}</span>}
-            
+
             <button type="submit">Зареєструватися</button>
         </form>
     );
@@ -191,14 +191,14 @@ const schema = z.object({
     username: z.string()
         .min(3, 'Мінімум 3 символи')
         .max(20, 'Максимум 20 символів'),
-    
+
     email: z.string()
         .email('Некоректний email'),
-    
+
     password: z.string()
         .min(8, 'Мінімум 8 символів')
         .regex(/[A-Z]/, 'Потрібна велика літера'),
-    
+
     age: z.number()
         .int()
         .min(18, 'Вік від 18 років')
@@ -277,10 +277,10 @@ const projectSchema = z.object({
 - Консистентний дизайн
 
 ```javascript
-const Input = forwardRef(({ 
-    label, 
-    error, 
-    ...props 
+const Input = forwardRef(({
+    label,
+    error,
+    ...props
 }, ref) => {
     return (
         <div>
@@ -297,9 +297,9 @@ const Input = forwardRef(({
 ## Password Input з індикатором
 
 ```javascript
-const PasswordInput = forwardRef(({ 
+const PasswordInput = forwardRef(({
     showStrength = false,
-    ...props 
+    ...props
 }, ref) => {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -376,7 +376,7 @@ function DragDropUpload() {
     });
 
     return (
-        <div {...getRootProps()} 
+        <div {...getRootProps()}
              className={isDragActive ? 'active' : ''}>
             <input {...getInputProps()} />
             <p>Перетягніть файли або клацніть для вибору</p>
@@ -391,20 +391,20 @@ function DragDropUpload() {
 
 ```javascript
 function SmartValidation() {
-    const { register, formState: { errors, touchedFields } } 
+    const { register, formState: { errors, touchedFields } }
         = useForm({ mode: 'onBlur' });
 
     return (
         <div>
-            <input {...register('email', { 
+            <input {...register('email', {
                 required: true,
                 pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
             })} />
-            
+
             {touchedFields.email && !errors.email && (
                 <span className="success">✓ Email валідний</span>
             )}
-            
+
             {errors.email && (
                 <span className="error">
                     {errors.email.message}
@@ -427,7 +427,7 @@ function MultiStepForm() {
     const nextStep = async () => {
         const fieldsToValidate = getFieldsForStep(step);
         const isValid = await trigger(fieldsToValidate);
-        
+
         if (isValid) {
             setStep(step + 1);
         }
@@ -436,11 +436,11 @@ function MultiStepForm() {
     return (
         <div>
             <ProgressBar currentStep={step} totalSteps={3} />
-            
+
             {step === 1 && <PersonalInfo register={register} />}
             {step === 2 && <AddressInfo register={register} />}
             {step === 3 && <PaymentInfo register={register} />}
-            
+
             <button onClick={nextStep}>Далі</button>
         </div>
     );
@@ -537,7 +537,7 @@ const schema = z.object({
 });
 
 function Registration() {
-    const { register, handleSubmit, formState: { errors } } 
+    const { register, handleSubmit, formState: { errors } }
         = useForm({ resolver: zodResolver(schema) });
 
     const onSubmit = async (data) => {
@@ -569,39 +569,3 @@ function Registration() {
 **Інструменти:**
 - [Formik](https://formik.org/) - альтернатива RHF
 - [Yup](https://github.com/jquense/yup) - альтернатива Zod
-
----
-
-## Питання для самоперевірки
-
-1. У чому різниця між контрольованими та неконтрольованими компонентами?
-2. Які переваги React Hook Form над традиційним підходом?
-3. Як Zod допомагає з TypeScript типізацією?
-4. Чому важлива доступність форм?
-5. Як реалізувати автозбереження форми?
-
----
-
-## Практичне завдання
-
-**Створіть форму реєстрації з:**
-- Валідацією через Zod
-- Password strength indicator
-- Завантаженням аватара з превью
-- Інлайн валідацією
-- Автозбереженням в localStorage
-- Повною доступністю
-
-**Бонус:** додайте багатокрокову форму з прогрес-баром
-
----
-
-## Дякую за увагу! 🎉
-
-**Контакти для запитань:**
-📧 Email: [ваш email]
-💼 LinkedIn: [ваш профіль]
-🐙 GitHub: [ваш репозиторій]
-
-**Наступна тема:**
-HTTP клієнт та інтеграція з backend

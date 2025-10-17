@@ -140,13 +140,13 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
-        
+
         // Логування
         console.log('Запит:', config.method, config.url);
-        
+
         // Додавання timestamp
         config.metadata = { startTime: new Date() };
-        
+
         return config;
     },
     (error) => {
@@ -165,13 +165,13 @@ api.interceptors.response.use(
     (response) => {
         // Обчислення часу запиту
         const duration = new Date() - response.config.metadata.startTime;
-        
+
         console.log(
             'Відповідь:',
             response.config.url,
             `${duration}ms`
         );
-        
+
         return response;
     },
     (error) => {
@@ -180,7 +180,7 @@ api.interceptors.response.use(
             // Перенаправлення на логін
             window.location.href = '/login';
         }
-        
+
         return Promise.reject(error);
     }
 );
@@ -198,7 +198,7 @@ api.interceptors.response.use(
     response => response,
     async error => {
         const originalRequest = error.config;
-        
+
         if (error.response?.status === 401 && !originalRequest._retry) {
             if (isRefreshing) {
                 // Додати в чергу
@@ -206,17 +206,17 @@ api.interceptors.response.use(
                     failedQueue.push({ resolve, reject });
                 });
             }
-            
+
             originalRequest._retry = true;
             isRefreshing = true;
-            
+
             // Оновити токен
             const newToken = await refreshToken();
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            
+
             return api(originalRequest);
         }
-        
+
         return Promise.reject(error);
     }
 );
@@ -262,7 +262,7 @@ api.interceptors.response.use(
     error => {
         if (error.response) {
             const { status, data } = error.response;
-            
+
             switch (status) {
                 case 400:
                     throw new APIError('Bad Request', 400, data);
@@ -299,7 +299,7 @@ function UserList() {
         try {
             setIsLoading(true);
             setError(null);
-            
+
             const response = await api.get('/users');
             setUsers(response.data);
         } catch (err) {
@@ -311,7 +311,7 @@ function UserList() {
 
     if (isLoading) return <Spinner />;
     if (error) return <ErrorMessage error={error} />;
-    
+
     return <UserListView users={users} />;
 }
 ```
@@ -367,12 +367,12 @@ class APICache {
     get(key) {
         const cached = this.cache.get(key);
         if (!cached) return null;
-        
+
         if (Date.now() - cached.timestamp > this.ttl) {
             this.cache.delete(key);
             return null;
         }
-        
+
         return cached.data;
     }
 
@@ -394,21 +394,21 @@ const apiCache = new APICache();
 
 async function cachedGet(url, params = {}) {
     const cacheKey = `${url}?${JSON.stringify(params)}`;
-    
+
     // Перевірка кешу
     const cached = apiCache.get(cacheKey);
     if (cached) {
         console.log('Використання кешу');
         return cached;
     }
-    
+
     // Запит до API
     const response = await api.get(url, { params });
     const data = response.data;
-    
+
     // Збереження в кеш
     apiCache.set(cacheKey, data);
-    
+
     return data;
 }
 
@@ -479,16 +479,16 @@ function CreateUser() {
 
     const mutation = useMutation({
         mutationFn: (userData) => api.post('/users', userData),
-        
+
         onSuccess: (newUser) => {
             // Оновлення кешу
-            queryClient.setQueryData(['users'], (old) => 
+            queryClient.setQueryData(['users'], (old) =>
                 [...old, newUser.data]
             );
-            
+
             toast.success('Користувача створено');
         },
-        
+
         onError: (error) => {
             toast.error('Помилка створення');
         }
@@ -511,24 +511,24 @@ function CreateUser() {
 ```javascript
 const updateMutation = useMutation({
     mutationFn: updateUser,
-    
+
     onMutate: async (newData) => {
         // Скасування поточних запитів
         await queryClient.cancelQueries(['users']);
-        
+
         // Збереження попереднього стану
         const previous = queryClient.getQueryData(['users']);
-        
+
         // Оптимістичне оновлення
         queryClient.setQueryData(['users'], (old) =>
-            old.map(user => 
+            old.map(user =>
                 user.id === newData.id ? { ...user, ...newData } : user
             )
         );
-        
+
         return { previous };
     },
-    
+
     onError: (err, variables, context) => {
         // Відкат при помилці
         queryClient.setQueryData(['users'], context.previous);
@@ -546,7 +546,7 @@ function Dashboard() {
     const { data: users } = useQuery(['users'], fetchUsers);
     const { data: posts } = useQuery(['posts'], fetchPosts);
     const { data: stats } = useQuery(['stats'], fetchStats);
-    
+
     // Всі запити виконуються одночасно
     return <DashboardView {...{ users, posts, stats }} />;
 }
@@ -601,14 +601,14 @@ function UserManager() {
 
     const deleteMutation = useMutation({
         mutationFn: deleteUser,
-        
+
         onSuccess: () => {
             // Інвалідувати кеш користувачів
             queryClient.invalidateQueries(['users']);
-            
+
             // Або видалити конкретний запит
             queryClient.removeQueries(['user', userId]);
-            
+
             // Або оновити вручну
             queryClient.setQueryData(['users'], (old) =>
                 old.filter(u => u.id !== userId)
@@ -672,9 +672,9 @@ function PaginatedUsers() {
     return (
         <div>
             {isLoading && <Spinner />}
-            
+
             <UserList users={data?.users} />
-            
+
             <Pagination
                 currentPage={page}
                 totalPages={data?.totalPages}
@@ -707,7 +707,7 @@ function InfiniteUserList() {
             {data?.pages.map(page =>
                 page.users.map(user => <UserCard key={user.id} user={user} />)
             )}
-            
+
             {hasNextPage && (
                 <button onClick={fetchNextPage} disabled={isFetchingNextPage}>
                     {isFetchingNextPage ? 'Завантаження...' : 'Більше'}
@@ -782,7 +782,7 @@ export function useUsers() {
 // components/UserList.jsx
 function UserList() {
     const { data: users, isLoading } = useUsers();
-    
+
     if (isLoading) return <SkeletonList />;
     return <List items={users} />;
 }
@@ -831,40 +831,3 @@ api.interceptors.request.use(config => {
 **Альтернативи:**
 - [SWR](https://swr.vercel.app/) - від Vercel
 - [RTK Query](https://redux-toolkit.js.org/rtk-query/overview) - від Redux
-
----
-
-## Питання для самоперевірки
-
-1. Які переваги Axios над Fetch API?
-2. Для чого використовуються interceptors?
-3. Як правильно обробляти помилки API?
-4. Що таке оптимістичні оновлення?
-5. Коли використовувати React Query замість useState?
-6. Як реалізувати кешування запитів?
-
----
-
-## Практичне завдання
-
-**Створіть систему управління користувачами з:**
-- CRUD операціями через Axios
-- Централізованою обробкою помилок
-- React Query для data fetching
-- Оптимістичними оновленнями
-- Skeleton screens
-- Інвалідацією кешу
-
-**Бонус:** додайте infinite scroll та prefetching
-
----
-
-## Дякую за увагу! 🎉
-
-**Контакти для запитань:**
-📧 Email: [ваш email]
-💼 LinkedIn: [ваш профіль]
-🐙 GitHub: [ваш репозиторій]
-
-**Наступна тема:**
-Tailwind CSS та сучасна стилізація
