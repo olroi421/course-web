@@ -1409,7 +1409,7 @@ app.use(cors({
 
 ### Крок 11. Створення звіту
 
-1. Скопіюйте шаблон звіту до папки `/reports/` ([:fontawesome-solid-download: завантажити шаблон](assets/lab2-report.md.download){: download="lab2-report.md"}).
+1. Скопіюйте шаблон звіту до папки `/reports/` ([завантажити шаблон](assets/lab2-report.md.download){: download="lab2-report.md"}).
 2. Заповніть всі розділи звіту та зробіть скріншоти.
 
 ### Крок 12. Фіналізація та здача роботи
@@ -1424,7 +1424,7 @@ app.use(cors({
     ```
 4. Здайте роботу на Moodle, вставивши посилання на GitHub репозиторій.
 
-[:fontawesome-solid-cloud-upload: Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2){ .md-button .md-button--primary }
+[Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2)
 
 
 

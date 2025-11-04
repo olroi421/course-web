@@ -144,11 +144,11 @@
 9. Реалізувати контролери з обробкою всіх CRUD операцій та валідацією даних.
 10. Налаштувати RESTful маршрути для API та підключити їх до основного додатку.
 11. Протестувати всі API endpoints за допомогою Postman або curl та створити документацію API.
-12. Cтворити звіт в папці `reports/` за запропонованим шаблоном ([:fontawesome-solid-download: завантажити шаблон](assets/lab1-report.md.download){: download="lab1-report.md"}). Звіт `lab1-report.md` і скріншоти помістити в папку.
+12. Cтворити звіт в папці `reports/` за запропонованим шаблоном ([завантажити шаблон](assets/lab1-report.md.download){: download="lab1-report.md"}). Звіт `lab1-report.md` і скріншоти помістити в папку.
 12. Зробити коміт змін до GitHub репозиторію та здати роботу на Moodle. Як відповідь на завдання в LMS Moodle вставити посилання на GitHub репозиторій.
 13. Захистити лабораторну роботу з демострацією функціональності застосунку.
 
-[:fontawesome-solid-cloud-upload: Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2){ .md-button .md-button--primary }
+[Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2)
 
 ## ❓ Контрольні запитання
 

@@ -1011,7 +1011,7 @@ npm test
 
 Здати роботу через Moodle, вставивши посилання на GitHub репозиторій.
 
-[:fontawesome-solid-cloud-upload: Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2){ .md-button .md-button--primary }
+[Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2)
 
 ## ❓ Контрольні запитання
 
