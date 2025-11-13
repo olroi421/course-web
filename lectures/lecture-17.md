@@ -1,4 +1,4 @@
-# Лекція 17. Real-time веб-додатки (WebSocket)
+# Лекція 17 Real-time веб-додатки (WebSocket)
 
 ## Вступ до real-time комунікацій
 
