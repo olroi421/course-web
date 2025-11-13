@@ -21,6 +21,14 @@
 | Лекція 14 HTTP клієнт та інтеграція з backend | [Конспект лекції](lectures/lecture-14.md) | [Презентація](presentations/presentation-14.md) |
 | Лекція 15 Tailwind CSS та сучасна стилізація | [Конспект лекції](lectures/lecture-15.md) | [Презентація](presentations/presentation-15.md) |
 | Лекція 16 Тестування React компонентів | [Конспект лекції](lectures/lecture-16.md) | [Презентація](presentations/presentation-16.md) |
+| Лекція 17 Real-time веб-додатки (WebSocket) | [Конспект лекції](lectures/lecture-17.md) | [Презентація](presentations/presentation-17.md) |
+| Лекція 18 Продуктивність та оптимізація | [Конспект лекції](lectures/lecture-18.md) | [Презентація](presentations/presentation-18.md) |
+| Лекція 19 *TypeScript у веброзробці | [Конспект лекції](lectures/lecture-19.md) | [Презентація](presentations/presentation-19.md) |
+| Лекція 20 *Сучасні інструменти розробки | [Конспект лекції](lectures/lecture-20.md) | [Презентація](presentations/presentation-20.md) |
+| Лекція 21 *Архітектурні паттерни | [Конспект лекції](lectures/lecture-21.md) | [Презентація](presentations/presentation-21.md) |
+| Лекція 22 *DevOps для веброзробників | [Конспект лекції](lectures/lecture-22.md) | [Презентація](presentations/presentation-22.md) |
+| Лекція 23 *Безпека вебзастосунків | [Конспект лекції](lectures/lecture-23.md) | [Презентація](presentations/presentation-23.md) |
+| Лекція 24 *Майбутнє веброзробки та кар'єра | [Конспект лекції](lectures/lecture-24.md) | [Презентація](presentations/presentation-24.md) |
 
 ---
 
