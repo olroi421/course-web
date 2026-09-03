@@ -1,904 +1,721 @@
-# JavaScript ES6+ та асинхронне програмування
+# Node.js та Express.js: основи серверної розробки
 
 ## План лекції
 
-1. Еволюція JavaScript та ES6+
-2. Деструктуризація масивів та об'єктів
-3. Spread/Rest оператори
-4. Arrow Functions та контекст this
-5. Модульна система import/export
-6. Promises та async/await
-7. Event Loop та асинхронність
-8. Практичні паттерни та оптимізація
+- Навіщо серверна частина на JavaScript
+- **Частина I.** Node.js: платформа, цикл подій, NPM, модулі
+- **Частина II.** Express.js: маршрутизація, middleware, MVC
+- Наскрізний приклад: REST API
+- Найкращі практики
 
-## Еволюція JavaScript
 
-### Ключові етапи розвитку
 
-- 1995 - Народження JavaScript (Netscape, Brendan Eich за 10 днів)
-- 1997 - Стандартизація як ECMAScript (міжнародний стандарт)
-- 2009 - ES5 з JSON та strict mode (перший великий крок)
-- 2015 - ES6/ES2015 - революційні зміни (класи, модулі, Promise)
-- 2016+ - Щорічні оновлення ES (передбачуваний розвиток)
+## Від сторінки до сервера
 
-### Що змінив ES6+?
+**Клієнтська частина** (браузер) не може:
+- зберігати базу даних користувачів
+- обробляти платежі
+- обслуговувати тисячі клієнтів одночасно
 
-JavaScript перетворився з мови сценаріїв на повноцінну платформу для великих додатків:
+**Node.js (2009)** — перше середовище, що дозволило писати серверну частину тією самою мовою, що й клієнтську — JavaScript.
 
-- ✅ Модульність та інкапсуляція
-- ✅ Читабельний асинхронний код
-- ✅ Сучасний синтаксис
-- ✅ Кращі інструменти розробки
-
-## Деструктуризація
-
-**Деструктуризація** дозволяє "розпаковувати" значення з масивів або властивості з об'єктів в окремі змінні за один крок. Це не просто синтаксичний цукор — це новий спосіб мислення про роботу з даними.
-
-### До ES6: громіздкий код
-```javascript
-const person = { name: 'Іван', age: 25, city: 'Київ' };
-const personName = person.name;
-const personAge = person.age;
-const personCity = person.city;
-```
-
-### ES6+: елегантне рішення
-```javascript
-const { name, age, city } = person;
-console.log(name, age, city); // 'Іван' 25 'Київ'
-```
-
-*Код стає більш декларативним — ми говоримо "що" хочемо, а не "як" це отримати.*
-
-## Деструктуризація масивів
-
-### Основний синтаксис
-```javascript
-const [x, y, z] = [10, 20, 30];
-console.log(x, y, z); // 10 20 30
-
-// Пропуск елементів
-const [first, , third] = [1, 2, 3];
-console.log(first, third); // 1 3
-
-// Значення за замовчуванням
-const [width = 100, height = 200] = [300];
-console.log(width, height); // 300 200
-```
-
-### Rest в деструктуризації
-```javascript
-const [head, ...tail] = [1, 2, 3, 4, 5];
-console.log(head); // 1
-console.log(tail); // [2, 3, 4, 5]
-```
-
-## Деструктуризація об'єктів
-
-### Перейменування змінних
-```javascript
-const apiResponse = {
-    user_name: 'Марія',
-    user_age: 28
-};
-
-const {
-    user_name: name,
-    user_age: age
-} = apiResponse;
-```
-
-### Глибока деструктуризація
-```javascript
-const user = {
-    profile: {
-        contacts: { email: 'maria@example.com' }
-    }
-};
-
-const { profile: { contacts: { email } } } = user;
-console.log(email); // 'maria@example.com'
-```
-
-## Деструктуризація в функціях
-
-### Традиційний підхід
-```javascript
-function createUser(name, age, email, city) {
-    return { name, age, email, city };
-}
-
-// Проблема: порядок має значення
-const user = createUser('Олексій', 30, 'alex@example.com', 'Львів');
-```
-
-### ES6+ підхід
-```javascript
-function createUser({ name, age, email, city = 'Київ' }) {
-    return { name, age, email, city };
-}
-
-// Переваги: порядок не важливий, значення за замовчуванням
-const user = createUser({
-    email: 'dev@example.com',
-    name: 'Анна',
-    age: 27
-});
-```
-
-## Spread оператор: розгортання структур
-
-**Spread оператор (...)** дозволяє "розпакувати" ітеровані об'єкти. Це універсальний інструмент для копіювання, об'єднання та передачі даних без мутації оригінальних структур.
-
-### Об'єднання масивів
-```javascript
-const primaryColors = ['червоний', 'синій', 'жовтий'];
-const secondaryColors = ['зелений', 'помаранчевий'];
-
-const allColors = [...primaryColors, ...secondaryColors];
-// ['червоний', 'синій', 'жовтий', 'зелений', 'помаранчевий']
-
-// Копіювання масиву (shallow copy)
-const colorsCopy = [...primaryColors];
-```
-
-### Spread з об'єктами
-```javascript
-const baseConfig = {
-    theme: 'light',
-    language: 'uk'
-};
-
-const userConfig = {
-    ...baseConfig,
-    theme: 'dark', // Перезаписує існуючу властивість
-    fontSize: 'large' // Додає нову властивість
-};
-```
-
-*Spread дотримується принципу immutability — створює нові об'єкти замість зміни існуючих.*
-
-## Rest параметри: збирання аргументів
-
-**Rest параметри** дозволяють функціям приймати змінну кількість аргументів як масив. Це сучасна заміна проблематичного об'єкта `arguments`.
-
-### Проблема з arguments
-```javascript
-// Застарілий підхід
-function oldSum() {
-    var total = 0;
-    for (var i = 0; i < arguments.length; i++) { // arguments не справжній масив
-        total += arguments[i];
-    }
-    return total;
-}
-```
-
-### ES6+ рішення
-```javascript
-function sum(...numbers) {
-    return numbers.reduce((total, num) => total + num, 0);
-}
-
-console.log(sum(1, 2, 3, 4, 5)); // 15
-console.log(sum(10, 20)); // 30
-```
-
-*Rest параметри завжди дають справжній масив зі всіма його методами (map, filter, reduce тощо).*
-
-## Arrow Functions: функціональна революція
-
-### Еволюція синтаксису
-```javascript
-// 1. Function declaration
-function multiply(a, b) {
-    return a * b;
-}
-
-// 2. Function expression
-const multiply = function(a, b) {
-    return a * b;
-};
-
-// 3. Arrow function
-const multiply = (a, b) => a * b;
-```
-
-### Різні форми
-```javascript
-const square = x => x * x; // Один параметр
-const greet = () => console.log('Привіт!'); // Без параметрів
-const process = data => {
-    // Багаторядкове тіло
-    return data.map(item => item * 2);
-};
-```
-
-## Контекст this у стрілочних функціях
-
-**Найважливіша відмінність** стрілочних функцій — це поведінка `this`. Традиційні функції створюють власний контекст, а стрілочні наслідують його з оточуючого scope.
-
-### Проблема традиційних функцій
-```javascript
-const timer = {
-    seconds: 0,
-    start: function() {
-        setInterval(function() {
-            this.seconds++; // this = global/window ❌
-            console.log(this.seconds); // undefined
-        }, 1000);
-    }
-};
-```
-
-### Рішення з arrow functions
-```javascript
-const timer = {
-    seconds: 0,
-    start: function() {
-        setInterval(() => {
-            this.seconds++; // this = timer ✅
-            console.log(this.seconds);
-        }, 1000);
-    }
-};
-```
-
-*Стрілочні функції "запам'ятовують" контекст з місця створення (лексичний scope).*
-
-## Модульна система: організація коду
-
-ES6 модулі вирішили одну з найбільших проблем JavaScript — відсутність стандартного способу організації коду. До цього використовували різні підходи з їхніми недоліками.
-
-### До ES6: глобальне забруднення
-```javascript
-// file1.js
-var userName = 'Іван';
-function processUser() { /* ... */ }
-
-// file2.js
-var userName = 'Марія'; // ❌ Конфлікт! Перезаписує глобальну змінну
-function processUser() { /* ... */ } // ❌ Перезапис функції!
-```
-
-### ES6+ модулі: інкапсуляція
-```javascript
-// mathematics.js
-export const PI = 3.14159;
-export function add(a, b) { return a + b; }
-export default class Calculator { /* ... */ }
-
-// app.js
-import Calculator, { add, PI } from './mathematics.js';
-```
-
-*Модулі забезпечують власну область видимості, явні залежності та контрольований публічний API.*
-
-## Named Export vs Default Export
-
-### Named Export: множинні експорти
-```javascript
-// utils.js
-export const formatDate = (date) => date.toLocaleDateString();
-export const formatTime = (date) => date.toLocaleTimeString();
-export const CURRENT_YEAR = new Date().getFullYear();
-
-// app.js
-import { formatDate, formatTime, CURRENT_YEAR } from './utils.js';
-```
-
-### Default Export: головний експорт
-```javascript
-// logger.js
-export default class Logger {
-    log(message) { console.log(message); }
-}
-
-// app.js
-import Logger from './logger.js'; // Довільне ім'я
-```
-
-## Типи імпорту
-
-### Іменований імпорт
-```javascript
-import { add, multiply } from './math.js';
-```
-
-### Namespace імпорт
-```javascript
-import * as MathUtils from './math.js';
-console.log(MathUtils.add(1, 2));
-```
-
-### Динамічний імпорт
-```javascript
-async function loadMath() {
-    const math = await import('./math.js');
-    return math.add(1, 2);
-}
-```
-
-### Умовний імпорт
-```javascript
-if (condition) {
-    const module = await import('./conditional-module.js');
-    module.initialize();
-}
-```
-
-## Promises: концептуальна революція
-
-**Promise** — це "контракт" про майбутнє значення. Він представляє результат асинхронної операції, яка може завершитися успішно або з помилкою. Promises вирішили проблему "callback hell" та надали структурований підхід до асинхронності.
-
-### Стани Promise
 ```mermaid
-stateDiagram-v2
-    [*] --> Pending
-    Pending --> Fulfilled: resolve(value)
-    Pending --> Rejected: reject(error)
-    Fulfilled --> [*]
-    Rejected --> [*]
+graph LR
+    A[Клієнтська частина<br/>браузер] <--> B[Серверна частина<br/>Node.js + Express.js]
+    B <--> C[База даних]
 ```
 
-### Створення Promise
-```javascript
-const fetchData = (id) => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (id > 0) {
-                resolve({ id, name: `User ${id}` });
-            } else {
-                reject(new Error('Invalid ID'));
-            }
-        }, 1000);
-    });
-};
+## Що таке Node.js?
+
+**Node.js** — середовище виконання JavaScript поза браузером
+
+```mermaid
+graph LR
+    A[JavaScript-код] --> B[Рушій V8]
+    B --> C[Node.js Runtime]
+    C --> D[Серверні застосунки]
 ```
 
-*Promise може бути тільки в одному стані одночасно і не може змінити стан повторно.*
+### Ключові особливості:
+- Асинхронність і неблокуюче введення-виведення
+- Подієво-орієнтована архітектура (цикл подій)
+- Єдина мова для клієнтської та серверної частини
+- Величезна екосистема NPM (3+ млн пакетів)
 
-## Promise методи
 
-### Promise.all() - чекає на всі
-```javascript
-const [user, posts, stats] = await Promise.all([
-    fetchUser(id),
-    fetchPosts(id),
-    fetchStats(id)
-]);
-// Якщо один fail - весь Promise.all fails
-```
 
-### Promise.allSettled() - чекає на всі, не зупиняється
-```javascript
-const results = await Promise.allSettled([
-    fetchUser(id),
-    fetchPosts(id),
-    fetchStats(id)
-]);
+## Переваги та обмеження
 
-results.forEach(result => {
-    if (result.status === 'fulfilled') {
-        console.log('Success:', result.value);
-    } else {
-        console.error('Error:', result.reason);
-    }
-});
-```
+### ✅ Переваги
+- **Висока продуктивність** для I/O-операцій
+- **Швидкість розробки** — одна мова для всього стеку
+- **Активна спільнота** та екосистема
 
-## Promise.race() та Promise.any()
+### ❌ Обмеження
+- Не підходить для CPU-інтенсивних задач (потрібні Worker Threads)
+- Callback hell у legacy-коді (вирішується async/await)
+- Швидкі зміни в екосистемі
 
-### Promise.race() - перший завершений
-```javascript
-const winner = await Promise.race([
-    fetch('/api/data'),
-    new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Timeout')), 5000)
-    )
-]);
-```
 
-### Promise.any() - перший успішний
-```javascript
-const data = await Promise.any([
-    fetchFromPrimaryServer(),
-    fetchFromSecondaryServer(),
-    fetchFromCache()
-]);
-// Повертає дані з першого успішного сервера
-```
 
-## async/await
-
-**async/await** — це новий спосіб мислення про асинхронний код. Він дозволяє писати асинхронний код у стилі синхронного, зберігаючи всі переваги неблокуючого виконання.
-
-### Еволюція від callbacks до async/await
-
-#### Callback Hell
-```javascript
-// Піраміда смерті — код росте вправо, а не вниз
-fetchUser(id, (userErr, user) => {
-    if (userErr) return callback(userErr);
-    fetchPosts(user.id, (postsErr, posts) => {
-        if (postsErr) return callback(postsErr);
-        fetchStats(user.id, (statsErr, stats) => {
-            if (statsErr) return callback(statsErr);
-            callback(null, { user, posts, stats });
-        });
-    });
-});
-```
-
-*Callback hell робить код важкочитабельним, схильним до помилок і складним для тестування.*
-
-## Promise Chains vs Async/Await
-
-### Promise chains
-```javascript
-function loadUserData(id) {
-    return fetchUser(id)
-        .then(user => {
-            return fetchPosts(user.id)
-                .then(posts => ({ user, posts }));
-        })
-        .then(data => {
-            return fetchStats(data.user.id)
-                .then(stats => ({ ...data, stats }));
-        });
-}
-```
-
-### Async/await - найкраще рішення
-```javascript
-async function loadUserData(id) {
-    const user = await fetchUser(id);
-    const posts = await fetchPosts(user.id);
-    const stats = await fetchStats(user.id);
-    return { user, posts, stats };
-}
-```
-
-## Послідовність vs Паралельність
-
-### ❌ НЕЕФЕКТИВНО: послідовне виконання
-```javascript
-async function loadDataSequential(id) {
-    const user = await fetchUser(id);      // ~1 сек
-    const posts = await fetchPosts(id);    // ~1 сек
-    const stats = await fetchStats(id);    // ~1 сек
-    // Загалом: ~3 секунди
-    return { user, posts, stats };
-}
-```
-
-### ✅ ЕФЕКТИВНО: паралельне виконання
-```javascript
-async function loadDataParallel(id) {
-    const [user, posts, stats] = await Promise.all([
-        fetchUser(id),
-        fetchPosts(id),
-        fetchStats(id)
-    ]);
-    // Загалом: ~1 секунда
-    return { user, posts, stats };
-}
-```
-
-## Обробка помилок з async/await
-
-### Базова обробка
-```javascript
-async function fetchUserSafely(id) {
-    try {
-        const user = await fetchUser(id);
-        return user;
-    } catch (error) {
-        console.error('User fetch failed:', error.message);
-        return { id, name: 'Unknown User' }; // Fallback
-    }
-}
-```
-
-### Власні класи помилок
-```javascript
-class ValidationError extends Error {
-    constructor(message, field) {
-        super(message);
-        this.name = 'ValidationError';
-        this.field = field;
-    }
-}
-
-class NetworkError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = 'NetworkError';
-        this.retryable = true;
-    }
-}
-```
-
-## Event Loop: серце асинхронності
-
-**Event Loop** — це механізм, який дозволяє однопоточному JavaScript виконувати неблокуючі операції. Він координує виконання коду, збір та обробку подій, виконання під-завдань в черзі.
-
-### Архітектура JavaScript Runtime
+## Архітектура Node.js
 
 ```mermaid
 graph TB
-    subgraph "JavaScript Engine"
-        CS[Call Stack<br/>Стек викликів функцій]
-        H[Heap<br/>Об'єкти в пам'яті]
-    end
-    subgraph "Web APIs"
-        T[Timers<br/>setTimeout/setInterval]
-        F[Fetch<br/>HTTP запити]
-        D[DOM Events<br/>click, scroll]
-    end
-    subgraph "Event Loop"
-        MT[Macrotask Queue<br/>Великі завдання]
-        MC[Microtask Queue<br/>Дрібні завдання]
-        EL[Event Loop<br/>Координатор]
-    end
+    subgraph "Архітектура Node.js"
+        A[Код застосунку] --> B[Node.js API]
+        B --> C[Прошарок C++]
+        C --> D[Рушій V8]
+        C --> E[libuv]
 
-    CS --> T
-    CS --> F
-    CS --> D
-    T --> MT
-    F --> MT
-    D --> MT
-    MC --> EL
-    MT --> EL
-    EL --> CS
+        subgraph "V8"
+            D --> F[Купа пам'яті]
+            D --> G[Стек викликів]
+        end
+
+        subgraph "libuv"
+            E --> H[Цикл подій]
+            E --> I[Пул потоків]
+        end
+    end
 ```
 
-*Event Loop постійно перевіряє черги та передає завдання до Call Stack коли він порожній.*
+**V8** — виконує JS-код. **libuv** — забезпечує неблокуюче введення-виведення та цикл подій.
 
-## Пріоритети виконання в Event Loop
 
-### Порядок виконання
 
-1. **Синхронний код** (Call Stack)
-2. **Microtasks** (Promises, queueMicrotask)
-3. **Macrotasks** (setTimeout, DOM events)
-4. **Render** (тільки в браузері)
+## Цикл подій (Event Loop)
 
-```javascript
-console.log('1: Синхронний'); // 1
-
-setTimeout(() => console.log('2: Macrotask'), 0); // 4
-
-Promise.resolve().then(() => console.log('3: Microtask')); // 3
-
-console.log('4: Синхронний'); // 2
-
-// Вивід: 1 → 4 → 3 → 2
+```mermaid
+graph LR
+    A[Стек викликів] --> B{Порожній?}
+    B -->|Так| C[Черга подій]
+    C --> D{Є завдання?}
+    D -->|Так| E[Виконати callback]
+    E --> A
+    D -->|Ні| F[Очікування]
+    F --> D
+    B -->|Ні| G[Виконати функцію]
+    G --> A
 ```
 
-## Macrotasks vs Microtasks
+**Головний принцип:** один потік, неблокуючі I/O-операції
 
-Розуміння різниці між типами завдань критично важливе для передбачення порядку виконання коду.
 
-### Macrotasks (Task Queue)
 
-Великі завдання, кожен Event Loop цикл обробляє тільки одну macrotask:
-
-- `setTimeout` / `setInterval`
-- I/O операції (файли, мережа)
-- DOM події (click, scroll)
-- HTTP запити
-
-### Microtasks (Microtask Queue)
-
-Дрібні завдання з високим пріоритетом, всі microtasks виконуються перед наступною macrotask:
-
-- Promise callbacks (`.then()`, `.catch()`)
-- `queueMicrotask()`
-- `async/await`
-- MutationObserver (браузер)
-
-**Правило:** Всі microtasks виконуються перед будь-якими macrotasks!
-
-*Це означає, що Promise завжди "обганяють" setTimeout, навіть з затримкою 0.*
-
-## Демонстрація Event Loop
+## Приклад асинхронності
 
 ```javascript
-console.log('🟢 Start');
+console.log('Початок');
 
 setTimeout(() => {
-    console.log('🔴 setTimeout (macrotask)');
-    Promise.resolve().then(() => {
-        console.log('🟡 Promise in setTimeout (microtask)');
-    });
+    console.log('Таймер виконано');
 }, 0);
 
-Promise.resolve().then(() => {
-    console.log('🟡 Promise (microtask)');
-});
+console.log('Кінець');
 
-queueMicrotask(() => {
-    console.log('🟡 queueMicrotask (microtask)');
-});
-
-console.log('🟢 End');
-
-/* Результат:
-🟢 Start
-🟢 End
-🟡 Promise (microtask)
-🟡 queueMicrotask (microtask)
-🔴 setTimeout (macrotask)
-🟡 Promise in setTimeout (microtask)
-*/
+// Вивід:
+// Початок
+// Кінець
+// Таймер виконано
 ```
 
-## Уникнення блокування Event Loop
+**Чому?** Цикл подій обробляє `setTimeout` лише після звільнення стеку викликів
 
-**Блокування Event Loop** — одна з найсерйозніших проблем JavaScript додатків. Коли синхронний код виконується занадто довго, він "заморожує" всю програму.
 
-### ❌ ПОГАНО: блокуючий код
-```javascript
-function heavyCalculation() {
-    let result = 0;
-    for (let i = 0; i < 10000000000; i++) { // 10 мільярдів ітерацій
-        result += Math.random();
-    }
-    return result; // 5+ секунд блокування UI, користувач не може взаємодіяти
+
+## Версії Node.js (вересень 2026)
+
+| Версія | Кодова назва | Статус | Підтримка до |
+|---|---|---|---|
+| **Node.js 24** | Krypton | **Active LTS** | квітень 2028 |
+| Node.js 22 | Jod | Maintenance LTS | квітень 2027 |
+| Node.js 26 | — | Current | стане LTS у жовтні 2026 |
+
+### Що нового за останній рік:
+- `--env-file` та `process.loadEnvFile()` — вбудована робота з `.env`
+- `require()` вміє синхронно завантажувати ES-модулі
+- Вбудований тестовий раннер `node:test`
+
+
+
+## NPM — менеджер пакетів
+
+```mermaid
+graph TB
+    A[NPM Registry] --> B[3+ млн пакетів]
+    A --> C[Безкоштовно, відкритий код]
+    E[npm CLI] --> F[Встановлення]
+    E --> G[Публікація]
+    E --> H[Управління залежностями]
+```
+
+### Основні команди:
+```bash
+npm init -y                # Ініціалізація проєкту
+npm install express         # Встановлення пакета
+npm install -D nodemon     # Залежність для розробки
+npm run dev                 # Запуск скрипта
+```
+
+
+
+## package.json — серце проєкту
+
+```json
+{
+  "name": "my-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": { "express": "^5.1.0" },
+  "engines": { "node": ">=22.0.0" }
 }
 ```
 
-### ✅ ДОБРЕ: неблокуючий підхід
-```javascript
-function heavyCalculationAsync(callback) {
-    let result = 0, processed = 0;
-    const total = 10000000000, chunkSize = 1000000; // Обробляємо по частинах
 
-    function processChunk() {
-        const end = Math.min(processed + chunkSize, total);
-        for (let i = processed; i < end; i++) {
-            result += Math.random();
-        }
-        processed = end;
 
-        if (processed < total) {
-            setTimeout(processChunk, 0); // Передаємо контроль Event Loop
-        } else {
-            callback(result);
-        }
-    }
-    processChunk();
-}
+## Семантичне версіонування
+
+```mermaid
+graph LR
+    A["MAJOR.MINOR.PATCH"] --> B["1.2.3"]
+    B --> C["^1.2.3"]
+    B --> D["~1.2.3"]
+    B --> E["1.2.3"]
+    C --> F["1.x.x — сумісні зміни"]
+    D --> G["1.2.x — лише патчі"]
+    E --> H["Точна версія"]
 ```
 
-*Розбиття важких операцій на частини дозволяє браузеру обробляти інші події між обчисленнями.*
+- **MAJOR** — зміни, що ламають сумісність
+- **MINOR** — нові можливості
+- **PATCH** — виправлення помилок
 
-## Web Workers для важких обчислень
+`package-lock.json` фіксує точні версії — завжди додається в Git
 
-**Web Workers** дозволяють виконувати JavaScript код в окремих потоках, повністю уникаючи блокування головного потоку UI.
+
+
+## Модульна система: ES Modules
 
 ```javascript
-// Створення Web Worker для неблокуючих обчислень
-function heavyComputationWithWorker(data) {
-    return new Promise((resolve, reject) => {
-        // Код worker-а як рядок (в реальному проєкті це окремий файл)
-        const workerCode = `
-            self.onmessage = function(e) {
-                const data = e.data;
-                let result = 0;
+// math.js — експорт
+export function add(a, b) {
+    return a + b;
+}
+export default function multiply(a, b) {
+    return a * b;
+}
 
-                // Важкі обчислення виконуються в окремому потоці
-                for (let i = 0; i < data.length; i++) {
-                    result += Math.sqrt(data[i]);
-                }
+// app.js — імпорт
+import multiply, { add } from './math.js';
 
-                // Відправляємо результат назад
-                self.postMessage(result);
-            };
-        `;
+console.log(add(5, 3)); // 8
+```
 
-        const blob = new Blob([workerCode]);
-        const worker = new Worker(URL.createObjectURL(blob));
+```json
+// package.json
+{ "type": "module" }
+```
 
-        worker.onmessage = (e) => {
-            resolve(e.data);
-            worker.terminate(); // Очищуємо ресурси
-        };
 
-        worker.postMessage(data);
+
+## Модульна система: CommonJS (легасі)
+
+```javascript
+// math.cjs — експорт
+function add(a, b) { return a + b; }
+module.exports = { add };
+
+// app.cjs — імпорт
+const { add } = require('./math.cjs');
+```
+
+### 💡 Новинка Node.js 22+:
+`require()` тепер може синхронно завантажувати ES-модулі — межа між CJS та ESM стала прозорішою
+
+### Рекомендація:
+Нові проєкти → **ES Modules**. CommonJS — розуміти для legacy-коду
+
+
+
+## Вбудовані модулі: fs та path
+
+```javascript
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Читання файлу
+const data = await readFile('config.txt', 'utf8');
+
+// Шляхи (ESM: __dirname через import.meta.url)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const configPath = path.join(__dirname, 'config', 'db.json');
+```
+
+
+
+## Вбудований модуль HTTP
+
+```javascript
+import http from 'node:http';
+
+const server = http.createServer((req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+
+    if (req.url === '/' && req.method === 'GET') {
+        res.statusCode = 200;
+        res.end(JSON.stringify({ message: 'Ласкаво просимо' }));
+    } else {
+        res.statusCode = 404;
+        res.end(JSON.stringify({ error: 'Не знайдено' }));
+    }
+});
+
+server.listen(3000);
+```
+
+**Проблема:** ручний розбір URL і методу для кожного маршруту → рутина
+
+
+
+## Змінні середовища: сучасний підхід
+
+### Вбудовано в Node.js (з v24 — стабільно):
+```bash
+node --env-file=.env src/index.js
+```
+```javascript
+import { loadEnvFile } from 'node:process';
+loadEnvFile();
+```
+
+### Пакет dotenv (легасі, але й досі поширений):
+```javascript
+import 'dotenv/config';
+const port = process.env.PORT || 3000;
+```
+
+
+
+## Автоматичний перезапуск
+
+### Вбудований прапорець (без залежностей):
+```json
+{ "scripts": { "dev": "node --watch src/index.js" } }
+```
+
+### nodemon (для складніших сценаріїв):
+```bash
+npm install -D nodemon
+```
+```json
+// nodemon.json
+{ "watch": ["src"], "ext": "js,json" }
+```
+
+## Що таке Express.js?
+
+**Express.js** — мінімалістичний і гнучкий вебфреймворк для Node.js
+
+### Основні характеристики:
+- 🚀 **Швидкий** старт проєктів
+- 🔧 **Гнучкий**, без нав'язаної архітектури
+- 📦 **Мінімалістичне** ядро + middleware
+- 🌐 Стандарт де-факто для Node.js
+
+### Актуальна версія: **Express 5.x**
+За замовчуванням у `npm install express` з березня 2025 року
+
+
+
+## Чому Express, а не «голий» Node.js?
+
+```mermaid
+graph LR
+    A[Нативний http] --> B["~15 рядків на 1 маршрут"]
+    C[Express.js] --> D["~3 рядки на 1 маршрут"]
+```
+
+### Переваги:
+- ✅ Декларативна маршрутизація замість розбору `req.url`
+- ✅ Потужна екосистема middleware
+- ✅ Автоматична обробка помилок в async-коді (Express 5)
+- ✅ Активна підтримка спільноти
+
+
+
+## Перший Express-сервер
+
+### Встановлення:
+```bash
+npm install express
+```
+
+### Код (ESM — сучасний стиль):
+```javascript
+import express from 'express';
+const app = express();
+
+app.get('/', (req, res) => {
+    res.send('Привіт, Express!');
+});
+
+app.listen(3000, () => {
+    console.log('Сервер працює на порті 3000');
+});
+```
+
+> Легасі-код часто використовує `require('express')` — теж працює
+
+
+
+## Система роутингу
+
+### HTTP-методи в Express:
+
+| Метод | Призначення | Приклад |
+|---|---|---|
+| **GET** | Отримання даних | `app.get('/users')` |
+| **POST** | Створення | `app.post('/users')` |
+| **PUT** | Повне оновлення | `app.put('/users/:id')` |
+| **DELETE** | Видалення | `app.delete('/users/:id')` |
+
+### Динамічні маршрути та query:
+```javascript
+app.get('/users/:id', (req, res) => res.json({ id: req.params.id }));
+
+// /search?q=node&limit=10
+app.get('/search', (req, res) => res.json(req.query));
+```
+
+
+
+## ⚠️ Express 5: новий синтаксис шляхів
+
+| Express 4 | Express 5 |
+|---|---|
+| `app.get('*', ...)` | `app.get('/*splat', ...)` |
+| `app.get('/products/:cat?', ...)` | `app.get('/products{/:cat}', ...)` |
+
+**Причина:** новий path-to-regexp v8 — захист від ReDoS-атак, wildcard тепер має ім'я
+
+
+
+## Express Router — модульна організація
+
+```javascript
+// routes/users.js
+import { Router } from 'express';
+const router = Router();
+
+router.get('/', getAllUsers);
+router.get('/:id', getUserById);
+router.post('/', createUser);
+
+export default router;
+
+// app.js
+import userRoutes from './routes/users.js';
+app.use('/api/users', userRoutes);
+```
+
+### Переваги: модульність • повторне використання • простіше тестування
+
+
+
+## Концепція Middleware
+
+```mermaid
+graph LR
+    A[Запит] --> B["Middleware 1<br/>Логування"]
+    B --> C["Middleware 2<br/>Авторизація"]
+    C --> D["Middleware 3<br/>Валідація"]
+    D --> E[Обробник маршруту]
+    E --> F[Відповідь]
+```
+
+### Middleware-функції:
+- Виконують код перед обробкою запиту
+- Модифікують `req` і `res`
+- Викликають `next()` або завершують цикл запит-відповідь
+
+
+
+## Типи Middleware
+
+### 1. Рівня застосунку
+```javascript
+app.use((req, res, next) => {
+    console.log(Date.now());
+    next();
+});
+```
+
+### 2. Рівня роутера
+```javascript
+router.use(loggerMiddleware);
+```
+
+### 3. Вбудовані
+```javascript
+app.use(express.json());          // Розбір JSON
+app.use(express.static('public')); // Статичні файли
+```
+
+### 4. Сторонні
+```javascript
+app.use(cors());
+app.use(helmet());
+```
+
+
+
+## Обробка помилок: middleware з 4 параметрами
+
+```javascript
+// Завжди підключається останнім
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+
+    res.status(err.status || 500).json({
+        error: err.message || 'Внутрішня помилка сервера',
     });
-}
+});
 ```
 
-*Worker працює паралельно з основним потоком, UI залишається responsive.*
+Express розпізнає обробник помилок саме за **кількістю параметрів (4)**
 
-## Retry механізм з Exponential Backoff
+
+
+## 🆕 Express 5: автоматична обробка async-помилок
+
+### Express 4 (потрібен try/catch):
+```javascript
+app.get('/users/:id', async (req, res, next) => {
+    try {
+        const user = await findUser(req.params.id);
+        res.json(user);
+    } catch (error) {
+        next(error); // обов'язково вручну
+    }
+});
+```
+
+### Express 5 (автоматично):
+```javascript
+app.get('/users/:id', async (req, res) => {
+    const user = await findUser(req.params.id);
+    res.json(user); // помилка сама потрапить у error-handler
+});
+```
+
+
+
+## Об'єкти Request і Response
 
 ```javascript
-class RetryManager {
-    constructor(options = {}) {
-        this.maxRetries = options.maxRetries || 3;
-        this.baseDelay = options.baseDelay || 1000;
-        this.backoffFactor = options.backoffFactor || 2;
-    }
+app.post('/users', (req, res) => {
+    // Request
+    console.log(req.method, req.params, req.query, req.body);
 
-    async executeWithRetry(operation) {
-        let lastError;
-
-        for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-            try {
-                return await operation();
-            } catch (error) {
-                lastError = error;
-
-                if (attempt === this.maxRetries || !this.isRetryable(error)) {
-                    break;
-                }
-
-                const delay = this.baseDelay * Math.pow(this.backoffFactor, attempt);
-                console.warn(`Retry attempt ${attempt + 1} after ${delay}ms`);
-                await this.delay(delay);
-            }
-        }
-
-        throw lastError;
-    }
-}
+    // Response
+    res.status(200);
+    res.set('X-Custom-Header', 'value');
+    res.json({ success: true });
+    // res.redirect('/new-url');
+});
 ```
 
-## Connection Pool для оптимізації
+
+
+## Валідація даних
 
 ```javascript
-class ConnectionPool {
-    constructor(maxConnections = 5) {
-        this.maxConnections = maxConnections;
-        this.activeConnections = 0;
-        this.queue = [];
-    }
+const validateUser = (req, res, next) => {
+    const { name, email, age } = req.body;
+    const errors = [];
 
-    async execute(operation, priority = 0) {
-        return new Promise((resolve, reject) => {
-            this.queue.push({ operation, resolve, reject, priority });
-            this.queue.sort((a, b) => b.priority - a.priority); // Сортування за пріоритетом
-            this.processQueue();
-        });
-    }
+    if (!name || name.length < 2) errors.push('Ім\'я закоротке');
+    if (!/\S+@\S+\.\S+/.test(email)) errors.push('Некоректний email');
+    if (!age || age < 18) errors.push('Вік має бути ≥ 18');
 
-    async processQueue() {
-        if (this.activeConnections >= this.maxConnections || !this.queue.length) {
-            return;
-        }
+    if (errors.length) return res.status(400).json({ errors });
+    next();
+};
 
-        const { operation, resolve, reject } = this.queue.shift();
-        this.activeConnections++;
-
-        try {
-            const result = await operation();
-            resolve(result);
-        } catch (error) {
-            reject(error);
-        } finally {
-            this.activeConnections--;
-            this.processQueue();
-    }
-}
+app.post('/users', validateUser, (req, res) => {
+    res.json({ message: 'Користувача створено' });
+});
 ```
 
-*Кеш з TTL та fallback стратегіями забезпечує баланс між свіжістю даних та продуктивністю.*
 
-## Розумне кешування асинхронних операцій
+
+## Статичні файли та шаблонізатори
 
 ```javascript
-class SmartAsyncCache {
-    constructor(options = {}) {
-        this.cache = new Map();
-        this.defaultTTL = options.ttl || 300000; // 5 хвилин
-        this.stats = { hits: 0, misses: 0 };
-    }
+// Статичні файли
+app.use(express.static('public'));
+// http://localhost:3000/css/style.css
 
-    async get(key, fetchFunction, options = {}) {
-        const cached = this.cache.get(key);
-        const ttl = options.ttl || this.defaultTTL;
-
-        // Перевірка кешу
-        if (cached && !this.isExpired(cached, ttl)) {
-            this.stats.hits++;
-            return cached.data;
-        }
-
-        this.stats.misses++;
-
-        try {
-            const data = await fetchFunction();
-            this.set(key, data);
-            return data;
-        } catch (error) {
-            // Fallback до застарілих даних при помилці
-            if (cached && options.fallbackToStale) {
-                return cached.data;
-            }
-            throw error;
-        }
-    }
-}
+// EJS-шаблонізатор
+app.set('view engine', 'ejs');
+app.get('/', (req, res) => {
+    res.render('index', { title: 'Головна' });
+});
 ```
 
-## Практичний приклад: Real-time система
+```html
+<!-- views/index.ejs -->
+<h1><%= title %></h1>
+```
 
-Real-time системи вимагають особливого підходу до Event Loop оптимізації, оскільки потрібно обробляти велику кількість повідомлень без блокування UI.
+> Актуально для SSR та адмін-панелей; клієнтські SPA частіше спілкуються через REST API
+
+
+
+## Структура Express-застосунку (MVC)
+
+```mermaid
+graph TB
+    A[app.js] --> B[routes/]
+    A --> C[middleware/]
+    A --> D[controllers/]
+    A --> E[models/]
+
+    B --> B1[users.js]
+    C --> C1[validation.js]
+    C --> C2[errorHandler.js]
+    D --> D1[userController.js]
+    E --> E1[User.js]
+```
+
+- **Routes** — прив'язка URL до контролерів
+- **Controllers** — бізнес-логіка
+- **Models** — робота з даними
+- **Middleware** — наскрізна логіка
+
+
+
+## Наскрізний приклад: контролер
 
 ```javascript
-class RealtimeMessaging {
-    constructor(options) {
-        this.wsUrl = options.wsUrl;
-        this.messageBuffer = []; // Буфер для batch обробки
-        this.batchSize = options.batchSize || 10;
-        this.batchInterval = options.batchInterval || 100; // 100ms
-    }
+// controllers/userController.js
+const users = [];
 
-    handleMessage(message) {
-        // Batch обробка для оптимізації Event Loop
-        this.messageBuffer.push(message);
+export const userController = {
+    getAllUsers(req, res) {
+        res.json({ success: true, data: users });
+    },
 
-        // Відкладена обробка для групування повідомлень
-        if (!this.batchTimer) {
-            this.batchTimer = setTimeout(() => {
-                this.processBatchedMessages();
-            }, this.batchInterval);
-        }
+    createUser(req, res) {
+        const newUser = { id: Date.now(), ...req.body };
+        users.push(newUser);
+        res.status(201).json({ success: true, data: newUser });
+    },
+};
+```
 
-        // Негайна обробка при переповненні буферу
-        if (this.messageBuffer.length >= this.batchSize) {
-            clearTimeout(this.batchTimer);
-            this.processBatchedMessages();
-        }
-    }
 
-    processBatchedMessages() {
-        const messages = this.messageBuffer.splice(0); // Очищуємо буфер
-        this.batchTimer = null;
 
-        // queueMicrotask для неблокуючої обробки
-        queueMicrotask(() => {
-            messages.forEach(msg => this.processMessage(msg));
-        });
-    }
+## Наскрізний приклад: маршрути й застосунок
+
+```javascript
+// routes/users.js
+router.get('/', userController.getAllUsers);
+router.post('/', validateUser, userController.createUser);
+
+// app.js
+app.use(express.json());
+app.use('/api/users', userRoutes);
+
+app.use('/{*splat}', (req, res) =>
+    res.status(404).json({ error: 'Не знайдено' })
+);
+
+app.use((err, req, res, next) =>
+    res.status(500).json({ error: err.message })
+);
+```
+
+**Потік:** маршрут → middleware валідації → контролер → відповідь
+
+
+
+## Безпека Express-застосунків
+
+```javascript
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+
+app.use(helmet()); // безпечні заголовки
+
+app.use('/api/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+}));
+```
+
+### Чек-лист:
+- ✅ HTTPS у продакшені
+- ✅ Валідація всіх вхідних даних
+- ✅ Хешування паролів (bcrypt), секрети — лише у змінних середовища
+
+
+
+## Тестування Express-застосунків
+
+```javascript
+import request from 'supertest';
+import app from '../app.js';
+
+describe('Users API', () => {
+    test('GET /api/users повертає список', async () => {
+        const res = await request(app).get('/api/users').expect(200);
+        expect(res.body.success).toBe(true);
+    });
+});
+```
+
+**Jest + Supertest** — традиційний вибір
+**`node --test`** — вбудований раннер, без залежностей (з Node.js 20)
+
+
+
+## Продуктивність
+
+```javascript
+import compression from 'compression';
+app.use(compression()); // стиснення відповідей
+
+// Кластеризація для CPU-навантаження
+import cluster from 'node:cluster';
+import os from 'node:os';
+
+if (cluster.isPrimary) {
+    for (let i = 0; i < os.availableParallelism(); i++) cluster.fork();
+} else {
+    await import('./server.js');
 }
 ```
 
-*Batch обробка зменшує кількість операцій DOM та покращує загальну продуктивність.*
 
-## Найкращі практики
-
-Ефективне використання сучасного JavaScript вимагає розуміння не тільки синтаксису, але й принципів продуктивності, читабельності та підтримуваності коду.
-
-### ✅ DO (Роби)
-
-- Використовуй `const`/`let` замість `var` (блочна область видимості)
-- Віддавай перевагу `async/await` над Promise chains (читабельність)
-- Структуруй код в модулі з чіткими залежностями (архітектура)
-- Обробляй помилки на кожному рівні (надійність)
-- Використовуй паралельне виконання де можливо (продуктивність)
-- Кешуй результати довгих операцій (оптимізація)
-- Реалізовуй retry логіку для нестабільних операцій (стійкість)
-
-### ❌ DON'T (Не роби)
-
-- Не блокуй Event Loop важкими обчисленнями
-- Не ігноруй помилки в асинхронному коді
-- Не використовуй nested callbacks (callback hell)
-- Не забувай про cleanup (clear timers, close connections)
-- Не використовуй `for...in` з масивами
-- Не модифікуй прототипи вбудованих об'єктів
 
 ## Висновки
 
-### JavaScript ES6+ трансформував розробку
-Сучасний JavaScript кардинально відрізняється від мови початку 2000-х. ES6+ перетворив JavaScript з простої мови сценаріїв на повноцінну платформу для створення складних, масштабованих додатків.
+### Node.js — це:
+- Асинхронне середовище виконання JavaScript на сервері
+- Цикл подій — основа високої продуктивності для I/O
+- NPM, `package.json`, SemVer — керування залежностями
+- Актуально: Node.js 24 «Krypton» (Active LTS), ES Modules за замовчуванням
 
-- 🚀 **Продуктивність**: сучасні інструменти та підходи дозволяють створювати швидкі додатки
-- 📚 **Читабельність**: код стає зрозумілішим завдяки деструктуризації, arrow functions, async/await
-- 🛡️ **Надійність**: кращі механізми обробки помилок та типізація
-- 🔧 **Підтримуваність**: модульна архітектура спрощує роботу в командах
-- ⚡ **Асинхронність**: елегантна робота з неблокуючими операціями
+### Express.js — це:
+- 🚀 Мінімалістичний фреймворк над `http`-модулем
+- 🔧 Middleware як основний механізм розширення
+- 🆕 Express 5: автоматична обробка async-помилок, новий синтаксис шляхів
+- 📚 Фундамент для REST API, баз даних та автентифікації — тем наступних лекцій
