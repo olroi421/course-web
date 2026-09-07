@@ -572,7 +572,7 @@ src/
 
 Здати роботу через Moodle, вставивши посилання на GitHub репозиторій.
 
-[Здати лабораторну роботу](https://moodle.vcolnuft.volyn.ua/moodle/course/view.php?id=17#section-2)
+[⬆️ Здати лабораторну роботу](https://moodle.vcolnuft.volyn.ua/moodle/course/view.php?id=17#section-2)
 
 ## ❓ Контрольні запитання
 
