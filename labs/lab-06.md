@@ -1011,7 +1011,7 @@ npm test
 
 Здати роботу через Moodle, вставивши посилання на GitHub репозиторій.
 
-[Здати лабораторну роботу](http://194.187.154.85/moodle/course/view.php?id=17#section-2)
+[Здати лабораторну роботу](https://moodle.vcolnuft.volyn.ua/moodle/course/view.php?id=17#section-2)
 
 ## ❓ Контрольні запитання
 
