@@ -1,790 +1,564 @@
-# Node.js основи та NPM
+# RESTful API дизайн
 
-## План
+## План лекції
 
-- Що таке Node.js?
-- Архітектура та цикл подій
-- NPM екосистема
-- Модульна система
-- Вбудовані модулі
-- Налаштування середовища
-- Практичні приклади
+1. **Принципи REST** і модель зрілості
+2. **Методи HTTP**: семантика, безпечність, ідемпотентність
+3. **Коди стану** та їх вибір
+4. **Структура адрес**: ресурси, ієрархія, фільтри, пагінація
+5. **Кешування** та умовні запити
+6. **Валідація й помилки**: Zod, Problem Details (RFC 9457)
+7. **Документація**: OpenAPI 3.1/3.2
+8. **Версіонування**: стратегії, Deprecation і Sunset
 
+## Що таке REST?
 
+**REST** (Representational State Transfer) — архітектурний стиль для розподілених систем (Рой Філдінг, 2000)
 
-## Що таке Node.js?
+### **REST — це НЕ протокол, а набір обмежень!**
 
-**Node.js** — серверне середовище виконання JavaScript
+- Кожне обмеження дає системі певну властивість
+- На практиці «REST API» = JSON поверх HTTP з ресурсними адресами
+
+## 6 принципів REST
 
 ```mermaid
 graph LR
-    A[JavaScript Code] --> B[V8 Engine]
-    B --> C[Node.js Runtime]
-    C --> D[Server Applications]
+    A[Принципи REST] --> B[Клієнт-сервер]
+    A --> C[Без збереження стану]
+    A --> D[Кешованість]
+    A --> E[Уніфікований інтерфейс]
+    A --> F[Багаторівнева система]
+    A --> G[Код за запитом]
+
+    B --> B1[Розділення відповідальності]
+    C --> C1[Кожен запит самодостатній]
+    D --> D1[Відповіді можна кешувати]
+    E --> E1[Єдині правила взаємодії]
+    F --> F1[Проміжні вузли прозорі]
+    G --> G1[Опціонально]
 ```
 
-### Ключові особливості:
-- Асинхронне виконання
-- Подієво-орієнтована архітектура
-- Єдина мова для frontend та backend
-- Величезна екосистема NPM
-
-
-
-## Чому Node.js?
-
-### ✅ Переваги
-- **Висока продуктивність** для I/O операцій
-- **Швидкість розробки** - одна мова
-- **Активна спільнота** та екосистема
-- **Реальний час** - WebSockets, чати
-
-### ❌ Недоліки
-- Не підходить для CPU-інтенсивних задач
-- Callback hell (вирішується Promise/async-await)
-- Швидкі зміни екосистеми
-
-
-
-## Архітектура Node.js
+## Принцип 1: Client-Server
 
 ```mermaid
-graph TB
-    subgraph "Node.js Architecture"
-        A[JavaScript Application] --> B[Node.js APIs]
-        B --> C[Node.js Bindings]
-        C --> D[V8 Engine]
-        C --> E[libuv]
+graph LR
+    Client[🖥️ Клієнт<br/>Інтерфейс<br/>Взаємодія] -->|HTTP-запити| Server[🖥️ Сервер<br/>Бізнес-логіка<br/>Дані]
+    Server -->|HTTP-відповіді| Client
+    Server --> Database[(💾 База даних)]
+```
 
-        subgraph "V8"
-            D --> F[Memory Heap]
-            D --> G[Call Stack]
-        end
+### **Переваги:**
+- Незалежний розвиток клієнтської та серверної частин
+- Один API — багато клієнтів (веб, мобільний, партнери)
 
-        subgraph "libuv"
-            E --> H[Event Loop]
-            E --> I[Thread Pool]
-            E --> J[File System]
-        end
+## Принцип 2: Stateless
+
+### **Кожен запит містить ВСЮ необхідну інформацію**
+
+```http
+GET /api/v1/users/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+- ✅ `/users/me` — **це stateless**: «хто я» визначається з токена в запиті
+- ❌ Порушення — сервер пам'ятає попередні запити клієнта (серверна сесія)
+
+### **Переваги:**
+- Будь-який екземпляр сервера обробить будь-який запит
+- Просте горизонтальне масштабування й відновлення після збоїв
+
+## Концепція ресурсів
+
+### **Все є ресурсом**
+
+```http
+https://api.example.com/users/123        # Конкретний користувач
+https://api.example.com/users            # Колекція користувачів
+https://api.example.com/users/123/posts  # Пости користувача
+https://api.example.com/orders           # Замовлення
+```
+
+### **Ресурс ≠ файл або таблиця**
+**Ресурс** = абстракція з одним або кількома представленнями (`Accept` / `Content-Type`)
+
+## Модель зрілості Richardson
+
+| Рівень | Назва | Ознака |
+|--------|-------|--------|
+| 0 | «Болото POX» | Одна адреса, один метод |
+| 1 | Ресурси | Окремі адреси для ресурсів |
+| 2 | Методи HTTP | Правильні методи й коди стану |
+| 3 | Гіпермедіа | Посилання на дії у відповідях (HATEOAS) |
+
+**Мета більшості API — рівень 2**
+
+## REST серед інших підходів
+
+| Підхід | Модель | Коли доречний |
+|--------|--------|---------------|
+| REST | Ресурси + методи HTTP | Публічні API, HTTP-кешування |
+| GraphQL | Клієнт описує потрібні дані | Складні клієнти, агрегація джерел |
+| gRPC | Виклик процедур, Protocol Buffers | Внутрішні сервіси, потоки |
+| tRPC | Типізовані виклики функцій | Клієнт і сервер на TypeScript в одному репозиторії |
+
+## HTTP методи: CRUD операції
+
+```mermaid
+graph LR
+    subgraph "CRUD-операції"
+        C[Create] --> POST[POST]
+        R[Read] --> GET[GET]
+        U[Update] --> PUT[PUT/PATCH]
+        D[Delete] --> DELETE[DELETE]
+    end
+
+    subgraph "Властивості"
+        POST --> P1[Не ідемпотентний]
+        GET --> G1[Безпечний + ідемпотентний]
+        PUT --> U1[Ідемпотентний]
+        DELETE --> D1[Ідемпотентний]
     end
 ```
 
+- **Безпечний** — не змінює стан сервера
+- **Ідемпотентний** — повтор не змінює результат → запит можна повторити
 
+## GET: Отримання даних
 
-## Цикл подій (Event Loop)
+```http
+GET /api/v1/users
+200 OK
+[
+    {"id": 1, "name": "Іван", "email": "ivan@example.com"},
+    {"id": 2, "name": "Марія", "email": "maria@example.com"}
+]
+
+GET /api/v1/users/123
+200 OK
+{"id": 123, "name": "Іван", "email": "ivan@example.com"}
+
+GET /api/v1/users?status=active&limit=10
+```
+
+### **Властивості:** безпечний + ідемпотентний + кешований
+- ❌ Без тіла запиту
+- Складний пошук у тілі → метод **QUERY** (у розробці, є в OpenAPI 3.2) або `POST /search`
+
+## POST: Створення ресурсів
+
+```http
+POST /api/v1/users
+Content-Type: application/json
+
+{ "name": "Олександр Коваленко", "email": "alex@example.com", "password": "securePass123" }
+
+201 Created
+Location: /api/v1/users/456
+{ "id": 456, "name": "Олександр Коваленко", "email": "alex@example.com",
+  "createdAt": "2026-01-15T14:30:00Z" }
+```
+
+### **Не ідемпотентний** → для безпечного повтору: заголовок `Idempotency-Key`
+- Пароль **ніколи** не повертається у відповіді
+
+## PUT vs PATCH
+
+### **PUT — повне заміщення**
+```http
+PUT /api/v1/users/123
+{ "name": "Нове ім'я", "email": "new@example.com", "status": "active" }
+# Відсутні поля → значення за замовчуванням
+```
+
+### **PATCH — часткове оновлення**
+```http
+PATCH /api/v1/users/123
+Content-Type: application/merge-patch+json
+{ "email": "updated@example.com" }
+# Змінюються ТІЛЬКИ вказані поля
+```
+
+- **JSON Merge Patch** (RFC 7396) — просто змінені поля
+- **JSON Patch** (RFC 6902) — список операцій
+
+## DELETE: Видалення ресурсів
+
+```http
+DELETE /api/v1/users/123
+
+204 No Content
+```
+
+### **Типи видалення:**
+- **Жорстке:** повне видалення з БД
+- **М'яке:** позначка `deletedAt`, можна відновити
+- **Архівування:** переміщення в архів
+
+**Для клієнта результат однаковий — ресурс недоступний**
+
+## HTTP статус коди
 
 ```mermaid
-graph LR
-    A[Call Stack] --> B{Empty?}
-    B -->|Yes| C[Event Queue]
-    C --> D{Has Events?}
-    D -->|Yes| E[Execute Callback]
-    E --> A
-    D -->|No| F[Wait]
-    F --> D
-    B -->|No| G[Execute Function]
-    G --> A
+graph TD
+    Status[Коди стану HTTP] --> S1[1xx Інформаційні]
+    Status --> S2[2xx Успішні]
+    Status --> S3[3xx Перенаправлення]
+    Status --> S4[4xx Помилки клієнта]
+    Status --> S5[5xx Помилки сервера]
+
+    S2 --> S2A[200 OK<br/>201 Created<br/>202 Accepted<br/>204 No Content]
+    S3 --> S3A[304 Not Modified]
+    S4 --> S4A[400 Bad Request<br/>401 Unauthorized<br/>403 Forbidden<br/>404 Not Found<br/>409 Conflict<br/>412 Precondition Failed<br/>422 Unprocessable Content<br/>429 Too Many Requests]
+    S5 --> S5A[500 Internal Server Error<br/>502 Bad Gateway<br/>503 Service Unavailable]
 ```
 
-**Основний принцип:** Неблокуючі I/O операції
+## Ключові статус коди
 
+### **Помилки клієнта (4xx)**
+- **400** — не відповідає схемі (типи, обов'язкові поля)
+- **401** — немає або недійсні облікові дані
+- **403** — користувача знаємо, але дію заборонено
+- **404** — не знайдено (або приховуємо існування)
+- **409** — конфлікт зі станом (email вже зайнятий)
+- **422** — схема правильна, але порушено правила предметної області
 
+### **Правило курсу**
+400 — схема · 422 — бізнес-правила · 409 — конфлікт даних
 
-## Приклад асинхронності
+❌ `200 OK` з полем `"error"` у тілі — ніколи!
+
+## Структурування endpoints
+
+### **Ресурсно-орієнтований підхід**
+
+```http
+# ✅ ПРАВИЛЬНО — іменники + методи HTTP
+GET    /api/v1/users
+POST   /api/v1/users
+GET    /api/v1/users/123
+PUT    /api/v1/users/123
+DELETE /api/v1/users/123
+
+# ❌ НЕПРАВИЛЬНО — дієслова в адресах
+GET    /api/getUsers
+POST   /api/createUser
+```
+
+- Множина для колекцій, kebab-case, малі літери
+- Дія поза CRUD → ресурс: `POST /orders/456/cancellation`
+
+## Ієрархічна структура
+
+```http
+GET    /api/v1/users/123/posts        # Пости користувача
+POST   /api/v1/users/123/posts        # Створити пост
+GET    /api/v1/posts/456/comments     # Коментарі до поста
+```
+
+### **⚠️ Не більше 2 рівнів вкладеності**
+- Ресурс із власним ID → звертаємося напряму: `/posts/456`
+- В Express 5: `Router({ mergeParams: true })`
+
+## Фільтрація та пагінація
+
+```http
+# Фільтрація
+GET /api/v1/products?category=electronics&priceMin=100&priceMax=500
+
+# Сортування (лише за дозволеними полями!)
+GET /api/v1/products?sort=-price,name
+
+# Пагінація
+GET /api/v1/users?limit=20&offset=40     # Зміщення
+GET /api/v1/users?page=3&perPage=20      # Номер сторінки
+GET /api/v1/users?cursor=eyJpZCI6MTIzfQ  # Курсор
+```
+
+| Зміщення / сторінка | Курсор |
+|---------------------|--------|
+| Перехід на довільну сторінку | Лише «далі» |
+| Повільно на великій глибині | Однаково швидко |
+| Дублі при вставках | Стійкий до змін |
+
+**Завжди обмежуйте максимальний `limit`!**
+
+## Кешування: Cache-Control
+
+| Директива | Значення |
+|-----------|----------|
+| `max-age=60` | Свіжа 60 с |
+| `public` / `private` | Спільні кеші / лише браузер |
+| `no-cache` | Перевіряти перед використанням |
+| `no-store` | Не зберігати взагалі |
 
 ```javascript
-console.log('Початок');
-
-setTimeout(() => {
-    console.log('Таймер виконано');
-}, 0);
-
-console.log('Кінець');
-
-// Вивід:
-// Початок
-// Кінець
-// Таймер виконано
+res.set('Cache-Control', 'public, max-age=600');   // довідник
+res.set('Cache-Control', 'private, no-cache');     // профіль користувача
 ```
 
-**Чому?** Event Loop обробляє setTimeout після поточного стеку
-
-
-
-## NPM - найбільший реєстр пакетів
+## Умовні запити: ETag
 
 ```mermaid
-graph TB
-    A[NPM Registry] --> B[1.5+ млн пакетів]
-    A --> C[Безкоштовно]
-    A --> D[Відкритий код]
+sequenceDiagram
+    participant C as Клієнт
+    participant S as Сервер
 
-    E[npm CLI] --> F[Встановлення]
-    E --> G[Публікація]
-    E --> H[Управління]
+    C->>S: GET /api/v1/products/42
+    S-->>C: 200 OK, ETag: "v7" + тіло
+    Note over C: Зберігає відповідь і ETag
+
+    C->>S: GET /api/v1/products/42<br/>If-None-Match: "v7"
+    S-->>C: 304 Not Modified (без тіла)
+
+    C->>S: GET /api/v1/products/42<br/>If-None-Match: "v7"
+    Note over S: Товар змінено, тепер "v8"
+    S-->>C: 200 OK, ETag: "v8" + нове тіло
 ```
 
-### Основні команди:
-```bash
-npm init                 # Ініціалізація проєкту
-npm install express      # Встановлення пакета
-npm install -g nodemon   # Глобальне встановлення
-npm run dev              # Запуск скрипта
-```
+- **`If-Match`** при PUT/PATCH → захист від одночасного редагування
+- Версія змінилася → **412 Precondition Failed**
 
+## Валідація даних
 
-
-## package.json - серце проєкту
-
-```json
-{
-  "name": "my-app",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "nodemon": "^2.0.22"
-  }
-}
-```
-
-
-
-## Семантичне версіонування
+### **Багаторівнева система валідації**
 
 ```mermaid
-graph LR
-    A[MAJOR.MINOR.PATCH] --> B[1.2.3]
+graph TD
+    Input[Вхідні дані] --> Schema[Валідація схеми]
+    Schema -->|Типи, формат, обов'язковість| Business[Бізнес-валідація]
+    Business -->|Правила предметної області| Unique[Перевірка стану даних]
+    Unique -->|Унікальність, існування зв'язків| Success[✅ Обробка запиту]
 
-    B --> C[^1.2.3]
-    B --> D[~1.2.3]
-    B --> E[1.2.3]
-
-    C --> F[1.x.x сумісні зміни]
-    D --> G[1.2.x патчі]
-    E --> H[Точна версія]
+    Schema -->|Помилка| Error400[400 Bad Request]
+    Business -->|Помилка| Error422[422 Unprocessable Content]
+    Unique -->|Помилка| Error409[409 Conflict]
 ```
 
-- **MAJOR** - breaking changes
-- **MINOR** - нові функції
-- **PATCH** - виправлення помилок
+**Унікальність гарантує лише індекс у БД, а не попередня перевірка!**
 
-
-
-## Модульна система: CommonJS
+## Схеми валідації: Zod
 
 ```javascript
-// math.js - експорт
-function add(a, b) {
-    return a + b;
-}
+import { z } from 'zod';
 
-function subtract(a, b) {
-    return a - b;
-}
-
-module.exports = { add, subtract };
-
-// app.js - імпорт
-const { add, subtract } = require('./math');
-const math = require('./math');
-
-console.log(add(5, 3)); // 8
-```
-
-
-
-## Модульна система: ES Modules
-
-```javascript
-// math.mjs - експорт
-export function add(a, b) {
-    return a + b;
-}
-
-export function subtract(a, b) {
-    return a - b;
-}
-
-export default function multiply(a, b) {
-    return a * b;
-}
-
-// app.mjs - імпорт
-import multiply, { add, subtract } from './math.mjs';
-import * as math from './math.mjs';
-
-console.log(add(5, 3)); // 8
-```
-
-
-
-## Налаштування ES Modules
-
-### package.json
-```json
-{
-  "type": "module",
-  "main": "index.js"
-}
-```
-
-### Або використовувати розширення:
-- `.mjs` - ES modules
-- `.cjs` - CommonJS
-- `.js` - залежить від package.json
-
-
-
-## Вбудовані модулі
-
-### File System (fs)
-```javascript
-import fs from 'fs/promises';
-
-// Читання файлу
-const data = await fs.readFile('config.txt', 'utf8');
-
-// Запис файлу
-await fs.writeFile('output.txt', 'Hello World');
-
-// Список файлів
-const files = await fs.readdir('./');
-```
-
-
-
-## Path модуль
-
-```javascript
-import path from 'path';
-
-// Об'єднання шляхів
-const fullPath = path.join('/users', 'student', 'project.js');
-// /users/student/project.js
-
-// Розбір шляху
-console.log(path.dirname(fullPath));  // /users/student
-console.log(path.basename(fullPath)); // project.js
-console.log(path.extname(fullPath));  // .js
-
-// Абсолютний шлях
-const absolute = path.resolve('src', 'index.js');
-```
-
-
-
-## HTTP модуль
-
-```javascript
-import http from 'http';
-
-const server = http.createServer((req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-
-    if (req.url === '/api/status') {
-        res.statusCode = 200;
-        res.end(JSON.stringify({
-            status: 'OK',
-            timestamp: new Date().toISOString()
-        }));
-    } else {
-        res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Not Found' }));
-    }
+export const createUserSchema = z.object({
+    name: z.string().trim().min(2).max(50)
+        .regex(/^[\p{L}\s'’-]+$/u),        // будь-які літери, зокрема кирилиця
+    email: z.email(),
+    password: z.string().min(8).max(64)
 });
 
-server.listen(3000, () => {
-    console.log('Сервер запущено на порті 3000');
-});
-```
-
-
-
-## URL модуль
-
-```javascript
-import { URL } from 'url';
-
-const apiUrl = new URL('https://api.example.com/users?page=2&limit=10');
-
-console.log(apiUrl.protocol);  // https:
-console.log(apiUrl.host);      // api.example.com
-console.log(apiUrl.pathname);  // /users
-
-// Робота з параметрами
-const params = apiUrl.searchParams;
-console.log(params.get('page'));  // 2
-
-params.set('page', '3');
-params.append('sort', 'name');
-```
-
-
-
-## Налаштування середовища
-
-### VS Code розширення
-- **Node.js Modules Intellisense**
-- **npm Intellisense**
-- **ESLint**
-- **Prettier**
-- **Node.js Debug**
-
-### Конфігурація
-```json
-// .vscode/settings.json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode"
-}
-```
-
-
-
-## ESLint + Prettier
-
-### .eslintrc.json
-```json
-{
-  "env": {
-    "node": true,
-    "es2022": true
-  },
-  "extends": ["eslint:recommended"],
-  "rules": {
-    "semi": ["error", "always"],
-    "quotes": ["error", "single"]
-  }
-}
-```
-
-### .prettierrc
-```json
-{
-  "semi": true,
-  "singleQuote": true,
-  "tabWidth": 2
-}
-```
-
-
-
-## Змінні середовища
-
-### .env файл
-```env
-NODE_ENV=development
-PORT=3000
-DB_HOST=localhost
-DB_PASSWORD=secret123
-JWT_SECRET=my-secret-key
-```
-
-### Використання
-```javascript
-import dotenv from 'dotenv';
-dotenv.config();
-
-const config = {
-    port: process.env.PORT || 3000,
-    dbHost: process.env.DB_HOST || 'localhost',
-    jwtSecret: process.env.JWT_SECRET
-};
-```
-
-
-
-## Корисні NPM скрипти
-
-```json
-{
-  "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "dev:debug": "nodemon --inspect src/index.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
-    "format": "prettier --write src/",
-    "clean": "rm -rf dist/",
-    "build": "npm run clean && babel src --out-dir dist"
-  }
-}
-```
-
-
-
-## Практичний приклад: Простий API
-
-```javascript
-import http from 'http';
-
-const users = [
-    { id: 1, name: 'Іван', email: 'ivan@example.com' },
-    { id: 2, name: 'Марія', email: 'maria@example.com' }
-];
-
-const server = http.createServer((req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-
-    if (req.url === '/api/users' && req.method === 'GET') {
-        res.statusCode = 200;
-        res.end(JSON.stringify({ users }));
-    } else {
-        res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Not Found' }));
-    }
-});
-
-server.listen(3000);
-```
-
-
-
-## Обробка POST запитів
-
-```javascript
-async function handlePost(req, res) {
-    const body = await parseBody(req);
-
-    if (!body.name || !body.email) {
-        res.statusCode = 400;
-        res.end(JSON.stringify({ error: 'Name and email required' }));
-        return;
-    }
-
-    const newUser = {
-        id: Date.now(),
-        name: body.name,
-        email: body.email
+export function validate(schema, source = 'body') {
+    return (req, res, next) => {
+        const result = schema.safeParse(req[source]);
+        if (!result.success) throw new ValidationError(result.error.issues);
+        req.valid = { ...req.valid, [source]: result.data };
+        next();
     };
-
-    users.push(newUser);
-    res.statusCode = 201;
-    res.end(JSON.stringify(newUser));
-}
-
-function parseBody(req) {
-    return new Promise((resolve, reject) => {
-        let body = '';
-        req.on('data', chunk => body += chunk);
-        req.on('end', () => resolve(JSON.parse(body)));
-        req.on('error', reject);
-    });
 }
 ```
 
+⚠️ `[a-zA-Z]` відкидає «Олександр»
 
+## Структура помилок: Problem Details
 
-## Nodemon - автоматичний перезапуск
+### **Стандарт RFC 9457** · `Content-Type: application/problem+json`
 
-### Встановлення
-```bash
-npm install -D nodemon
-```
-
-### nodemon.json
-```json
-{
-  "watch": ["src"],
-  "ext": "js,mjs,json",
-  "ignore": ["src/**/*.test.js"],
-  "exec": "node src/index.js",
-  "env": {
-    "NODE_ENV": "development"
-  }
-}
-```
-
-### Використання
-```bash
-nodemon src/index.js
-# або через NPM script
-npm run dev
-```
-
-
-
-## Відлагодження Node.js
-
-### VS Code Launch Configuration
-```json
-{
-  "type": "node",
-  "request": "launch",
-  "name": "Launch Program",
-  "program": "${workspaceFolder}/src/index.js",
-  "env": {
-    "NODE_ENV": "development"
-  },
-  "console": "integratedTerminal"
-}
-```
-
-### Командний рядок
-```bash
-node --inspect src/index.js
-node --inspect-brk src/index.js  # пауза на першому рядку
-```
-
-
-
-## Управління залежностями
-
-### Типи залежностей
-```bash
-# Production залежності
-npm install express mongoose
-
-# Development залежності
-npm install -D nodemon jest eslint
-
-# Peer залежності (у package.json)
-"peerDependencies": {
-  "react": ">=16.0.0"
-}
-```
-
-### Оновлення пакетів
-```bash
-npm outdated           # перевірка застарілих пакетів
-npm update             # оновлення до допустимих версій
-npm audit              # перевірка безпеки
-npm audit fix          # автоматичне виправлення
-```
-
-
-
-## Best Practices
-
-### ✅ Рекомендації
-- Використовуйте **async/await** замість callbacks
-- Встановлюйте **точні версії** для production
-- Додавайте **package-lock.json** до Git
-- Використовуйте **.env** для конфігурації
-- Налаштуйте **ESLint** та **Prettier**
-- Пишіть **тести** для критичного функціоналу
-
-### ❌ Уникайте
-- Глобальних змінних
-- Синхронних fs операцій у production
-- Hardcoded паролів у коді
-- Ігнорування помилок у Promise
-
-
-
-## Архітектура проєкту
-
-```
-my-node-app/
-├── src/
-│   ├── controllers/     # Бізнес логіка
-│   ├── models/         # Моделі даних
-│   ├── routes/         # API маршрути
-│   ├── middleware/     # Проміжне ПЗ
-│   ├── utils/          # Утиліти
-│   └── index.js        # Точка входу
-├── tests/              # Тести
-├── docs/               # Документація
-├── .env.example        # Приклад змінних
-├── .gitignore
-├── package.json
-└── README.md
-```
-
-
-
-## Популярні NPM пакети
-
-### **Web фреймворки**
-- **express** - мінімалістичний веб фреймворк
-- **fastify** - швидкий та низькорівневий
-- **koa** - наступна генерація Express
-
-### **База даних**
-- **mongoose** - MongoDB ODM
-- **prisma** - сучасний ORM
-- **sequelize** - SQL ORM
-
-### **Утиліти**
-- **lodash** - функціональні утиліти
-- **moment/dayjs** - робота з датами
-- **joi/yup** - валідація схем
-
-
-
-## Тестування в Node.js
-
-### Jest - популярний тестовий фреймворк
 ```javascript
-// math.test.js
-import { add, subtract } from './math.js';
-
-describe('Math functions', () => {
-    test('should add two numbers', () => {
-        expect(add(2, 3)).toBe(5);
-    });
-
-    test('should subtract two numbers', () => {
-        expect(subtract(5, 3)).toBe(2);
-    });
-});
-```
-
-### Запуск тестів
-```bash
-npm test
-npm test -- --watch    # watch mode
-npm test -- --coverage # з покриттям коду
-```
-
-
-
-## Моніторинг та логування
-
-### Логування з winston
-```javascript
-import winston from 'winston';
-
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.json(),
-    transports: [
-        new winston.transports.File({ filename: 'error.log', level: 'error' }),
-        new winston.transports.File({ filename: 'combined.log' })
+{
+    "type": "https://api.example.com/problems/validation-error",
+    "title": "Дані не пройшли валідацію",
+    "status": 400,
+    "detail": "Два поля містять некоректні значення",
+    "instance": "/api/v1/users",
+    "requestId": "req_7f3a9c21",
+    "errors": [
+        { "field": "email", "code": "INVALID_EMAIL_FORMAT",
+          "message": "Невірний формат email-адреси" }
     ]
-});
-
-logger.info('Server started', { port: 3000 });
-logger.error('Database connection failed', { error: err.message });
-```
-
-
-
-## Performance та оптимізація
-
-### Cluster для використання всіх CPU
-```javascript
-import cluster from 'cluster';
-import os from 'os';
-
-if (cluster.isMaster) {
-    const numCPUs = os.cpus().length;
-
-    for (let i = 0; i < numCPUs; i++) {
-        cluster.fork();
-    }
-
-    cluster.on('exit', (worker) => {
-        console.log(`Worker ${worker.process.pid} помер`);
-        cluster.fork();
-    });
-} else {
-    // Основний код додатку
-    import('./app.js');
 }
 ```
 
+- `title`/`message` — для людини, `code` — для програми
+- Мова повідомлень — за `Accept-Language`
 
-
-## Безпека в Node.js
-
-### Основні принципи
-- **Валідація** всіх вхідних даних
-- **Хешування** паролів (bcrypt)
-- **JWT токени** для автентифікації
-- **HTTPS** для production
-- **Rate limiting** для API
-- **Helmet** для захисту заголовків
+## Глобальна обробка помилок
 
 ```javascript
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+// Express 5: винятки з async-маршрутів потрапляють сюди автоматично
+app.use((err, req, res, next) => {
+    const isKnown = err instanceof HttpError;
+    const status = isKnown ? err.status : 500;
 
-app.use(helmet());
-app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 хвилин
-    max: 100 // обмеження запитів
-}));
+    console.error({ requestId: req.id, url: req.originalUrl, status,
+                    stack: status >= 500 ? err.stack : undefined });
+
+    const problem = isKnown
+        ? { type: err.type, title: err.title, status, detail: err.detail, ...err.extensions }
+        : { type: 'about:blank', title: 'Внутрішня помилка сервера', status: 500 };
+
+    res.status(status).type('application/problem+json')
+       .json({ ...problem, instance: req.originalUrl, requestId: req.id });
+});
 ```
 
+**Деталі — у журнал, клієнту — лише безпечна інформація**
 
+## API документація з OpenAPI
 
-## Деплой Node.js додатків
+### **OpenAPI = стандарт машиночитного опису REST API**
 
-### Популярні платформи
-- **Heroku** - простий деплой
-- **Vercel** - для serverless
-- **DigitalOcean** - VPS сервери
-- **AWS** - повна екосистема
-- **Railway** - сучасна альтернатива
+- **3.1** — схеми = JSON Schema 2020-12 (`type: [string, "null"]` замість `nullable`)
+- **3.2** (вересень 2025) — ієрархічні теги, потокові відповіді, метод QUERY; повністю сумісна з 3.1
 
-### PM2 для production
-```bash
-npm install -g pm2
-pm2 start src/index.js --name "my-app"
-pm2 startup
-pm2 save
+```yaml
+openapi: 3.1.1
+info:
+  title: Task Management API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+paths:
+  /users:
+    get:
+      operationId: listUsers
+      responses:
+        '200':
+          description: Список користувачів
+        '400':
+          $ref: '#/components/responses/BadRequest'
 ```
 
+### **Переваги:** документація, клієнти, тести, імітаційні сервери — з одного файлу
 
+## Підходи до документування
 
-## Робота з середовищами
+| «Спочатку контракт» | «Спочатку код» |
+|---------------------|----------------|
+| Пишемо OpenAPI → реалізуємо | Генеруємо OpenAPI з коду |
+| Паралельна робота команд | Документація не розходиться з кодом |
+| Тести перевіряють відповідність | Схеми Zod → OpenAPI |
 
-### Різні конфігурації
+**Переглядачі:** Swagger UI · Scalar · Redoc
+
+## Swagger UI інтеграція
+
 ```javascript
-// config.js
-const configs = {
-    development: {
-        port: 3000,
-        db: 'mongodb://localhost/myapp_dev'
-    },
-    production: {
-        port: process.env.PORT,
-        db: process.env.DATABASE_URL
-    },
-    test: {
-        port: 3001,
-        db: 'mongodb://localhost/myapp_test'
-    }
-};
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
 
-export default configs[process.env.NODE_ENV || 'development'];
+const swaggerSpec = swaggerJsdoc({
+    definition: {
+        openapi: '3.1.1',
+        info: { title: 'Task Management API', version: '1.0.0' }
+    },
+    apis: ['./src/routes/*.js'] // Файли з коментарями @openapi
+});
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/openapi.json', (req, res) => res.json(swaggerSpec));
 ```
 
-## Майбутнє Node.js
+### **Результат:** інтерактивна документація на `/api-docs`
 
-### Нові можливості
-- **ES Modules** стають стандартом
-- **Top-level await** в модулях
-- **Worker Threads** для CPU задач
-- **HTTP/3** підтримка
-- **WebAssembly** інтеграція
+## Версіонування API
 
-### Тренди екосистеми
-- **TypeScript** набирає популярність
-- **Deno** як альтернатива
-- **Serverless** архітектури
-- **Microservices** з Node.js
+### **Навіщо?**
+- ✅ Сумісні зміни (нове поле, нова адреса) — **без нової версії**
+- ⚠️ Несумісні (видалення/перейменування поля, зміна типу) — **нова версія**
 
+```mermaid
+graph LR
+    A[v1 API] --> B[Розробка v2]
+    B --> C[Випуск v2]
+    C --> D[Підтримка v1+v2]
+    D --> E[Deprecation v1]
+    E --> F[Sunset v1]
+```
 
+## Стратегії версіонування
 
-## Корисні ресурси
+### **1. Шлях URL** ⭐
+```http
+GET /api/v1/users
+```
 
-### 📚 Документація та навчання
-- [nodejs.org](https://nodejs.org) - офіційна документація
-- [npmjs.com](https://npmjs.com) - реєстр пакетів
-- [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
+### **2. Заголовок**
+```http
+GET /api/users
+API-Version: 2        # + Vary: API-Version для кешів!
+```
 
-### 🛠️ Інструменти
-- [npm-check-updates](https://www.npmjs.com/package/npm-check-updates) - оновлення залежностей
-- [depcheck](https://www.npmjs.com/package/depcheck) - пошук невикористаних залежностей
-- [clinic.js](https://clinicjs.org/) - профайлінг продуктивності
+### **3. Параметр запиту**
+```http
+GET /api/users?version=2
+```
+
+### **Рекомендація:** URL із мажорним номером
+
+## Реалізація версіонування
+
+```javascript
+// Окремий маршрутизатор на кожну версію
+import usersV1 from './routes/v1/users.js';
+import usersV2 from './routes/v2/users.js';
+
+const v1 = express.Router();
+v1.use('/users', usersV1);
+
+const v2 = express.Router();
+v2.use('/users', usersV2);
+
+app.use('/api/v1', v1);
+app.use('/api/v2', v2);
+```
+
+- Спільна логіка — у сервісному шарі
+- ⚠️ Express 5: `'/api/:version?/*'` більше не працює
+
+## Життєвий цикл версій
+
+```mermaid
+graph TD
+    A[Розробка v2] --> B[Бета-тестування]
+    B --> C[🚀 Випуск v2]
+    C --> D[Підтримка v1 + v2]
+    D --> E[⚠️ Deprecation v1]
+    E --> F[❌ Sunset v1]
+    F --> G[Тільки v2]
+
+    style C fill:#90EE90
+    style E fill:#FFE4B5
+    style F fill:#FFB6C1
+```
+
+### **Стандартні заголовки:**
+```http
+Deprecation: @1788220800                        # RFC 9745
+Sunset: Mon, 01 Mar 2027 00:00:00 GMT           # RFC 8594
+Link: <https://docs.example.com/migration/v1-to-v2>; rel="deprecation"
+```
+
+## Найкращі практики
+
+### **🎯 Принципи успішного REST API**
+
+1. **Консистентність** — однакові конвенції в усьому API
+2. **Передбачуваність** — поведінка відповідає очікуванням
+3. **Простота** — базові операції без зусиль
+4. **Стандарти** замість власних винаходів
+
+### **📋 Чекліст якості**
+- ✅ Правильні методи й коди стану HTTP
+- ✅ Ресурсно-орієнтовані адреси
+- ✅ Валідація на сервері + унікальні індекси
+- ✅ Помилки у форматі RFC 9457
+- ✅ Cache-Control і ETag
+- ✅ Версія в URL з першого дня
+- ✅ Опис OpenAPI, що не розходиться з кодом
+
+## Далі
+
+- **Лекція 4:** підключаємо бази даних — PostgreSQL, MongoDB, ORM
+- **Лекція 5:** захищаємо API — аутентифікація, авторизація, безпека

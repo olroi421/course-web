@@ -8,9 +8,9 @@
 |------|------|------|
 | Лекція 01 Вступ до сучасної веброзробки та JavaScript ES6+| [Конспект лекції](lectures/lecture-01.md) | [Презентація](presentations/presentation-01.md) |
 | Лекція 02 Node.js та Express.js: основи серверної розробки | [Конспект лекції](lectures/lecture-02.md) | [Презентація](presentations/presentation-02.md) |
-| _Лекція 03 Бази даних та ORM у веб-додатках_ | [Конспект лекції](lectures/lecture-05.md) | [Презентація](presentations/presentation-05.md) |
-| _Лекція 04 Проєктування RESTful API_ | [Конспект лекції](lectures/lecture-06.md) | [Презентація](presentations/presentation-06.md) |
-| _Лекція 05 Аутентифікація та безпека backend_ | [Конспект лекції](lectures/lecture-07.md) | [Презентація](presentations/presentation-07.md) |
+| Лекція 03 Бази даних та ORM у веб-додатках | [Конспект лекції](lectures/lecture-03.md) | [Презентація](presentations/presentation-03.md) |
+| Лекція 04 Проєктування RESTful API | [Конспект лекції](lectures/lecture-04.md) | [Презентація](presentations/presentation-04.md) |
+| Лекція 05 Аутентифікація та безпека backend | [Конспект лекції](lectures/lecture-05.md) | [Презентація](presentations/presentation-05.md) |
 | _Лекція 06 Тестування та деплой backend_ | [Конспект лекції](lectures/lecture-08.md) | [Презентація](presentations/presentation-08.md) |
 | _Лекція 07 React: основи та сучасні підходи_ | [Конспект лекції](lectures/lecture-09.md) | [Презентація](presentations/presentation-09.md) |
 | _Лекція 08 Управління станом у React (Hooks, локальний і глобальний стан)_ | [Конспект лекції](lectures/lecture-10.md) | [Презентація](presentations/presentation-10.md) |

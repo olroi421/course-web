@@ -1,558 +1,731 @@
-# Бази даних та ORM
+# Аутентифікація та безпека
 
-## План лекції
+## 🎯 План лекції
 
-1. **SQL vs NoSQL**: філософські відмінності
-2. **PostgreSQL**: потужність реляційної моделі
-3. **Sequelize ORM**: об'єктно-реляційне відображення
-4. **MongoDB + Mongoose**: документо-орієнтований підхід
-5. **Паттерни роботи з БД**: Repository, кешування, оптимізація
+1. **OWASP Top 10:2025** — карта ризиків
+2. **Аутентифікація vs авторизація**
+3. **Сесії vs JWT**: як працює підпис, де зберігати токени
+4. **Паролі**: Argon2id, bcrypt
+5. **Middleware**: перевірка токенів, refresh-токени з ротацією
+6. **Сучасний вхід**: OAuth 2.0/OIDC + PKCE, passkeys, MFA
+7. **Авторизація**: RBAC, власність ресурсів, IDOR
+8. **Атаки**: CORS, CSRF, XSS, ін'єкції
+9. **Практики**: ліміти, журнали, шифрування, залежності
 
-## Чому важливий вибір бази даних?
+## 🗺️ OWASP Top 10:2025
+
+| № | Категорія |
+|---|-----------|
+| A01 | Broken Access Control |
+| A02 | Security Misconfiguration |
+| A03 | **Software Supply Chain Failures** 🆕 |
+| A04 | Cryptographic Failures |
+| A05 | Injection |
+| A06 | Insecure Design |
+| A07 | Authentication Failures |
+| A08 | Software or Data Integrity Failures |
+| A09 | Security Logging and Alerting Failures |
+| A10 | **Mishandling of Exceptional Conditions** 🆕 |
+
+**Остаточна версія — початок 2026 · SSRF увійшла до A01**
+
+## 🔐 Аутентифікація vs Авторизація
 
 ```mermaid
 graph TD
-    A[Вибір БД] --> B[Масштабованість]
-    A --> C[Продуктивність]
-    A --> D[Консистентність]
-    A --> E[Складність розробки]
-    A --> F[Вартість підтримки]
-
-    B --> G[Горизонтальна vs Вертикальна]
-    C --> H[Читання vs Запис]
-    D --> I[ACID vs BASE]
+    A[Користувач] --> B{Аутентифікація}
+    B -->|"Хто ви?"| C[Перевірка особи]
+    C -->|Не вдалося| X1[401 Unauthorized]
+    C --> D{Авторизація}
+    D -->|"Що можете робити?"| E[Перевірка дозволів]
+    E -->|Заборонено| X2[403 Forbidden]
+    E --> F[Доступ до ресурсу]
 ```
 
+### **Аутентифікація** = «Хто ви?» — знаю / маю / є
 
-## SQL vs NoSQL: Ключові відмінності
+### **Авторизація** = «Що ви можете робити?»
 
-### **SQL Бази Даних**
-- ✅ **ACID** транзакції
-- ✅ **Складні запити** з JOIN
-- ✅ **Цілісність даних**
-- ❌ Складне горизонтальне масштабування
-- ❌ Жорстка схема
+## ⚖️ Сесії vs Токени
 
-### **NoSQL Бази Даних**
-- ✅ **Горизонтальне масштабування**
-- ✅ **Гнучкість схеми**
-- ✅ **Високий performance**
-- ❌ Eventual consistency
-- ❌ Обмежені можливості запитів
-
-## CAP Теорема
+### 🏪 Сесійна аутентифікація (Stateful)
 
 ```mermaid
-graph TB
-    subgraph "CAP Triangle"
-        C[Consistency<br/>Консистентність]
-        A[Availability<br/>Доступність]
-        P[Partition Tolerance<br/>Стійкість до розділення]
+sequenceDiagram
+    participant C as Клієнт
+    participant S as Сервер
+    participant DB as Сховище сесій
 
-        C --- A
-        A --- P
-        P --- C
-    end
+    C->>S: POST /login (облікові дані)
+    S->>DB: Створити сесію
+    DB-->>S: ID сесії
+    S-->>C: Set-Cookie: sid=abc123; HttpOnly; Secure; SameSite=Lax
 
-    subgraph "Реальний світ"
-        SQL[SQL Databases<br/>CA системи]
-        NoSQL1[MongoDB<br/>CP системи]
-        NoSQL2[DynamoDB<br/>AP системи]
-    end
+    C->>S: GET /protected (Cookie: sid=abc123)
+    S->>DB: Знайти сесію abc123
+    DB-->>S: Дані сесії
+    S-->>C: Захищений ресурс
 ```
 
-**Можна обрати тільки 2 з 3 властивостей!**
+- Сховище — Redis/Valkey · `req.session.regenerate()` після входу
 
-## PostgreSQL: Гібридна потужність
+## 🎫 JWT токени (Stateless)
 
-### **Чому PostgreSQL?**
-- 🚀 **MVCC** для високої concurrency
-- 🔧 **Розширюваність** через extensions
-- 📄 **JSON/JSONB** для гібридного підходу
-- 📊 **Повнотекстовий пошук**
-- 🔒 **Enterprise-рівень безпеки**
+```mermaid
+sequenceDiagram
+    participant C as Клієнт
+    participant AS as Сервер аутентифікації
+    participant RS as Сервер ресурсів
 
-```sql
--- JSON в PostgreSQL
-CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100),
-    specs JSONB
-);
+    C->>AS: POST /login (облікові дані)
+    AS-->>C: JWT (токен доступу)
 
--- Пошук по JSON
-SELECT * FROM products
-WHERE specs @> '{"cpu": "Intel i7"}';
+    C->>RS: GET /protected<br/>Authorization: Bearer JWT
+    RS->>RS: Перевірити підпис і термін дії
+    RS-->>C: Захищений ресурс
 ```
 
-## JSONB: Найкраще з двох світів
+### JWT: **Header.Payload.Signature**
 
-```sql
--- Створення з JSONB
-INSERT INTO products (name, specs) VALUES
-('Laptop Pro', '{"cpu": "Intel i7", "ram": "16GB", "ssd": "512GB"}');
+⚠️ Base64URL — **кодування, не шифрування**: payload читає будь-хто
 
--- Індексування JSON полів
-CREATE INDEX idx_specs_cpu ON products USING GIN ((specs->'cpu'));
+## 🔍 Як сервер перевіряє справжність JWT?
 
--- Складні JSON запити
-SELECT name, specs->'cpu' as processor
-FROM products
-WHERE specs @> '{"ram": "16GB"}'
-AND specs->'price'::numeric < 1000;
+### **Ключовий принцип: сервер повторює підпис!**
+
+```mermaid
+graph TD
+    A[Клієнт надсилає токен] --> B[Сервер розкладає токен]
+    B --> C[header.payload.signature]
+
+    C --> D[Бере header + payload]
+    D --> E[Підписує СВОЇМ ключем]
+    E --> F[Отримує новий підпис]
+
+    F --> G{Порівнює підписи}
+    G -->|Збігаються| H[✅ Токен справжній]
+    G -->|Не збігаються| I[❌ Токен підроблений]
+
+    H --> J{Перевірка exp, iss, aud}
+    J -->|Коректні| K[Доступ]
+    J -->|Ні| L[401: прострочений або чужий]
+
+    style H fill:#90ee90
+    style I fill:#ffcccb
 ```
 
-**PostgreSQL поєднує реляційну надійність з NoSQL гнучкістю!**
+## 🔐 Процес перевірки токена
 
-## Sequelize ORM: Об'єктно-Реляційне Відображення
+```javascript
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+function verifyToken(token, secret) {
+    const [headerB64, payloadB64, signature] = token.split('.');
+
+    // 1. Приймаємо лише очікуваний алгоритм (захист від "alg": "none")
+    const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
+    if (header.alg !== 'HS256') throw new Error('Алгоритм не дозволено');
+
+    // 2. Підписуємо ті самі дані своїм ключем
+    const expected = createHmac('sha256', secret)
+        .update(`${headerB64}.${payloadB64}`).digest('base64url');
+
+    // 3. Порівнюємо за сталий час, а не через ===
+    const a = Buffer.from(expected), b = Buffer.from(signature);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        throw new Error('❌ Токен підроблений!');
+    }
+
+    // 4. Лише тепер довіряємо вмісту + перевіряємо exp
+    return JSON.parse(Buffer.from(payloadB64, 'base64url').toString());
+}
+```
+
+## 🏛️ Аналогія з печаткою
+
+```
+┌─────────────────────────────┐
+│ ПОСВІДЧЕННЯ ОСОБИ           │
+│ ─────────────────────────── │ ← header
+│ Ім'я: Іван Петренко         │ ← payload
+│ ID: 123, Роль: user         │
+│ Дійсне до: 15:45            │
+│ ─────────────────────────── │
+│     [ПЕЧАТКА СЕРВЕРА] 🏛️    │ ← signature
+└─────────────────────────────┘
+```
+
+**Як перевіряє сервер:**
+
+1. 📖 Читає документ
+2. 🏛️ Ставить свою печатку на ці дані
+3. 🔍 Порівнює з печаткою в документі
+4. ✅ Збігаються і не прострочено → справжній
+
+⚠️ **Печатка захищає від підробки, а не від читання!**
+
+## ❌ Чому атака не працює?
+
+### Спроба підробки:
+```javascript
+// Зловмисник змінює payload:
+originalPayload = { sub: '123', role: 'user' }
+hackedPayload   = { sub: '123', role: 'admin' }  // ⚠️
+
+// Але підпис залишається старий!
+oldSignature = "abc123xyz"   // для старого payload
+
+// Сервер перевіряє:
+newSignature = HMAC_SHA256(header + hackedPayload, SECRET)
+// Результат: "def456uvw" ≠ "abc123xyz" ❌
+```
+
+### **🔑 Без SECRET неможливо створити правильний підпис!**
+- Секрет ≥ 256 біт, випадковий: `openssl rand -base64 32`
+- Короткий секрет підбирається перебором за хвилини
+
+## 📦 Де зберігати токени?
+
+| Місце | XSS | CSRF |
+|-------|-----|------|
+| `localStorage` | ❌ Скрипт прочитає токен | ✅ |
+| Пам'ять застосунку | ⚠️ Нижчий ризик | ✅ |
+| Cookie `HttpOnly; Secure; SameSite` | ✅ Недоступний для JS | ⚠️ Потрібен захист |
+
+**Рекомендація:** refresh-токен — лише в `HttpOnly`-cookie, токен доступу — у пам'яті або cookie
+
+## 📊 Порівняння підходів
+
+| Критерій | Сесії | JWT |
+|----------|-------|-----|
+| **Стан сервера** | Stateful | Stateless |
+| **Масштабування** | ⚠️ Спільне сховище | ✅ Просте |
+| **Відкликання** | ✅ Миттєве | ⚠️ Короткий термін + refresh |
+| **Розмір** | ✅ Малий | ⚠️ Сотні байтів |
+| **Клієнти** | Браузер | Будь-які |
+| **Ризики** | CSRF, фіксація сесії | Слабкий секрет, XSS, помилки перевірки |
+
+**Жоден підхід не безпечний «за замовчуванням»**
+
+## 🔒 Хешування паролів
+
+### ❌ Небезпечно
+```javascript
+// НІКОЛИ! Швидкий хеш без солі → мільярди спроб/с на GPU
+const hash = createHash('sha256').update(password).digest('hex');
+```
+
+### ✅ Argon2id — перший вибір OWASP
+
+```javascript
+import argon2 from 'argon2';
+
+const hash = await argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 19456,   // 19 МіБ — мінімум OWASP
+    timeCost: 2,
+    parallelism: 1
+});
+
+const ok = await argon2.verify(hash, password);
+```
+
+**Паролі хешують, а не шифрують**
+
+## 🔒 bcrypt — допустима альтернатива
+
+```javascript
+import bcrypt from 'bcryptjs';
+
+const hash = await bcrypt.hash(password, 12);   // cost ≥ 10, краще 12+
+const ok = await bcrypt.compare(password, hash);
+```
+
+- ⚠️ bcrypt бачить лише **72 байти**: українська літера = 2 байти
+- Ще варіант без пакетів — вбудований `crypto.scrypt`
+
+### Вхід без витоку інформації
+- Однакове повідомлення: «Невірний email або пароль»
+- Перевірка фіктивного хешу, якщо користувача немає → однаковий час відповіді
+
+## 🔧 Middleware аутентифікації
+
+```javascript
+import jwt from 'jsonwebtoken';
+
+export function authenticate(req, res, next) {
+    const [scheme, token] = req.get('Authorization')?.split(' ') ?? [];
+    if (scheme !== 'Bearer' || !token) {
+        throw new AuthenticationError('Токен доступу відсутній');
+    }
+
+    try {
+        const payload = jwt.verify(token, process.env.JWT_SECRET, {
+            algorithms: ['HS256'],                  // явний перелік!
+            issuer: 'https://api.example.com',
+            audience: 'https://app.example.com'
+        });
+        req.user = { id: payload.sub, role: payload.role };
+        next();
+    } catch {
+        throw new AuthenticationError('Недійсний або прострочений токен'); // 401, не 403
+    }
+}
+```
+
+## 🔄 Refresh-токени з ротацією
+
+```mermaid
+sequenceDiagram
+    participant C as Клієнт
+    participant S as Сервер
+    participant DB as Сховище refresh-токенів
+
+    C->>S: POST /auth/login
+    S->>DB: Зберегти хеш R1 (родина F)
+    S-->>C: Токен доступу A1 + cookie R1
+
+    Note over C: Через 15 хвилин A1 спливає
+    C->>S: POST /auth/refresh (cookie R1)
+    S->>DB: R1 дійсний? Позначити використаним, зберегти R2
+    S-->>C: A2 + cookie R2
+
+    Note over C,S: Зловмисник вкрав R1 і пробує його
+    C->>S: POST /auth/refresh (cookie R1)
+    S->>DB: R1 уже використаний! Відкликати родину F
+    S-->>C: 401 — увійдіть заново
+```
+
+- Випадковий рядок, у БД — **хеш** · cookie `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`
+
+## 🌐 OAuth 2.0 + OpenID Connect
+
+```mermaid
+sequenceDiagram
+    participant U as Користувач
+    participant App as Наш застосунок
+    participant IdP as Провайдер (Google, GitHub)
+
+    App->>App: Згенерувати code_verifier<br/>і code_challenge = SHA256(verifier)
+    App->>U: Перенаправити на IdP з code_challenge
+    U->>IdP: Увійти й дати згоду
+    IdP->>App: Перенаправити назад з одноразовим code
+    App->>IdP: Обміняти code + code_verifier на токени
+    IdP-->>App: ID Token + Access Token
+    App->>App: Перевірити ID Token, створити власну сесію
+```
+
+- **OAuth 2.0** — делегування доступу · **OIDC** — вхід
+- **PKCE** захищає перехоплений код · обов'язковий у проєкті OAuth 2.1
+
+## 🔑 Passkeys і MFA
+
+### **Passkeys (WebAuthn / FIDO2)**
+- Пара ключів для кожного сайту, закритий — на пристрої
+- ✅ Стійкі до фішингу (прив'язка до домену)
+- ✅ Витік бази відкритих ключів нічого не дає
+- ✅ Пристрій + біометрія/PIN = два фактори за один крок
+
+### **Другі фактори (від слабшого до сильнішого)**
+- SMS → TOTP-застосунок → апаратний ключ / passkey
+
+**Для адміністраторів MFA — обов'язкова**
+
+## 👥 Система ролей (RBAC)
+
+```mermaid
+graph TD
+    A[Користувачі] --> B[Ролі]
+    B --> C[Дозволи]
+    C --> D[Ресурси]
+
+    A1[Іван] --> B1[admin]
+    A2[Марія] --> B2[moderator]
+    A3[Петро] --> B3[user]
+
+    B1 --> C1["users:*, posts:*"]
+    B2 --> C2["posts:update, posts:delete"]
+    B3 --> C3["posts:read, posts:create,<br/>own:posts:update"]
+```
+
+## 🛡️ Middleware авторизації
+
+```javascript
+export function requireRole(...roles) {
+    return (req, res, next) => {
+        if (!req.user) throw new AuthenticationError();
+        if (!roles.includes(req.user.role)) throw new ForbiddenError();
+        next();
+    };
+}
+
+app.get('/api/v1/admin/users', authenticate, requireRole('admin'), listUsers);
+```
+
+⚠️ Роль у токені — стан **на момент видачі** (ще до 15 хв після зміни)
+
+## 🕵️ Власність ресурсу та IDOR
+
+```javascript
+// ❌ IDOR: /orders/1001 → /orders/1002 і бачимо чуже замовлення
+// ✅ Перевірка власності ПІСЛЯ завантаження ресурсу
+app.patch('/api/v1/posts/:id', authenticate, async (req, res) => {
+    const post = await postService.findById(req.params.id);
+
+    if (!post || !canAccess(req.user, 'posts', 'update', post)) {
+        throw new NotFoundError('Пост не знайдено');   // не розкриваємо існування
+    }
+    res.json(await postService.update(post.id, req.valid.body));
+});
+```
+
+**Ще надійніше:** `WHERE id = :id AND author_id = :userId`
+
+**A01 OWASP — найчастіша вразливість!**
+
+## 🌐 CORS: Cross-Origin Resource Sharing
+
+### Суть
+Браузер не дає JS з одного джерела читати відповіді іншого → сервер явно дозволяє
+
+### ⚠️ CORS — **не захист сервера**: curl і Postman його ігнорують
+
+```javascript
+const ALLOWED_ORIGINS = new Set(['https://app.example.com']);
+
+app.use(cors({
+    origin(origin, callback) {
+        callback(null, !origin || ALLOWED_ORIGINS.has(origin));
+    },
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'If-Match'],
+    exposedHeaders: ['ETag', 'Location', 'X-Request-Id']
+}));
+```
+
+**❌ Будь-яке джерело + `credentials: true` = критична помилка**
+
+## 🎭 CSRF: Cross-Site Request Forgery
 
 ```mermaid
 graph LR
-    A[JavaScript Object] --> B[Sequelize ORM]
-    B --> C[SQL Query]
-    C --> D[PostgreSQL]
-    D --> C
-    C --> B
-    B --> A
-
-    E[Model Definition] --> B
-    F[Associations] --> B
-    G[Validations] --> B
+    A[Шкідливий сайт] --> B[Прихована форма<br/>POST /transfer]
+    B --> C[Браузер додає<br/>cookie банку]
+    C --> D[Сайт банку]
+    D --> E[💸 Переказ коштів]
 ```
 
-**ORM абстрагує SQL та забезпечує безпеку**
+- Загрожує лише **cookie-аутентифікації** (Bearer-токен у заголовку — ні)
+- ❌ `csurf` — архівовано 2022, офіційно застарілий з травня 2025
 
-## Sequelize: Визначення Моделі
+## 🎭 Сучасний захист від CSRF
+
+1. **`SameSite=Lax/Strict`** для cookie
+2. **`Sec-Fetch-Site`** — відхиляти змінювальні запити з `cross-site`
+3. **`Origin`** — для старих браузерів
+4. **CSRF-токени** — для форм: csrf-csrf, csrf-sync
 
 ```javascript
-class User extends Model {
-    getFullName() {
-        return `${this.firstName} ${this.lastName}`;
+export function csrfProtection(req, res, next) {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+
+    const site = req.get('Sec-Fetch-Site');
+    if (site) {
+        if (site === 'same-origin' || site === 'none') return next();
+        throw new ForbiddenError('Міжсайтовий запит заблоковано');
     }
-}
-
-User.init({
-    id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true
-    },
-    email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: { isEmail: true }
-    },
-    preferences: {
-        type: DataTypes.JSONB,
-        defaultValue: {}
-    }
-}, { sequelize, modelName: 'User' });
-```
-
-## Sequelize: Асоціації
-
-```javascript
-// One-to-Many
-User.hasMany(Post, { foreignKey: 'userId', as: 'posts' });
-Post.belongsTo(User, { foreignKey: 'userId', as: 'author' });
-
-// Many-to-Many через проміжну таблицю
-Post.belongsToMany(Tag, {
-    through: 'PostTags',
-    as: 'tags'
-});
-
-// Використання асоціацій
-const user = await User.findByPk(1, {
-    include: [
-        { model: Post, as: 'posts' },
-        { model: Profile, as: 'profile' }
-    ]
-});
-```
-
-## Sequelize: Міграції
-
-```javascript
-// Створення міграції
-module.exports = {
-    up: async (queryInterface, Sequelize) => {
-        await queryInterface.createTable('users', {
-            id: {
-                type: Sequelize.UUID,
-                primaryKey: true,
-                defaultValue: Sequelize.UUIDV4
-            },
-            email: {
-                type: Sequelize.STRING,
-                allowNull: false,
-                unique: true
-            }
-        });
-    },
-
-    down: async (queryInterface) => {
-        await queryInterface.dropTable('users');
-    }
-};
-```
-
-**Міграції = версіонування схеми БД!**
-
-## MongoDB: Документо-Орієнтований Підхід
-
-```mermaid
-graph TB
-    subgraph "MongoDB Collection"
-        D1[Document 1<br/>JSON-like]
-        D2[Document 2<br/>Different Structure]
-        D3[Document 3<br/>Nested Objects]
-    end
-
-    subgraph "Переваги"
-        F1[Flexible Schema]
-        F2[Horizontal Scaling]
-        F3[Natural for Apps]
-    end
-
-    D1 --> F1
-    D2 --> F2
-    D3 --> F3
-```
-
-**Документи зберігаються як BSON (Binary JSON)**
-
-## MongoDB: Структура Документа
-
-```javascript
-// Приклад документа в MongoDB
-{
-  "_id": ObjectId("..."),
-  "username": "john_doe",
-  "profile": {
-    "firstName": "John",
-    "lastName": "Doe",
-    "interests": ["programming", "music"]
-  },
-  "posts": [
-    {
-      "title": "My First Post",
-      "content": "Hello, world!",
-      "tags": ["introduction"]
-    }
-  ],
-  "settings": {
-    "theme": "dark",
-    "notifications": {
-      "email": true,
-      "push": false
-    }
-  }
+    if (ALLOWED_ORIGINS.has(req.get('Origin'))) return next();
+    throw new ForbiddenError('Не вдалося підтвердити джерело запиту');
 }
 ```
 
-## Mongoose: ODM для MongoDB
+**Працює, лише якщо GET справді нічого не змінює!**
+
+## 💉 XSS: Cross-Site Scripting
+
+### Типи XSS атак
+
+- **Відбитий**: шкідливий код у URL
+- **Збережений**: код у базі даних
+- **DOM-based**: клієнтський JS вставляє неперевірені дані
+
+### Захист
+
+- ✅ **Контекстне екранування при виведенні** (React робить це сам)
+- ❌ «Очищення» всіх вхідних даних на вході — псує дані й не захищає
+- ✅ HTML від користувача → **DOMPurify** з білим списком тегів
 
 ```javascript
-const userSchema = new Schema({
-    username: {
-        type: String,
-        required: [true, 'Username is required'],
-        unique: true,
-        minlength: 3,
-        maxlength: 30
-    },
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        match: /^\w+@\w+\.\w+$/
-    },
-    profile: {
-        firstName: String,
-        lastName: String,
-        avatar: String
-    },
-    preferences: {
-        theme: { type: String, enum: ['light', 'dark'], default: 'light' }
-    }
-}, { timestamps: true });
-```
-
-## Mongoose: Віртуальні Поля та Методи
-
-```javascript
-// Віртуальне поле
-userSchema.virtual('profile.fullName').get(function() {
-    return `${this.profile.firstName} ${this.profile.lastName}`;
+DOMPurify.sanitize(dirty, {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br', 'a'],
+    ALLOWED_ATTR: ['href']
 });
-
-// Методи екземпляру
-userSchema.methods.getPublicProfile = function() {
-    return {
-        username: this.username,
-        fullName: this.profile.fullName,
-        avatar: this.profile.avatar
-    };
-};
-
-// Статичні методи
-userSchema.statics.findByEmail = function(email) {
-    return this.findOne({ email: email.toLowerCase() });
-};
 ```
 
-## Mongoose: Middleware (Hooks)
+## 🧱 Content Security Policy
 
 ```javascript
-// Pre middleware - перед збереженням
-userSchema.pre('save', async function(next) {
-    if (this.isNew) {
-        console.log(`Створюється користувач: ${this.email}`);
-
-        // Генерація аватара
-        if (!this.profile.avatar) {
-            this.profile.avatar = generateAvatar(this.profile.firstName);
-        }
-    }
+app.use((req, res, next) => {
+    res.locals.cspNonce = randomBytes(16).toString('base64');
     next();
 });
 
-// Post middleware - після збереження
-userSchema.post('save', function(doc) {
-    console.log(`Користувач збережений: ${doc.email}`);
-    // Відправити welcome email
-    sendWelcomeEmail(doc.email);
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'none'"]
+        }
+    }
+}));
+```
+
+- ❌ `'unsafe-inline'` у `scriptSrc` скасовує захист від XSS
+- ❌ `X-XSS-Protection` — застарів, Helmet ставить `0`
+
+## 💉 Ін'єкції: SQL та NoSQL
+
+```javascript
+// ❌ SQL-ін'єкція
+await sequelize.query(`SELECT * FROM users WHERE email = '${req.query.email}'`);
+
+// ✅ Параметризований запит
+await sequelize.query('SELECT * FROM users WHERE email = :email', {
+    replacements: { email: req.query.email }, type: QueryTypes.SELECT
 });
+
+// ❌ Ін'єкція операторів MongoDB
+// { "email": "a@b.c", "password": { "$ne": null } }
+// ✅ Схема валідації: password — лише рядок
 ```
 
-## SQL vs NoSQL: Коли що використовувати?
+**❌ Блокування запитів зі словом «SELECT» — хибне відчуття безпеки**
+
+## 🚀 Rate Limiting
+
+### Захист від перебору паролів
+
+```javascript
+import { rateLimit } from 'express-rate-limit';
+
+const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,                 // раніше — max
+    standardHeaders: 'draft-7',
+    legacyHeaders: false
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,                   // лише 5 невдалих спроб
+    skipSuccessfulRequests: true
+});
+
+app.use('/api', generalLimiter);
+app.use('/api/v1/auth/login', authLimiter);
+```
+
+- Кілька екземплярів → лічильники в Redis/Valkey
+- `app.set('trust proxy', 1)` — інакше всі клієнти мають одну IP
+
+## 🔑 Політика паролів
+
+### ❌ Застаріло
+- «Обов'язково велика літера, цифра, спецсимвол»
+- Примусова зміна кожні 90 днів
+
+### ✅ Сучасні рекомендації (NIST, OWASP)
+- Довжина важливіша: мінімум 8, краще **12–15**
+- Паролі-фрази й будь-які символи Unicode
+- Перевірка за базою **зламаних паролів** (HIBP, k-анонімність)
+- Зміна — лише за ознак компрометації
+
+## 📊 Журналювання та моніторинг
 
 ```mermaid
-flowchart TD
-    A[Вибір типу БД] --> B{Структура даних}
-
-    B -->|Чітка схема<br/>Складні зв'язки| C[SQL Database]
-    B -->|Гнучка схема<br/>Вкладені дані| D[NoSQL Database]
-
-    C --> E{Вимоги до<br/>консистентності}
-    E -->|Критично важливо| F[PostgreSQL<br/>MySQL]
-    E -->|Eventual consistency OK| G[Подумайте про NoSQL]
-
-    D --> H{Тип NoSQL}
-    H --> I[Document Store<br/>MongoDB]
-    H --> J[Key-Value<br/>Redis]
-    H --> K[Graph DB<br/>Neo4j]
+graph TD
+    A[Запит користувача] --> B{Проміжні обробники безпеки}
+    B --> C[Журналювання подій]
+    B --> D[Лічильники спроб і лімітів]
+    C --> E[Централізоване сховище журналів]
+    D --> F{Поріг перевищено?}
+    F -->|Так| G[🚨 Сповіщення адміністратору]
+    F -->|Ні| H[Продовжити обробку]
+    E --> I[Аналіз і розслідування]
 ```
 
-## Repository Pattern
+### Що журналювати:
+- Спроби входу, зміни паролів і ролей, відмови в доступі, повторне використання refresh-токенів
+
+### ❌ Що НЕ журналювати:
+- Паролі, токени, cookie, номери документів і карток
+
+## 🔐 Шифрування даних
 
 ```javascript
-// Абстракція доступу до даних
-class UserRepository {
-    constructor(model) {
-        this.model = model;
-    }
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
-    async findById(id) {
-        return await this.model.findByPk(id);
-    }
+// ❌ createCipher / createDecipher — ВИЛУЧЕНО з Node.js
+export function encrypt(plaintext, aad = '') {
+    const iv = randomBytes(12);                          // новий IV щоразу!
+    const cipher = createCipheriv('aes-256-gcm', KEY, iv);
+    cipher.setAAD(Buffer.from(aad));
+    const data = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    return [iv, cipher.getAuthTag(), data].map(b => b.toString('base64url')).join('.');
+}
 
-    async findByEmail(email) {
-        return await this.model.findOne({ where: { email } });
-    }
-
-    async create(userData) {
-        return await this.model.create(userData);
-    }
-
-    async searchUsers(searchTerm) {
-        // Складна логіка пошуку
-        return await this.model.findAll({...});
-    }
+export function decrypt(payload, aad = '') {
+    const [iv, tag, data] = payload.split('.').map(p => Buffer.from(p, 'base64url'));
+    const decipher = createDecipheriv('aes-256-gcm', KEY, iv);
+    decipher.setAAD(Buffer.from(aad));
+    decipher.setAuthTag(tag);                            // змінені дані → помилка
+    return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
 }
 ```
 
-**Централізована логіка доступу до даних**
+### **Ключ — окремо від даних · HTTPS у робочому середовищі — обов'язково!**
 
-## Кешування: Багаторівнева Стратегія
-
-```mermaid
-graph TB
-    A[Client Request] --> B[Application Layer]
-    B --> C{Local Cache?}
-    C -->|Hit| D[Return Cached Data]
-    C -->|Miss| E{Redis Cache?}
-    E -->|Hit| F[Update Local Cache<br/>Return Data]
-    E -->|Miss| G[Database Query]
-    G --> H[Update All Caches<br/>Return Data]
-
-```
-
-## Кешування: Реалізація
+## ⚙️ Безпечне робоче середовище
 
 ```javascript
-class CacheService {
-    async get(key) {
-        // 1. Локальний кеш (швидкий)
-        if (this.localCache.has(key)) {
-            return this.localCache.get(key);
-        }
+// Неповна конфігурація → застосунок не стартує
+const env = z.object({
+    JWT_SECRET: z.string().min(32),
+    ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/i),
+    DATABASE_URL: z.url()
+}).parse(process.env);
 
-        // 2. Redis кеш (середній)
-        const cached = await this.redis.get(key);
-        if (cached) {
-            this.localCache.set(key, JSON.parse(cached));
-            return JSON.parse(cached);
-        }
-
-        // 3. Cache miss
-        return null;
-    }
-
-    async set(key, value, ttl = 300) {
-        this.localCache.set(key, value);
-        await this.redis.setex(key, ttl, JSON.stringify(value));
-    }
-}
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(helmet());   // HSTS, nosniff, frame-options, referrer-policy...
 ```
 
-## Моніторинг Продуктивності БД
+- Секрети — не в репозиторії (`.env` у `.gitignore`)
+- Детальні помилки — лише в журнал
 
-```javascript
-class DatabaseMonitor {
-    async collectMetrics() {
-        // PostgreSQL статистика
-        const [results] = await postgres.query(`
-            SELECT
-                schemaname,
-                tablename,
-                n_tup_ins as inserts,
-                n_tup_upd as updates,
-                n_tup_del as deletes
-            FROM pg_stat_user_tables
-        `);
+## 📦 Безпека залежностей (A03)
 
-        // MongoDB статистика
-        const mongoStats = await db.runCommand({serverStatus: 1});
+- 🔒 `package-lock.json` у репозиторії + `npm ci`
+- 🔍 `npm audit`, Dependabot / Renovate
+- 🤔 Кожен новий пакет — ризик: перевіряйте, чи він справді потрібен
+- ⚠️ Скрипти встановлення виконують код під час `npm install`
+- 🟢 Лише LTS-версії Node.js
 
-        return { postgres: results, mongodb: mongoStats };
-    }
-}
-```
+**Атаки через скомпрометовані npm-пакети стали масовими**
 
-**Моніторинг = превентивна оптимізація!**
+## ✅ Чекліст безпеки
 
-## Connection Pooling
+### Аутентифікація
+- ✅ Argon2id (або bcrypt cost ≥ 10)
+- ✅ Короткі токени доступу + refresh з ротацією
+- ✅ MFA / passkeys
+- ✅ Ліміт спроб входу
+
+### Авторизація
+- ✅ Доступ заборонено за замовчуванням
+- ✅ Перевірка власності ресурсу (IDOR)
+- ✅ Найменші привілеї
+
+### Захист від атак
+- ✅ CORS з переліком джерел
+- ✅ SameSite + Sec-Fetch-Site для cookie
+- ✅ Екранування виведення + CSP без `unsafe-inline`
+- ✅ Валідація схемами + параметризовані запити
+
+## 🛠️ Інструменти безпеки
+
+### Автоматизація
+- **Helmet** — безпечні HTTP-заголовки
+- **express-rate-limit** — обмеження запитів
+- **Zod / express-validator** — валідація вхідних даних
+- **argon2 / bcryptjs** — хешування паролів
+
+### Тестування
+- **OWASP ZAP**, **Burp Suite** — сканування й ручне тестування
+- **npm audit**, **Snyk**, **Dependabot** — залежності
+- **Semgrep**, **gitleaks** — статичний аналіз і пошук секретів
+
+### Навчання
+- **OWASP Juice Shop**, **WebGoat**, **DVWA**
+
+## 🚨 Типові помилки
+
+### ❌ Що НЕ робити
+
+- Перевіряти лише вхід, але не власність ресурсу
+- Зберігати паролі відкрито чи швидким хешем (MD5, SHA-*)
+- Короткий або «зашитий» у код секрет JWT
+- Токени в `localStorage` при XSS-уразливості
+- CORS «для всіх» разом із cookie
+- Використовувати `csurf`, `crypto.createCipher`
+- Показувати стек помилок користувачу
+
+### ✅ Що робити ЗАВЖДИ
+
+- Валідувати ВСІ вхідні дані на сервері
+- HTTPS скрізь
+- Оновлювати залежності
+- Журналювати безпекові події
+- Тестувати на вразливості
+
+## 📈 Життєвий цикл безпеки
 
 ```mermaid
 graph LR
-    subgraph "Application Instances"
-        A1[App 1]
-        A2[App 2]
-        A3[App N]
-    end
+    A[Планування] --> B[Розробка]
+    B --> C[Тестування]
+    C --> D[Розгортання]
+    D --> E[Моніторинг]
+    E --> F[Оновлення]
+    F --> A
 
-    subgraph "Connection Pool"
-        P1[Connection 1]
-        P2[Connection 2]
-        P3[Connection 3]
-        P4[Connection 4]
-        P5[Connection 5]
-    end
-
-    subgraph "Database"
-        DB[(PostgreSQL/MongoDB)]
-    end
-
-    A1 --> P1
-    A2 --> P2
-    A3 --> P3
-
-    P1 --> DB
-    P2 --> DB
-    P3 --> DB
-    P4 --> DB
-    P5 --> DB
+    A1[Моделювання загроз] --> A
+    B1[Безпечне кодування] --> B
+    C1[Тестування безпеки] --> C
+    D1[Безпечна конфігурація] --> D
+    E1[Реагування на інциденти] --> E
+    F1[Оновлення залежностей] --> F
 ```
 
-**Ефективне використання з'єднань з БД**
+## 💡 Ключові принципи
 
-## Паттерни Оптимізації
+### Defense in Depth
+**Кілька рівнів захисту краще за один досконалий**
 
-### **Індексування**
-```sql
--- B-Tree для звичайних запитів
-CREATE INDEX idx_users_email ON users(email);
+### Principle of Least Privilege
+**Мінімальні необхідні дозволи**
 
--- GIN для JSONB та повнотекстовий пошук
-CREATE INDEX idx_products_specs ON products USING gin(specifications);
+### Fail Secure
+**Помилка → відмова в доступі, а не доступ**
 
--- Часткові індекси
-CREATE INDEX idx_active_users ON users(email) WHERE is_active = true;
-```
+### Security by Design
+**Безпека з самого початку, не як доповнення**
 
-### **Партиціонування**
-```sql
--- Партиціонування за датою
-CREATE TABLE sales_2024_q1 PARTITION OF sales
-FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
-```
+### Don't Roll Your Own Crypto
+**Лише перевірені алгоритми й бібліотеки**
 
-## Транзакції: Забезпечення Цілісності
+## 📚 Ресурси для поглиблення
 
-```javascript
-// Sequelize транзакції
-async function transferMoney(fromUserId, toUserId, amount) {
-    const transaction = await sequelize.transaction();
+### Документація
+- [OWASP Top 10:2025](https://owasp.org/Top10/2025/)
+- [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/)
+- [MDN Web Security](https://developer.mozilla.org/en-US/docs/Web/Security)
+- [RFC 8725: JWT Best Current Practices](https://www.rfc-editor.org/rfc/rfc8725)
+- [passkeys.dev](https://passkeys.dev/)
 
-    try {
-        // Зняти гроші
-        await Account.decrement('balance', {
-            by: amount,
-            where: { userId: fromUserId },
-            transaction
-        });
+### Практика
+- [OWASP Juice Shop](https://owasp.org/www-project-juice-shop/) — навчальний вразливий застосунок
+- [WebGoat](https://owasp.org/www-project-webgoat/) — навчальні вразливості
+- [DVWA](https://github.com/digininja/DVWA) — тестове середовище
+- [TryHackMe](https://tryhackme.com/) — практичні завдання
 
-        // Додати гроші
-        await Account.increment('balance', {
-            by: amount,
-            where: { userId: toUserId },
-            transaction
-        });
+## 🎉 Висновки
 
-        await transaction.commit();
-    } catch (error) {
-        await transaction.rollback();
-        throw error;
-    }
-}
-```
+### Безпека — не опція, а необхідність
 
-## Полімодальний Підхід (Polyglot Persistence)
-
-```mermaid
-graph TB
-    A[Modern Web Application] --> B[User Data<br/>PostgreSQL]
-    A --> C[Sessions/Cache<br/>Redis]
-    A --> D[Content/Logs<br/>MongoDB]
-    A --> E[Analytics<br/>ClickHouse]
-    A --> F[Search<br/>Elasticsearch]
-```
-
-**Використовуйте правильний інструмент для кожної задачі!**
-
-## Рекомендації щодо Вибору
-
-### **Використовуйте SQL коли:**
-- 🏦 **Фінансові дані** з критичною консистентністю
-- 📊 **Складні звіти** та аналітика
-- 🔗 **Багато зв'язків** між сутностями
-- 👥 **Команда знає SQL**
-
-### **Використовуйте NoSQL коли:**
-- 🚀 **Швидке прототипування**
-- 📈 **Горизонтальне масштабування**
-- 📄 **Неструктуровані дані**
-- ⚡ **High-load системи**
+- **Комплексний підхід**: від паролів до залежностей
+- **Постійне оновлення знань**: за рік змінилися OWASP Top 10, рекомендації щодо паролів, захист від CSRF
+- **Превентивні заходи** дешевші за реагування
+- **Тестування безпеки** на всіх етапах розробки
