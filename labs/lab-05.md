@@ -1,24 +1,24 @@
-# Лабораторна робота 5. Розроблення основного інтерфейсу та функціоналу
+# Лабораторна робота 05 Розроблення основного інтерфейсу та функціоналу
 
 ## 🎯 Мета роботи
 
-Здобути практичні навички створення повнофункціонального користувацького інтерфейсу з системою аутентифікації, управлінням станом, валідацією форм та реалізацією CRUD операцій для взаємодії з backend API.
+Здобути практичні навички створення повнофункціонального користувацького інтерфейсу із системою аутентифікації, керуванням станом, валідацією форм та реалізацією CRUD-операцій для взаємодії з API серверної частини.
 
 ## ✅ Завдання
 
 ### Загальний контекст
 
-Ця лабораторна робота продовжує розробку frontend частини проєкту, розпочату в лабораторній роботі 4. Здобувачі освіти інтегрують клієнтську частину з backend API, створюють повноцінні інтерфейси для роботи з даними та реалізують систему аутентифікації користувачів.
+Ця лабораторна робота продовжує розробку клієнтської частини проєкту, розпочату в лабораторній роботі 4. Здобувачі освіти інтегрують клієнтську частину з API серверної частини (лабораторні роботи 2–3), створюють повноцінні інтерфейси для роботи з даними та реалізують систему аутентифікації користувачів.
 
 ### Технічні завдання
 
-**Рівень 1. Система аутентифікації та базовий dashboard**
+**Рівень 1. Система аутентифікації та базова панель керування (Dashboard)**
 
 1. Створити сторінки Login та Register з відповідними формами.
 2. Реалізувати логіку аутентифікації через Context API або Zustand.
-3. Створити Protected Routes для захищених сторінок.
-4. Розробити головний Dashboard з навігаційним меню.
-5. Реалізувати функціональність logout.
+3. Створити захищені маршрути (Protected Routes) для сторінок, що потребують входу.
+4. Розробити головну панель керування (Dashboard) з навігаційним меню.
+5. Реалізувати вихід із системи (logout).
 6. Додати індикатори стану завантаження під час запитів.
 7. Створити базовий компонент для відображення помилок.
 
@@ -29,23 +29,23 @@
 10. Додати сторінки для редагування існуючих записів.
 11. Реалізувати підтвердження та функціональність видалення записів.
 12. Впровадити валідацію форм через React Hook Form та Zod схеми.
-13. Створити переусні компоненти для відображення даних: Table, List, Grid.
+13. Створити повторно використовувані компоненти для відображення даних: Table, List, Grid.
 14. Додати пагінацію для списків з великою кількістю записів.
 
 **Рівень 3. Розширений UI/UX та стан**
 
-15. Реалізувати глобальне управління станом для всього застосунку.
-16. Створити систему сповіщень для success/error повідомлень через toast.
+15. Реалізувати глобальне керування станом застосунку: Zustand для клієнтського стану (сесія користувача), TanStack Query для даних, отриманих із сервера.
+16. Створити систему сповіщень про успіх і помилки (toast).
 17. Додати функціональність пошуку та фільтрації у списках.
 18. Реалізувати сортування даних за різними критеріями.
 19. Створити детальні сторінки для перегляду окремих записів.
-20. Додати breadcrumbs навігацію для покращення UX.
-21. Реалізувати skeleton loaders для покращення сприйняття завантаження.
-22. Створити responsive sidebar з можливістю згортання на мобільних пристроях.
+20. Додати навігацію «хлібні крихти» (breadcrumbs) для зручності користувача.
+21. Реалізувати скелетні індикатори завантаження (skeleton loaders).
+22. Створити адаптивну бічну панель (sidebar) із можливістю згортання на мобільних пристроях.
 
 ### Результат виконання
 
-Після завершення лабораторної роботи здобувач освіти матиме повністю функціональний інтерфейс з системою аутентифікації, CRUD операціями для всіх основних сутностей проєкту, валідацією форм та зручним користувацьким досвідом.
+Після завершення лабораторної роботи здобувач освіти матиме повністю функціональний інтерфейс із системою аутентифікації, CRUD-операціями для всіх основних сутностей проєкту, валідацією форм та зручним користувацьким досвідом.
 
 ## 👥 Форма виконання роботи
 
@@ -55,36 +55,36 @@
 
 **Середній рівень (оцінка "задовільно")**
 
-- Реалізовано базову систему аутентифікації з login та register.
-- Створено прості CRUD сторінки для 1-2 сутностей.
+- Реалізовано базову систему аутентифікації зі сторінками входу та реєстрації.
+- Створено прості CRUD-сторінки для 1–2 сутностей.
 - Форми працюють без валідації або з базовою валідацією.
-- Відсутнє глобальне управління станом.
+- Відсутнє глобальне керування станом.
 - Інтерфейс має базову функціональність без додаткових покращень UX.
 - Немає обробки помилок або вона мінімальна.
 - Код має недоліки у структурі та організації.
 
 **Достатній рівень (оцінка "добре")**
 
-- Повністю реалізована система аутентифікації з Protected Routes.
-- Створено CRUD інтерфейси для основних сутностей проєкту.
+- Повністю реалізована система аутентифікації із захищеними маршрутами (Protected Routes).
+- Створено CRUD-інтерфейси для основних сутностей проєкту.
 - Впроваджена валідація форм через React Hook Form.
-- Використовується Context API для управління станом.
+- Використовується Context API (або Zustand) для керування станом.
 - Додані базові індикатори завантаження та помилок.
 - Реалізована пагінація для списків.
-- Інтерфейс є responsive та зручним для користувача.
+- Інтерфейс є адаптивним та зручним для користувача.
 - Код організовано у логічні модулі.
 
 **Високий рівень (оцінка "відмінно")**
 
 - Повністю виконано всі завдання трьох рівнів.
-- Реалізована розширена система управління станом з Zustand або аналогічним рішенням.
+- Реалізована розширена система керування станом із Zustand або аналогічним рішенням.
 - Впроваджена складна валідація з Zod схемами.
-- Створена система сповіщень та toast повідомлень.
+- Створена система сповіщень (toast).
 - Додані пошук, фільтрація та сортування у списках.
-- Реалізовані skeleton loaders та інші покращення UX.
+- Реалізовані скелетні індикатори завантаження та інші покращення UX.
 - Код відповідає принципам чистого коду та має модульну структуру.
 - Створена детальна документація компонентів.
-- Продемонстровано глибоке розуміння React patterns та state management.
+- Продемонстровано глибоке розуміння шаблонів проєктування React та керування станом.
 
 ## ⏰ Політика щодо дедлайнів
 
@@ -92,272 +92,398 @@
 
 ## 📚 Теоретичні відомості
 
-### Аутентифікація у React застосунках
+### Аутентифікація в React-застосунках
 
-**Аутентифікація** — це процес перевірки ідентичності користувача у вебзастосунку. У React застосунках аутентифікація зазвичай реалізується через токени JWT, які зберігаються на клієнті після успішного входу та відправляються з кожним запитом до захищених endpoint-ів.
+**Аутентифікація** — це процес перевірки особи користувача у вебзастосунку (на відміну від **авторизації**, яка визначає, що саме йому дозволено). У React-застосунках вона зазвичай ґрунтується на токенах JWT: після успішного входу сервер повертає токен доступу, клієнт зберігає його й додає до кожного запиту в заголовок `Authorization: Bearer <токен>`.
 
-Типовий потік аутентифікації включає відправлення облікових даних на сервер, отримання JWT токена у відповіді, збереження токена у localStorage або sessionStorage, додавання токена до заголовків HTTP запитів та перенаправлення користувача до захищених сторінок. Важливо реалізувати автоматичний logout при отриманні 401 помилки та очищення токена при виході користувача.
+Типовий потік: клієнт надсилає облікові дані на сервер, отримує у відповіді токени (сервер із лабораторної роботи 2 повертає `{ user, tokens: { accessToken, refreshToken } }`), зберігає токен доступу, додає його до запитів та перенаправляє користувача на захищену сторінку. Після отримання відповіді 401 сесію слід завершити й очистити збережений токен.
+
+Де зберігати токен? Найпростіший варіант — `localStorage`: він переживає перезавантаження сторінки, але доступний будь-якому JavaScript на сторінці, тому XSS-вразливість дозволить його викрасти. Безпечніша схема, яка використовується в промислових системах, — тримати токен оновлення в `httpOnly`-кукі (недоступній для JavaScript), а короткоживучий токен доступу лише в пам'яті застосунку. У навчальній роботі ми свідомо обираємо простіший варіант і зберігаємо токен доступу в `localStorage` через Zustand, але ви маєте розуміти його обмеження й уміти пояснити, чому токен доступу має жити недовго (у лабораторній роботі 2 — 15 хвилин).
 
 ### React Hook Form
 
-**React Hook Form** — це бібліотека для роботи з формами у React, яка використовує React hooks та нативні HTML форми для досягнення високої продуктивності. На відміну від традиційних підходів з контрольованими компонентами, React Hook Form мінімізує кількість ре-рендерів, використовуючи неконтрольовані компоненти та refs.
+**React Hook Form** — це бібліотека для роботи з формами, яка реєструє поля через `ref` і читає їхні значення безпосередньо з DOM. На відміну від «контрольованих» форм, де кожне натискання клавіші змінює стан React і перемальовує компонент, React Hook Form майже не спричиняє повторних відтворень (ре-рендерів), тому добре працює навіть зі складними формами.
 
-Основні переваги React Hook Form включають відмінну продуктивність завдяки мінімальним ре-рендерам, просту інтеграцію з бібліотеками валідації як Zod або Yup, підтримку вкладених об'єктів та масивів, вбудовану обробку помилок та зручний API для роботи з полями форм. Бібліотека також надає hooks для спостереження за значеннями полів, ручного встановлення значень та тригерингу валідації.
+Основні можливості: реєстрація полів функцією `register`, обробка надсилання через `handleSubmit`, стан форми (`errors`, `isSubmitting`, `isDirty`), ручне встановлення помилок (`setError`, зокрема для помилок, які повернув сервер), спостереження за значеннями (`watch`), вкладені об'єкти та масиви полів. Бібліотека інтегрується з Zod, Yup та іншими засобами валідації через пакет `@hookform/resolvers`. Оскільки `register` повертає `ref`, ваш власний компонент `Input` має передавати його на нативний `<input>`: у React 19 достатньо звичайного пропа `ref` (обгортка `forwardRef` більше не потрібна) — саме так реалізовано `Input` у лабораторній роботі 4.
 
-### Zod валідація схем
+### Zod: схеми та валідація
 
-**Zod** — це TypeScript-first бібліотека для валідації схем та парсингу даних. Zod дозволяє декларативно описати структуру та правила валідації даних, автоматично виводить TypeScript типи з схем та забезпечує детальні повідомлення про помилки.
+**Zod** — це TypeScript-first бібліотека для опису схем даних і їх перевірки. Одна схема водночас є правилами валідації й джерелом типів (`z.infer<typeof schema>`), тож типи форми та правила не розходяться.
 
-Основні можливості Zod включають визначення типів даних, обов'язкових та опціональних полів, мінімальної та максимальної довжини для рядків, діапазонів для чисел, регулярних виразів для складної валідації, кастомних валідаторів та трансформації даних. Інтеграція Zod з React Hook Form через resolver надає потужну систему валідації з автоматичним виведенням типів.
+У лабораторній роботі використовується Zod 4. Порівняно з третьою версією змінився синтаксис: для формату email застосовують `z.email()` замість `z.string().email()`, а текст помилки задають параметром `error` (`{ error: 'Повідомлення' }`) замість `message`. Для форм важливо пам'ятати, що поле `<input>` завжди дає рядок: порожнє необов'язкове числове поле — це `''`, а не `undefined`, тому перед перевіркою числа порожній рядок перетворюють на `undefined` (`z.preprocess`). Через такі перетворення в схеми є два типи — **вхідний** (`z.input`, що вводить користувач) і **вихідний** (`z.output`, що отримує обробник після валідації); React Hook Form 7 дозволяє вказати обидва: `useForm<Input, Context, Output>`.
 
-### Управління станом у React
+### Керування станом у React: клієнтський стан і дані сервера
 
-**Управління станом** — це ключовий аспект розробки React застосунків, особливо коли стан потрібно розділяти між багатьма компонентами. Існує кілька підходів до управління станом, кожен з яких підходить для різних сценаріїв.
+У застосунку зазвичай співіснують два різні види стану, і змішувати їх в одному сховищі — типова помилка.
 
-**Context API** — це вбудоване React рішення для передачі даних через дерево компонентів без prop drilling. Context особливо корисний для глобальних даних як тема, мова інтерфейсу або дані аутентифікованого користувача. Проте Context може призвести до зайвих ре-рендерів, якщо використовується неправильно.
+**Клієнтський стан** належить лише застосунку: чи відкрите меню, яка тема, хто ввійшов у систему. Для нього підходять `useState`, Context API або **Zustand**. **Context API** — вбудований у React механізм передавання даних деревом компонентів без «прокидання пропсів» (prop drilling), але зміна значення контексту перемальовує всіх його споживачів. **Zustand** — легка бібліотека, що не потребує провайдерів: створюється сховище (store), а компоненти підписуються на потрібну частину стану через селектори й перемальовуються лише тоді, коли ця частина змінилася. Middleware `persist` автоматично зберігає стан у `localStorage`.
 
-**Zustand** — це легка бібліотека для управління станом, яка використовує hooks та не потребує провайдерів. Zustand надає простий API для створення stores, підписки на зміни стану та оптимізацію ре-рендерів через селектори. Zustand особливо зручний для середніх за розміром застосунків, де Redux буде надмірним, а Context API недостатнім.
+**Дані сервера** (списки користувачів, товарів, замовлень) — це кеш чужих даних, які можуть змінитися без відома застосунку. Для них ручне зберігання у Zustand (`loading`, `error`, `fetchUsers`, `deleteUser`) вимагає самостійно реалізовувати кешування, повторні запити, скасування застарілих відповідей і синхронізацію після змін. Ці завдання вирішує **TanStack Query** (раніше React Query): `useQuery` виконує запит і кешує результат за **ключем запиту** (`['users', { page, search }]`), а `useMutation` виконує зміну на сервері, після якої ми позначаємо відповідні ключі застарілими через `invalidateQueries`, і бібліотека сама перезавантажує актуальні дані. Тому в цій роботі Zustand відповідає лише за сесію користувача, а всі списки й записи з сервера отримуються через TanStack Query.
 
-### Protected Routes
+### Захищені маршрути (Protected Routes)
 
-**Protected Routes** — це паттерн у React Router для захисту маршрутів, які потребують аутентифікації. Цей підхід передбачає перевірку статусу аутентифікації користувача перед відображенням компонента та перенаправлення неаутентифікованих користувачів на сторінку входу.
+**Захищений маршрут** — це шаблон, за яким компонент-обгортка перевіряє, чи користувач аутентифікований, і або показує сторінку, або перенаправляє на сторінку входу (компонент `Navigate`). Щоб після входу повернути користувача туди, куди він ішов, поточне розташування передають у `state` перенаправлення й зчитують на сторінці входу через `useLocation`.
 
-Реалізація Protected Routes зазвичай включає створення компонента-обгортки, який перевіряє наявність токена або стан аутентифікації з Context, використання Navigate компонента з React Router для перенаправлення та збереження intended URL для редиректу після успішного входу. Цей паттерн забезпечує безпеку на рівні клієнта, хоча серверна валідація токенів залишається критично важливою.
+Захист на клієнті — це лише зручність інтерфейсу: користувач може змінити код у браузері. Справжню безпеку забезпечує серверна частина, яка перевіряє токен у кожному запиті (`authMiddleware` із лабораторної роботи 2) і повертає 401 або 403.
 
-### CRUD операції у React
+### CRUD-операції в React
 
-**CRUD (Create, Read, Update, Delete)** операції формують основу більшості вебзастосунків для роботи з даними. У React застосунках CRUD операції реалізуються через HTTP запити до backend API з відповідним оновленням локального стану.
+**CRUD (Create, Read, Update, Delete)** — базові операції над даними. Типовий цикл в інтерфейсі: виклик API (Axios), показ стану завантаження (індикатор або скелет), відображення результату або помилки, сповіщення про успіх і синхронізація відображуваних даних із сервером після зміни.
 
-Типовий патерн включає виклик API методу через Axios або fetch, відображення індикатора завантаження під час запиту, оновлення локального стану після успішної операції, відображення повідомлення про успіх або помилку та обробку edge cases як мережеві помилки або валідаційні помилки від сервера. Важливо також впроваджувати optimistic updates для покращення UX, особливо для операцій видалення та оновлення.
+Синхронізувати дані можна по-різному. Найнадійніший спосіб — після успішної мутації перезавантажити дані з сервера (`invalidateQueries`): сервер залишається єдиним джерелом істини. Швидший для користувача, але складніший підхід — **оптимістичне оновлення**: інтерфейс змінюється одразу, ще до відповіді сервера, а в разі помилки зміни відкочуються. Його доцільно застосовувати для дій, які майже завжди успішні (позначка «вподобано», перемикання статусу), і не варто — для критичних операцій (оплата, видалення без можливості скасування).
 
 ## 🔗 Додаткові ресурси
 
 - [React Hook Form документація](https://react-hook-form.com/)
 - [Zod документація](https://zod.dev/)
-- [Zustand документація](https://github.com/pmndrs/zustand)
-- [React Router Authentication](https://reactrouter.com/en/main/start/tutorial#adding-a-no-match-route)
-- [JWT токени пояснення](https://jwt.io/introduction)
-- [React Context API](https://react.dev/reference/react/useContext)
+- [Zod 4: що змінилося](https://zod.dev/v4/changelog)
+- [Zustand документація](https://zustand.docs.pmnd.rs/)
+- [TanStack Query документація](https://tanstack.com/query/latest)
+- [React Router: навігація та `Navigate`](https://reactrouter.com/)
+- [JWT: вступ](https://jwt.io/introduction)
+- [React: Context API](https://react.dev/reference/react/useContext)
+- [OWASP: зберігання токенів та XSS](https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#local-storage)
 
 ## ▶️ Хід роботи
 
-### Крок 1. Налаштування управління станом
+### Крок 1. Налаштування керування станом
 
-Встановити Zustand для управління глобальним станом.
+Встановити Zustand для клієнтського стану.
 
 ```bash
 npm install zustand
 ```
 
-Створити store для аутентифікації у файлі `src/stores/authStore.ts`.
+Створити сховище аутентифікації у файлі `src/stores/authStore.ts`. Це **єдине** місце, де живе сесія користувача: middleware `persist` сам зберігає її в `localStorage` (ключ `auth-storage`) і відновлює після перезавантаження сторінки, тож дублювати токен у `localStorage` вручну не потрібно.
 
 ```typescript
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
+import type { User } from '@/types/api.types';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  login: (user: User, token: string) => void;
+  accessToken: string | null;
+  login: (user: User, accessToken: string) => void;
   logout: () => void;
 }
 
+// Єдине джерело правди про сесію: persist сам зберігає стан у localStorage
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
-      token: null,
-      isAuthenticated: false,
-      login: (user, token) => {
-        localStorage.setItem('token', token);
-        set({ user, token, isAuthenticated: true });
-      },
-      logout: () => {
-        localStorage.removeItem('token');
-        set({ user: null, token: null, isAuthenticated: false });
-      },
+      accessToken: null,
+      login: (user, accessToken) => set({ user, accessToken }),
+      logout: () => set({ user: null, accessToken: null }),
     }),
-    {
-      name: 'auth-storage',
-    }
+    { name: 'auth-storage' }
   )
 );
 ```
 
+Оновити `src/services/api.ts` з лабораторної роботи 4: interceptor тепер бере токен зі сховища, а при відповіді 401 завершує сесію. Перенаправлення на `/login` виконає `ProtectedRoute` (крок 3), тому `window.location.href` більше не потрібен, і застосунок не перезавантажується.
+
+```typescript
+import axios from 'axios';
+import { useAuthStore } from '@/stores/authStore';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Interceptor запиту: додає токен доступу зі сховища Zustand
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().accessToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Interceptor відповіді: при 401 завершує сесію.
+// ProtectedRoute побачить порожній токен і сам перенаправить на /login.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout();
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+Додати тип відповіді аутентифікації до `src/types/api.types.ts` (форма відповіді збігається з сервером із лабораторної роботи 2).
+
+```typescript
+export interface AuthResponse {
+  message: string;
+  user: User;
+  tokens: { accessToken: string; refreshToken: string };
+}
+```
+
 ### Крок 2. Створення форм аутентифікації
 
-Встановити необхідні бібліотеки для роботи з формами.
+Встановити бібліотеки для роботи з формами. Для Zod потрібна версія 4.
 
 ```bash
 npm install react-hook-form @hookform/resolvers zod
 ```
 
-Створити Zod схему для валідації у файлі `src/schemas/auth.schema.ts`.
+Створити схеми валідації у файлі `src/schemas/auth.schema.ts`. Мінімальна довжина пароля (8 символів) збігається з перевіркою на сервері.
 
 ```typescript
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z.string().email('Невірний формат email'),
-  password: z.string().min(6, 'Пароль має містити мінімум 6 символів'),
+  email: z.email({ error: 'Невірний формат email' }),
+  password: z.string().min(8, { error: 'Пароль має містити мінімум 8 символів' }),
 });
 
-export const registerSchema = z.object({
-  name: z.string().min(2, "Ім'я має містити мінімум 2 символи"),
-  email: z.string().email('Невірний формат email'),
-  password: z.string().min(6, 'Пароль має містити мінімум 6 символів'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Паролі не співпадають',
-  path: ['confirmPassword'],
-});
+export const registerSchema = z
+  .object({
+    name: z.string().min(2, { error: "Ім'я має містити мінімум 2 символи" }),
+    email: z.email({ error: 'Невірний формат email' }),
+    password: z.string().min(8, { error: 'Пароль має містити мінімум 8 символів' }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    error: 'Паролі не збігаються',
+    path: ['confirmPassword'],
+  });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 ```
 
-Створити компонент LoginPage у файлі `src/pages/LoginPage.tsx`.
+Щоб не дублювати розмітку «підпис + поле + помилка» у кожній формі, створити компонент `src/components/common/FormField.tsx`.
 
 ```typescript
-import React from 'react';
+import type { ReactNode } from 'react';
+
+interface FormFieldProps {
+  label: string;
+  error?: string;
+  children: ReactNode;
+}
+
+// Підпис + поле + повідомлення про помилку: прибирає дублювання розмітки в усіх формах
+export default function FormField({ label, error, children }: FormFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium">{label}</span>
+      {children}
+      {error && (
+        <span role="alert" className="mt-1 block text-sm text-red-500">
+          {error}
+        </span>
+      )}
+    </label>
+  );
+}
+```
+
+Створити сторінку входу `src/pages/LoginPage.tsx`. Зверніть увагу: сервер повертає токен у `res.tokens.accessToken`, а помилки сервера показуємо через `setError('root', ...)`.
+
+```typescript
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
-import { loginSchema, LoginFormData } from '../schemas/auth.schema';
-import { useAuthStore } from '../stores/authStore';
-import api from '../services/api';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { isAxiosError } from 'axios';
+import { loginSchema, type LoginFormData } from '@/schemas/auth.schema';
+import { useAuthStore } from '@/stores/authStore';
+import api from '@/services/api';
+import type { AuthResponse } from '@/types/api.types';
+import Button from '@/components/common/Button';
+import Input from '@/components/common/Input';
+import FormField from '@/components/common/FormField';
 
-const LoginPage: React.FC = () => {
+export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
+  // Куди повернути користувача після входу (його зберіг ProtectedRoute)
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/dashboard';
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
     setError,
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      const response = await api.post('/auth/login', data);
-      login(response.data.user, response.data.token);
-      navigate('/dashboard');
-    } catch (error: any) {
-      setError('root', {
-        message: error.response?.data?.message || 'Помилка входу',
-      });
+      const { data: res } = await api.post<AuthResponse>('/auth/login', data);
+      login(res.user, res.tokens.accessToken);
+      navigate(from, { replace: true });
+    } catch (error) {
+      const message = isAxiosError(error) ? error.response?.data?.error : undefined;
+      setError('root', { message: message ?? 'Помилка входу' });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-center mb-6">Вхід</h2>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg dark:bg-gray-900">
+        <h2 className="mb-6 text-center text-3xl font-bold">Вхід</h2>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <Input
-              type="email"
-              {...register('email')}
-              placeholder="your@email.com"
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-            )}
-          </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <FormField label="Email" error={errors.email?.message}>
+            <Input type="email" placeholder="your@email.com" {...register('email')} />
+          </FormField>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Пароль</label>
-            <Input
-              type="password"
-              {...register('password')}
-              placeholder="••••••••"
-            />
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-            )}
-          </div>
+          <FormField label="Пароль" error={errors.password?.message}>
+            <Input type="password" placeholder="••••••••" {...register('password')} />
+          </FormField>
 
           {errors.root && (
-            <p className="text-red-500 text-sm">{errors.root.message}</p>
+            <p role="alert" className="text-sm text-red-500">
+              {errors.root.message}
+            </p>
           )}
 
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full"
-            isLoading={isSubmitting}
-          >
+          <Button type="submit" className="w-full" isLoading={isSubmitting}>
             Увійти
           </Button>
         </form>
 
-        <p className="text-center mt-4 text-sm">
-          Немає акаунту?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline">
+        <p className="mt-4 text-center text-sm">
+          Немає акаунта?{' '}
+          <Link to="/register" className="text-primary-600 hover:underline">
             Зареєструватися
           </Link>
         </p>
       </div>
     </div>
   );
-};
-
-export default LoginPage;
+}
 ```
 
-### Крок 3. Створення Protected Routes
-
-Створити компонент для захищених маршрутів у файлі `src/components/ProtectedRoute.tsx`.
+Сторінку реєстрації `src/pages/RegisterPage.tsx` створіть за аналогією. Поле `confirmPassword` призначене лише для перевірки на клієнті, тому на сервер його не надсилають.
 
 ```typescript
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Link, useNavigate } from 'react-router';
+import { isAxiosError } from 'axios';
+import toast from 'react-hot-toast';
+import { registerSchema, type RegisterFormData } from '@/schemas/auth.schema';
+import api from '@/services/api';
+import Button from '@/components/common/Button';
+import Input from '@/components/common/Input';
+import FormField from '@/components/common/FormField';
+
+export default function RegisterPage() {
+  const navigate = useNavigate();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema) });
+
+  const onSubmit = async ({ name, email, password }: RegisterFormData) => {
+    try {
+      // confirmPassword на сервер не надсилаємо
+      await api.post('/auth/register', { name, email, password });
+      toast.success('Обліковий запис створено. Тепер увійдіть.');
+      navigate('/login');
+    } catch (error) {
+      const message = isAxiosError(error) ? error.response?.data?.error : undefined;
+      setError('root', { message: message ?? 'Помилка реєстрації' });
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg dark:bg-gray-900">
+        <h2 className="mb-6 text-center text-3xl font-bold">Реєстрація</h2>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <FormField label="Ім'я" error={errors.name?.message}>
+            <Input {...register('name')} />
+          </FormField>
+          <FormField label="Email" error={errors.email?.message}>
+            <Input type="email" {...register('email')} />
+          </FormField>
+          <FormField label="Пароль" error={errors.password?.message}>
+            <Input type="password" {...register('password')} />
+          </FormField>
+          <FormField label="Підтвердження пароля" error={errors.confirmPassword?.message}>
+            <Input type="password" {...register('confirmPassword')} />
+          </FormField>
+
+          {errors.root && (
+            <p role="alert" className="text-sm text-red-500">
+              {errors.root.message}
+            </p>
+          )}
+
+          <Button type="submit" className="w-full" isLoading={isSubmitting}>
+            Зареєструватися
+          </Button>
+        </form>
+
+        <p className="mt-4 text-center text-sm">
+          Вже є акаунт?{' '}
+          <Link to="/login" className="text-primary-600 hover:underline">
+            Увійти
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+```
+
+### Крок 3. Створення захищених маршрутів
+
+Створити компонент для захищених маршрутів у файлі `src/components/ProtectedRoute.tsx`. Він зберігає поточне розташування в `state.from`, щоб після входу повернути користувача на потрібну сторінку.
+
+```typescript
+import type { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router';
+import { useAuthStore } from '@/stores/authStore';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const isAuthenticated = useAuthStore((state) => state.accessToken !== null);
+  const location = useLocation();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    // state.from дозволяє повернути користувача на потрібну сторінку після входу
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
-};
-
-export default ProtectedRoute;
+}
 ```
 
-Оновити роутинг у файлі `src/App.tsx`.
+Оновити маршрутизацію у файлі `src/App.tsx` (сторінки `UsersListPage` і `UserCreatePage` з'являться в кроках 6–7).
 
 ```typescript
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Layout from './components/layout/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
+import { BrowserRouter, Route, Routes } from 'react-router';
+import Layout from '@/components/layout/Layout';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import HomePage from '@/pages/HomePage';
+import AboutPage from '@/pages/AboutPage';
+import NotFoundPage from '@/pages/NotFoundPage';
+import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
+import DashboardPage from '@/pages/DashboardPage';
+import UsersListPage from '@/pages/UsersListPage';
+import UserCreatePage from '@/pages/UserCreatePage';
 
-const App: React.FC = () => {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -366,6 +492,7 @@ const App: React.FC = () => {
 
         <Route path="/" element={<Layout />}>
           <Route index element={<HomePage />} />
+          <Route path="about" element={<AboutPage />} />
           <Route
             path="dashboard"
             element={
@@ -374,462 +501,486 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="users"
+            element={
+              <ProtectedRoute>
+                <UsersListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="users/create"
+            element={
+              <ProtectedRoute>
+                <UserCreatePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
-};
-
-export default App;
+}
 ```
 
-### Крок 4. Створення Dashboard
+### Крок 4. Створення панелі керування та виходу із системи
 
-Створити головну сторінку Dashboard у файлі `src/pages/DashboardPage.tsx`.
+Створити головну сторінку Dashboard у файлі `src/pages/DashboardPage.tsx`. Картки розділів описано масивом, а не повторено розміткою.
 
 ```typescript
-import React from 'react';
-import { useAuthStore } from '../stores/authStore';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
+import { useAuthStore } from '@/stores/authStore';
 
-const DashboardPage: React.FC = () => {
+const sections = [
+  { to: '/users', title: 'Користувачі', text: 'Керування користувачами системи' },
+  { to: '/products', title: 'Продукти', text: 'Каталог продуктів' },
+  { to: '/orders', title: 'Замовлення', text: 'Перегляд та керування замовленнями' },
+];
+
+export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">
-        Вітаємо, {user?.name}!
-      </h1>
+      <h1 className="mb-6 text-3xl font-bold">Вітаємо, {user?.name}!</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link
-          to="/users"
-          className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-        >
-          <h3 className="text-xl font-semibold mb-2">Користувачі</h3>
-          <p className="text-gray-600">Управління користувачами системи</p>
-        </Link>
-
-        <Link
-          to="/products"
-          className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-        >
-          <h3 className="text-xl font-semibold mb-2">Продукти</h3>
-          <p className="text-gray-600">Каталог продуктів</p>
-        </Link>
-
-        <Link
-          to="/orders"
-          className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-        >
-          <h3 className="text-xl font-semibold mb-2">Замовлення</h3>
-          <p className="text-gray-600">Перегляд та управління замовленнями</p>
-        </Link>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        {sections.map((s) => (
+          <Link
+            key={s.to}
+            to={s.to}
+            className="rounded-lg bg-white p-6 shadow transition-shadow hover:shadow-lg dark:bg-gray-900"
+          >
+            <h3 className="mb-2 text-xl font-semibold">{s.title}</h3>
+            <p className="text-gray-600 dark:text-gray-400">{s.text}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );
-};
-
-export default DashboardPage;
+}
 ```
 
-### Крок 5. Створення CRUD компонентів
+Оновити `src/components/layout/Header.tsx`: для аутентифікованого користувача показати посилання на розділи, ім'я та кнопку виходу; для гостя — посилання «Увійти».
 
-Створити сервіс для роботи з сутністю у файлі `src/services/users.service.ts`.
+```typescript
+import { Link, useNavigate } from 'react-router';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuthStore } from '@/stores/authStore';
+import Button from '@/components/common/Button';
+
+export default function Header() {
+  const { theme, toggleTheme } = useTheme();
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <header className="bg-white shadow-md dark:bg-gray-900">
+      <nav className="container mx-auto flex items-center justify-between px-4 py-4">
+        <Link to="/" className="text-2xl font-bold text-primary-600">
+          MyApp
+        </Link>
+        <div className="flex items-center gap-6">
+          <Link to="/" className="hover:text-primary-600">
+            Головна
+          </Link>
+          <Link to="/about" className="hover:text-primary-600">
+            Про нас
+          </Link>
+          {user ? (
+            <>
+              <Link to="/dashboard" className="hover:text-primary-600">
+                Панель
+              </Link>
+              <Link to="/users" className="hover:text-primary-600">
+                Користувачі
+              </Link>
+              <span className="text-sm text-gray-500">{user.name}</span>
+              <Button size="sm" variant="secondary" onClick={handleLogout}>
+                Вийти
+              </Button>
+            </>
+          ) : (
+            <Link to="/login" className="hover:text-primary-600">
+              Увійти
+            </Link>
+          )}
+          <button type="button" onClick={toggleTheme} aria-label="Перемкнути тему">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
+      </nav>
+    </header>
+  );
+}
+```
+
+### Крок 5. Робота з даними сервера через TanStack Query
+
+Встановити TanStack Query та бібліотеку сповіщень (використовується в кроках 6–8).
+
+```bash
+npm install @tanstack/react-query react-hot-toast
+```
+
+Підключити `QueryClientProvider` (і `Toaster` для сповіщень із кроку 8) у файлі `src/main.tsx`. Параметр `staleTime` визначає, як довго дані вважаються свіжими й не запитуються повторно.
+
+```typescript
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
+import App from './App';
+import './index.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1 }, // 30 с дані вважаються свіжими
+  },
+});
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
+      <App />
+    </QueryClientProvider>
+  </StrictMode>
+);
+```
+
+Створити сервіс для роботи з сутністю у файлі `src/services/users.service.ts`. Він лише виконує HTTP-запити й повертає дані; кешуванням і станом завантаження займеться TanStack Query. Список повертається у форматі з лабораторної роботи 2: `{ data, pagination }`. Адаптуйте адреси та типи до власних сутностей (`products`, `orders` тощо).
 
 ```typescript
 import api from './api';
-import { User } from '../types/api.types';
+import type { PaginatedResponse, User } from '@/types/api.types';
+import type { UserFormData } from '@/schemas/user.schema';
+
+export interface UsersQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
 
 export const usersService = {
-  getAll: async () => {
-    const response = await api.get<User[]>('/users');
-    return response.data;
+  getAll: async (params: UsersQuery = {}) => {
+    const { data } = await api.get<PaginatedResponse<User>>('/users', { params });
+    return data;
   },
 
   getById: async (id: number) => {
-    const response = await api.get<User>(`/users/${id}`);
-    return response.data;
+    const { data } = await api.get<User>(`/users/${id}`);
+    return data;
   },
 
-  create: async (data: Omit<User, 'id'>) => {
-    const response = await api.post<User>('/users', data);
-    return response.data;
+  create: async (payload: UserFormData) => {
+    const { data } = await api.post<User>('/users', payload);
+    return data;
   },
 
-  update: async (id: number, data: Partial<User>) => {
-    const response = await api.put<User>(`/users/${id}`, data);
-    return response.data;
+  update: async (id: number, payload: Partial<UserFormData>) => {
+    const { data } = await api.put<User>(`/users/${id}`, payload);
+    return data;
   },
 
-  delete: async (id: number) => {
+  remove: async (id: number) => {
     await api.delete(`/users/${id}`);
   },
 };
 ```
 
-Створити store для управління списком користувачів у файлі `src/stores/usersStore.ts`.
+### Крок 6. Сторінка зі списком: пагінація, пошук і видалення
+
+Пошук має надсилати запит не після кожного натискання клавіші, а після паузи в наборі. Для цього створити хук `src/hooks/useDebounce.ts`.
 
 ```typescript
-import { create } from 'zustand';
-import { User } from '../types/api.types';
-import { usersService } from '../services/users.service';
+import { useEffect, useState } from 'react';
 
-interface UsersState {
-  users: User[];
-  loading: boolean;
-  error: string | null;
-  fetchUsers: () => Promise<void>;
-  deleteUser: (id: number) => Promise<void>;
-}
-
-export const useUsersStore = create<UsersState>((set) => ({
-  users: [],
-  loading: false,
-  error: null,
-
-  fetchUsers: async () => {
-    set({ loading: true, error: null });
-    try {
-      const users = await usersService.getAll();
-      set({ users, loading: false });
-    } catch (error: any) {
-      set({ error: error.message, loading: false });
-    }
-  },
-
-  deleteUser: async (id: number) => {
-    try {
-      await usersService.delete(id);
-      set((state) => ({
-        users: state.users.filter((user) => user.id !== id),
-      }));
-    } catch (error: any) {
-      set({ error: error.message });
-    }
-  },
-}));
-```
-
-Створити сторінку зі списком користувачів у файлі `src/pages/UsersListPage.tsx`.
-
-```typescript
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useUsersStore } from '../stores/usersStore';
-import Button from '../components/common/Button';
-
-const UsersListPage: React.FC = () => {
-  const { users, loading, error, fetchUsers, deleteUser } = useUsersStore();
+// Повертає значення із затримкою: запит пошуку йде, коли користувач зробив паузу в наборі
+export function useDebounce<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
 
-  if (loading) {
-    return <div className="text-center">Завантаження...</div>;
-  }
+  return debounced;
+}
+```
 
-  if (error) {
-    return <div className="text-red-500">Помилка: {error}</div>;
-  }
+Створити сторінку зі списком користувачів у файлі `src/pages/UsersListPage.tsx`. Розгляньте, як вона працює:
+
+- ключ запиту `['users', { page, search }]` містить усі параметри, тому зміна сторінки або пошукового рядка автоматично запускає новий запит, а вже отримані сторінки беруться з кешу;
+- `placeholderData: keepPreviousData` залишає на екрані попередню сторінку, доки завантажується наступна, тож таблиця не «блимає»;
+- після успішного видалення `invalidateQueries({ queryKey: ['users'] })` позначає застарілими всі закешовані списки користувачів, і TanStack Query перезавантажує ті, що зараз на екрані;
+- станів `loading` та `error` у власному сховищі більше немає: їх дають `isPending` та `isError`.
+
+```typescript
+import { useState } from 'react';
+import { Link } from 'react-router';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { usersService } from '@/services/users.service';
+import { useDebounce } from '@/hooks/useDebounce';
+import Button from '@/components/common/Button';
+import Input from '@/components/common/Input';
+import { TableSkeleton } from '@/components/common/Skeleton';
+
+export default function UsersListPage() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
+  const queryClient = useQueryClient();
+
+  // Ключ запиту містить параметри: зміна page або пошуку автоматично запускає новий запит
+  const { data, isPending, isError, error } = useQuery({
+    queryKey: ['users', { page, search: debouncedSearch }],
+    queryFn: () => usersService.getAll({ page, limit: 10, search: debouncedSearch || undefined }),
+    placeholderData: keepPreviousData, // під час завантаження сторінки лишається попередня
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: usersService.remove,
+    onSuccess: () => {
+      toast.success('Користувача видалено');
+      // Сервер — джерело істини: позначаємо всі списки користувачів застарілими й перезавантажуємо
+      return queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: () => toast.error('Не вдалося видалити користувача'),
+  });
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Користувачі</h1>
         <Link to="/users/create">
-          <Button variant="primary">Додати користувача</Button>
+          <Button>Додати користувача</Button>
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                ID
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Ім'я
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Email
-              </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                Дії
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4">{user.id}</td>
-                <td className="px-6 py-4">{user.name}</td>
-                <td className="px-6 py-4">{user.email}</td>
-                <td className="px-6 py-4 text-right space-x-2">
-                  <Link to={`/users/${user.id}`}>
-                    <Button size="sm" variant="secondary">
-                      Переглянути
-                    </Button>
-                  </Link>
-                  <Link to={`/users/${user.id}/edit`}>
-                    <Button size="sm" variant="secondary">
-                      Редагувати
-                    </Button>
-                  </Link>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => {
-                      if (confirm('Видалити користувача?')) {
-                        deleteUser(user.id);
-                      }
-                    }}
-                  >
-                    Видалити
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Input
+        aria-label="Пошук користувачів"
+        placeholder="Пошук користувачів..."
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1); // новий пошук завжди починається з першої сторінки
+        }}
+        className="mb-4"
+      />
+
+      {isPending && <TableSkeleton />}
+      {isError && (
+        <p role="alert" className="text-red-500">
+          Помилка: {error.message}
+        </p>
+      )}
+
+      {data && (
+        <>
+          <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
+            <table className="min-w-full">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  {['ID', "Ім'я", 'Email', 'Дії'].map((title) => (
+                    <th key={title} className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      {title}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {data.data.map((user) => (
+                  <tr key={user.id}>
+                    <td className="px-6 py-4">{user.id}</td>
+                    <td className="px-6 py-4">{user.name}</td>
+                    <td className="px-6 py-4">{user.email}</td>
+                    <td className="space-x-2 px-6 py-4 text-right">
+                      <Link to={`/users/${user.id}/edit`}>
+                        <Button size="sm" variant="secondary">
+                          Редагувати
+                        </Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={deleteUser.isPending}
+                        onClick={() => {
+                          if (confirm(`Видалити користувача ${user.name}?`)) {
+                            deleteUser.mutate(user.id);
+                          }
+                        }}
+                      >
+                        Видалити
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <Button variant="secondary" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+              Назад
+            </Button>
+            <span>
+              {data.pagination.page} / {data.pagination.totalPages}
+            </span>
+            <Button variant="secondary" disabled={!data.pagination.hasMore} onClick={() => setPage((p) => p + 1)}>
+              Далі
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
-};
-
-export default UsersListPage;
+}
 ```
 
-### Крок 6. Створення форми додавання/редагування
+> **Примітка.** `confirm()` — найпростіший спосіб підтвердити видалення. Для оцінки «відмінно» замініть його власним модальним вікном (див. лабораторну роботу 6).
 
-Створити Zod схему для валідації користувача у файлі `src/schemas/user.schema.ts`.
+### Крок 7. Форма створення запису
+
+Створити схему валідації користувача у файлі `src/schemas/user.schema.ts`. Порожнє необов'язкове поле форми дає `''`, тому його потрібно перетворити на `undefined` до перевірки (без цього порожній вік не пройде валідацію числа).
 
 ```typescript
 import { z } from 'zod';
 
 export const userSchema = z.object({
-  name: z.string().min(2, "Ім'я має містити мінімум 2 символи"),
-  email: z.string().email('Невірний формат email'),
-  age: z.number().min(18, 'Вік має бути не менше 18').optional(),
-  phone: z.string().regex(/^\+380\d{9}$/, 'Невірний формат телефону').optional(),
+  name: z.string().min(2, { error: "Ім'я має містити мінімум 2 символи" }),
+  email: z.email({ error: 'Невірний формат email' }),
+  // Порожнє поле форми — це '', а не undefined: перетворюємо його перед перевіркою числа
+  age: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.coerce.number().int({ error: 'Вік має бути цілим числом' }).min(18, { error: 'Вік має бути не менше 18' }).optional()
+  ),
+  phone: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().regex(/^\+380\d{9}$/, { error: 'Формат телефону: +380XXXXXXXXX' }).optional()
+  ),
 });
 
-export type UserFormData = z.infer<typeof userSchema>;
+// Тип входу форми (рядки з полів) і тип виходу (після перетворень) відрізняються
+export type UserFormInput = z.input<typeof userSchema>;
+export type UserFormData = z.output<typeof userSchema>;
 ```
 
-Створити сторінку створення користувача у файлі `src/pages/UserCreatePage.tsx`.
+Створити сторінку створення у файлі `src/pages/UserCreatePage.tsx`. Запис на сервер виконує `useMutation`; після успіху ми інвалідуємо кеш списку, щоб новий запис одразу з'явився.
 
 ```typescript
-import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
-import { userSchema, UserFormData } from '../schemas/user.schema';
-import { usersService } from '../services/users.service';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
+import { useNavigate } from 'react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
+import toast from 'react-hot-toast';
+import { userSchema, type UserFormData, type UserFormInput } from '@/schemas/user.schema';
+import { usersService } from '@/services/users.service';
+import Button from '@/components/common/Button';
+import Input from '@/components/common/Input';
+import FormField from '@/components/common/FormField';
 
-const UserCreatePage: React.FC = () => {
+export default function UserCreatePage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
+  // Три типи: вхід форми, контекст (не використовується) і вихід після перетворень Zod
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
-    setError,
-  } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
+    formState: { errors },
+  } = useForm<UserFormInput, unknown, UserFormData>({ resolver: zodResolver(userSchema) });
+
+  const createUser = useMutation({
+    mutationFn: usersService.create,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Користувача успішно створено');
+      navigate('/users');
+    },
+    onError: (error) => {
+      const message = isAxiosError(error) ? error.response?.data?.error : undefined;
+      toast.error(message ?? 'Помилка створення');
+    },
   });
 
-  const onSubmit = async (data: UserFormData) => {
-    try {
-      await usersService.create(data);
-      navigate('/users');
-    } catch (error: any) {
-      setError('root', {
-        message: error.response?.data?.message || 'Помилка створення',
-      });
-    }
-  };
-
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Новий користувач</h1>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="mb-6 text-3xl font-bold">Новий користувач</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Ім'я</label>
-          <Input {...register('name')} placeholder="Іван Петренко" />
-          {errors.name && (
-            <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Email</label>
-          <Input type="email" {...register('email')} placeholder="ivan@example.com" />
-          {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Вік (опціонально)</label>
-          <Input
-            type="number"
-            {...register('age', { valueAsNumber: true })}
-            placeholder="25"
-          />
-          {errors.age && (
-            <p className="text-red-500 text-sm mt-1">{errors.age.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Телефон (опціонально)</label>
-          <Input {...register('phone')} placeholder="+380123456789" />
-          {errors.phone && (
-            <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-          )}
-        </div>
-
-        {errors.root && (
-          <p className="text-red-500 text-sm">{errors.root.message}</p>
-        )}
+      <form
+        onSubmit={handleSubmit((data) => createUser.mutate(data))}
+        className="space-y-4 rounded-lg bg-white p-6 shadow dark:bg-gray-900"
+        noValidate
+      >
+        <FormField label="Ім'я" error={errors.name?.message}>
+          <Input placeholder="Іван Петренко" {...register('name')} />
+        </FormField>
+        <FormField label="Email" error={errors.email?.message}>
+          <Input type="email" placeholder="ivan@example.com" {...register('email')} />
+        </FormField>
+        <FormField label="Вік (необов'язково)" error={errors.age?.message}>
+          <Input type="number" placeholder="25" {...register('age')} />
+        </FormField>
+        <FormField label="Телефон (необов'язково)" error={errors.phone?.message}>
+          <Input placeholder="+380123456789" {...register('phone')} />
+        </FormField>
 
         <div className="flex gap-4">
-          <Button type="submit" variant="primary" isLoading={isSubmitting}>
+          <Button type="submit" isLoading={createUser.isPending}>
             Створити
           </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate('/users')}
-          >
+          <Button type="button" variant="secondary" onClick={() => navigate('/users')}>
             Скасувати
           </Button>
         </div>
       </form>
     </div>
   );
-};
-
-export default UserCreatePage;
-```
-
-### Крок 7. Додавання toast сповіщень
-
-Встановити бібліотеку для toast повідомлень.
-
-```bash
-npm install react-hot-toast
-```
-
-Додати ToastProvider у файл `src/App.tsx`.
-
-```typescript
-import { Toaster } from 'react-hot-toast';
-
-const App: React.FC = () => {
-  return (
-    <BrowserRouter>
-      <Toaster position="top-right" />
-      {/* Routes */}
-    </BrowserRouter>
-  );
-};
-```
-
-Використовувати toast у компонентах.
-
-```typescript
-import toast from 'react-hot-toast';
-
-const onSubmit = async (data: UserFormData) => {
-  try {
-    await usersService.create(data);
-    toast.success('Користувача успішно створено');
-    navigate('/users');
-  } catch (error: any) {
-    toast.error(error.response?.data?.message || 'Помилка створення');
-  }
-};
-```
-
-### Крок 8. Додавання пошуку та фільтрації
-
-Розширити store для підтримки пошуку у файлі `src/stores/usersStore.ts`.
-
-```typescript
-interface UsersState {
-  // ... інші поля
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  filteredUsers: () => User[];
 }
-
-export const useUsersStore = create<UsersState>((set, get) => ({
-  // ... інші методи
-  searchQuery: '',
-
-  setSearchQuery: (query: string) => set({ searchQuery: query }),
-
-  filteredUsers: () => {
-    const { users, searchQuery } = get();
-    if (!searchQuery) return users;
-
-    return users.filter((user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  },
-}));
 ```
 
-Додати компонент пошуку у список користувачів.
+Сторінку редагування (`/users/:id/edit`) реалізуйте самостійно за цим самим шаблоном: дані запису завантажте через `useQuery({ queryKey: ['users', id], ... })` і передайте у `defaultValues` (або `reset`) форми, а збереження виконайте через `useMutation` із `usersService.update`.
+
+### Крок 8. Сповіщення (toast)
+
+Бібліотеку `react-hot-toast` уже встановлено й підключено в `main.tsx` (компонент `Toaster`, крок 5). Виклик `toast.success()` та `toast.error()` можна робити з будь-якого місця: обробника, мутації чи навіть interceptor-а Axios. У кроках 6–7 сповіщення вже використано в `onSuccess` та `onError` мутацій. Централізувати повідомлення про помилки можна в одному місці, наприклад:
 
 ```typescript
-const UsersListPage: React.FC = () => {
-  const { searchQuery, setSearchQuery, filteredUsers } = useUsersStore();
-  const users = filteredUsers();
+import { isAxiosError } from 'axios';
 
-  return (
-    <div>
-      <Input
-        placeholder="Пошук користувачів..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="mb-4"
-      />
-      {/* Таблиця користувачів */}
-    </div>
-  );
-};
+export function getErrorMessage(error: unknown, fallback = 'Сталася помилка'): string {
+  return isAxiosError(error) ? (error.response?.data?.error ?? fallback) : fallback;
+}
 ```
 
-### Крок 9. Створення skeleton loaders
+### Крок 9. Скелетні індикатори завантаження
 
-Створити компонент Skeleton у файлі `src/components/common/Skeleton.tsx`.
+Створити компонент у файлі `src/components/common/Skeleton.tsx`. Атрибути `aria-busy` і `aria-label` повідомляють про завантаження користувачам екранних читачів.
 
 ```typescript
-import React from 'react';
-
 interface SkeletonProps {
   className?: string;
 }
 
-const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => {
-  return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className}`} />
-  );
-};
+export default function Skeleton({ className = '' }: SkeletonProps) {
+  return <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`} />;
+}
 
-export const TableSkeleton: React.FC = () => {
+export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-4">
-      {[...Array(5)].map((_, i) => (
+    <div className="space-y-4" aria-busy="true" aria-label="Завантаження">
+      {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex gap-4">
           <Skeleton className="h-12 w-12" />
           <Skeleton className="h-12 flex-1" />
@@ -838,61 +989,57 @@ export const TableSkeleton: React.FC = () => {
       ))}
     </div>
   );
-};
-
-export default Skeleton;
+}
 ```
 
-Використовувати skeleton під час завантаження.
+Використання: у `UsersListPage` скелет показується, поки триває перше завантаження (`isPending`).
 
 ```typescript
-if (loading) {
-  return <TableSkeleton />;
-}
+{isPending && <TableSkeleton />}
 ```
 
 ### Крок 10. Оновлення README.md
 
 Оновити файл `README.md` у корені проєкту, додавши інформацію про нову функціональність:
 
-```markdown
+````markdown
 # Назва проєкту
 
 ## Опис проєкту
 [Оновлений опис з урахуванням нового функціоналу]
 
 ## Функціональність
-- ✅ Система аутентифікації (JWT)
-- ✅ Protected Routes
-- ✅ CRUD операції для всіх сутностей
+- ✅ Аутентифікація (JWT)
+- ✅ Захищені маршрути (Protected Routes)
+- ✅ CRUD-операції для сутностей проєкту
 - ✅ Валідація форм (React Hook Form + Zod)
-- ✅ Управління станом (Zustand)
-- ✅ Toast сповіщення
-- ✅ Пошук та фільтрація
-- ✅ Skeleton loaders
+- ✅ Клієнтський стан (Zustand) і дані сервера (TanStack Query)
+- ✅ Сповіщення (toast)
+- ✅ Пошук, пагінація
+- ✅ Скелетні індикатори завантаження
 
 ## Технології
-- React 18 + TypeScript
+- React 19 + TypeScript
 - Vite
-- Tailwind CSS
-- React Router v6
+- Tailwind CSS 4
+- React Router 8
 - Axios
-- React Hook Form
-- Zod
+- React Hook Form + Zod 4
 - Zustand
+- TanStack Query
 - React Hot Toast
 
-## API Endpoints
-Опис основних endpoint-ів backend API, з якими взаємодіє frontend.
+## API-ендпоїнти
+Опис основних ендпоїнтів серверної частини, з якими взаємодіє застосунок.
 
 ## Встановлення та запуск
 
 ### Вимоги
-- Node.js 18+
-- Backend сервер запущений на localhost:3000
+- Node.js 24 LTS
+- Серверна частина запущена на localhost:3000
 
 ### Інструкції
-\`\`\`bash
+```bash
 # Клонування репозиторію
 git clone [URL репозиторію]
 
@@ -905,44 +1052,45 @@ cp .env.example .env
 
 # Запуск у режимі розробки
 npm run dev
-\`\`\`
+```
 
 ## Структура проєкту
-\`\`\`
+```
 src/
 ├── components/
-│   ├── common/        # Базові UI компоненти
-│   ├── layout/        # Layout компоненти
+│   ├── common/        # Базові UI-компоненти
+│   ├── layout/        # Компоненти розмітки
 │   └── ProtectedRoute.tsx
 ├── pages/             # Сторінки застосунку
-├── services/          # API сервіси
-├── stores/            # Zustand stores
-├── schemas/           # Zod валідаційні схеми
-├── types/             # TypeScript типи
-└── hooks/             # Кастомні hooks
-\`\`\`
+├── services/          # API-сервіси
+├── stores/            # Сховища Zustand
+├── schemas/           # Схеми валідації Zod
+├── types/             # Типи TypeScript
+└── hooks/             # Власні хуки
+```
 
 ## Скріншоти
-[Додати скріншоти: login, dashboard, список користувачів, форма створення]
+[Додати скріншоти: вхід, панель керування, список користувачів, форма створення]
 
 ## Використання
 
-### Аутентифікація
-\`\`\`
+### Тестовий обліковий запис
+```
 Email: demo@example.com
 Password: password123
-\`\`\`
+```
 
 ## Автор
 [Ваше ім'я, група]
-```
+````
 
 ### Крок 11. Здача роботи
 
 Зробити коміт усіх змін до GitHub репозиторію з описовим повідомленням. Переконатися, що:
 - README.md актуалізовано з новою функціональністю;
 - додані скріншоти основних екранів;
-- застосунок працює коректно з backend API.
+- застосунок працює коректно з API серверної частини;
+- команди `npm run lint` і `npm run build` виконуються без помилок.
 
 Здати роботу через Moodle, вставивши посилання на GitHub репозиторій.
 
@@ -950,13 +1098,13 @@ Password: password123
 
 ## ❓ Контрольні запитання
 
-1. Поясніть різницю між контрольованими та неконтрольованими компонентами у React. Який підхід використовує React Hook Form?
-2. Як працює JWT аутентифікація? Де зберігається токен на клієнті та які є альтернативи?
-3. Що таке Zod та які переваги він надає порівняно з іншими бібліотеками валідації?
-4. Поясніть концепцію Protected Routes та як вона реалізується у React Router.
-5. Порівняйте Context API та Zustand для управління станом. Коли краще використовувати кожен з підходів?
-6. Що таке optimistic updates та коли їх доцільно використовувати у CRUD операціях?
-7. Як реалізувати централізовану обробку помилок у React застосунку?
-8. Поясніть паттерн Container/Presentational компонентів та його переваги.
-9. Що таке skeleton loaders та як вони покращують користувацький досвід?
-10. Як забезпечити синхронізацію локального стану з даними на сервері після CRUD операцій?
+1. Поясніть різницю між контрольованими та неконтрольованими компонентами в React. Який підхід використовує React Hook Form і чому це зменшує кількість повторних відтворень?
+2. Як працює аутентифікація за JWT? Де зберігається токен на клієнті, які ризики має `localStorage` і які є альтернативи?
+3. Що таке Zod і які переваги він дає порівняно з ручною валідацією? Чим відрізняються `z.input` та `z.output` і навіщо `z.preprocess` у схемі з необов'язковим числовим полем?
+4. Поясніть концепцію захищених маршрутів (Protected Routes) і як вона реалізується в React Router. Чому клієнтського захисту недостатньо?
+5. Порівняйте Context API та Zustand. Чому дані, отримані із сервера, краще зберігати не в Zustand, а в TanStack Query?
+6. Що таке ключ запиту (`queryKey`) в TanStack Query і як він пов'язаний із кешем? Що робить `invalidateQueries`?
+7. Що таке оптимістичні оновлення і коли їх доцільно застосовувати в CRUD-операціях?
+8. Як реалізувати централізовану обробку помилок у React-застосунку (interceptors Axios, Error Boundary, toast)?
+9. Навіщо потрібен debounce для пошукового поля? Що відбувалося б без нього?
+10. Що таке скелетні індикатори завантаження і як вони покращують сприйняття швидкості інтерфейсу?
