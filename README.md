@@ -11,8 +11,8 @@
 | Лекція 03 Проєктування RESTful API | [Конспект лекції](lectures/lecture-03.md) | [Презентація](presentations/presentation-03.md) |
 | Лекція 04 Бази даних та ORM у веб-додатках | [Конспект лекції](lectures/lecture-04.md) | [Презентація](presentations/presentation-04.md) |
 | Лекція 05 Аутентифікація та безпека backend | [Конспект лекції](lectures/lecture-05.md) | [Презентація](presentations/presentation-05.md) |
-| _Лекція 06 Тестування та деплой backend_ | [Конспект лекції](lectures/lecture-08.md) | [Презентація](presentations/presentation-08.md) |
-| _Лекція 07 React: основи та сучасні підходи_ | [Конспект лекції](lectures/lecture-09.md) | [Презентація](presentations/presentation-09.md) |
+| Лекція 06 Тестування та деплой backend | [Конспект лекції](lectures/lecture-06.md) | [Презентація](presentations/presentation-06.md) |
+| Лекція 07 React: основи та сучасні підходи | [Конспект лекції](lectures/lecture-07.md) | [Презентація](presentations/presentation-07.md) |
 | _Лекція 08 Управління станом у React (Hooks, локальний і глобальний стан)_ | [Конспект лекції](lectures/lecture-10.md) | [Презентація](presentations/presentation-10.md) |
 | _Лекція 09 Роутинг та навігація (React Router)_ | [Конспект лекції](lectures/lecture-11.md) | [Презентація](presentations/presentation-11.md) |
 | _Лекція 10 Форми, валідація та інтеграція з backend_ | [Конспект лекції](lectures/lecture-13.md) | [Презентація](presentations/presentation-13.md) |
