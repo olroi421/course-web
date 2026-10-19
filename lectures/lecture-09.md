@@ -1,1141 +1,1493 @@
-# Лекція 9. React основи та сучасні підходи
+# Лекція 09. Маршрутизація та навігація (React Router)
 
-## Вступ до React
+## Вступ до клієнтської маршрутизації
 
-### Історія та еволюція React
+### Навіщо застосунку маршрути
 
-React народився в 2011 році в стінах Facebook (тепер Meta) як внутрішній інструмент для вирішення проблем із складними інтерфейсами. Джордан Волке, інженер Facebook, створив першу версію React під впливом XHP — HTML-компонентної бібліотеки для PHP. У 2013 році React був представлений публіці на конференції JSConf US і з того часу радикально змінив ландшафт фронтенд розробки.
+У попередній лекції ми розібралися, де зберігати стан застосунку. Але одне питання лишилося відкритим: що саме користувач бачить на екрані в цю мить? Відповідь на нього дає не лише стан у пам'яті, а й адреса в рядку браузера. Адреса дозволяє надіслати колезі посилання на конкретний товар, додати сторінку в закладки, повернутися на попередній екран кнопкою «Назад» і оновити сторінку, не втративши місце, на якому ви зупинилися. Усе це користувачі сприймають як належне, і застосунок, який цього не вміє, здається зламаним.
 
-Ключові етапи еволюції React:
+**Маршрутизація** (routing) — це механізм, який зіставляє адресу (URL) з тим, що відображається на екрані. Вона відповідає на два запитання: який компонент показати за цією адресою та як змінити адресу, коли користувач щось натискає. У цій лекції ми розглянемо, як це робить React Router — найпоширеніша бібліотека маршрутизації для React, — і як вона поєднується зі станом, про який ішлося в лекції 08. Адресу варто розглядати як ще один вид стану застосунку: спільний, публічний і такий, що переживає оновлення сторінки.
 
-- **2013 рік**: публічний реліз React як бібліотеки з відкритим кодом;
-- **2015 рік**: представлення React Native для мобільної розробки;
-- **2016 рік**: React 15 з покращеною продуктивністю та оновленою архітектурою;
-- **2017 рік**: React 16 (React Fiber) з повністю переписаним reconciliation алгоритмом;
-- **2019 рік**: представлення React Hooks, що змінило парадигму розробки компонентів;
-- **2020-2024 роки**: React 17-18 з concurrent features, Suspense, Server Components.
+### Серверна маршрутизація та односторінкові застосунки
 
-### Філософія React: компонентний підхід
+У традиційних вебзастосунках кожен перехід між сторінками означає новий HTTP-запит до сервера. Сервер формує нову HTML-сторінку, браузер завантажує її повністю, скидаючи весь стан JavaScript, і користувач на мить бачить порожній екран або мерехтіння. Такий підхід простий і добре працює для сайтів із переважно статичним вмістом, але для інтерактивних застосунків він надто повільний і фрагментований.
 
-React базується на фундаментальній ідеї розбиття інтерфейсу на незалежні, переносні компоненти. Кожен компонент інкапсулює свою логіку, стан та представлення, що робить код більш модульним, тестованим та підтримуваним.
-
-**Ключові принципи React:**
-
-1. **Декларативність**: описуємо "що" повинно бути відображено, а не "як" це зробити;
-2. **Компонентна архітектура**: UI складається з ієрархії компонентів;
-3. **Однонаправлений потік даних**: дані течуть від батьківських компонентів до дочірніх;
-4. **Virtual DOM**: ефективне оновлення реального DOM через віртуальне представлення;
-5. **Learn Once, Write Anywhere**: концепції React застосовні на різних платформах.
-
-### Virtual DOM та reconciliation
-
-Virtual DOM є серцем ефективності React. Це легке JavaScript представлення реального DOM дерева. Коли стан компонента змінюється, React створює нове віртуальне дерево, порівнює його з попереднім (diffing) та обчислює мінімальний набір змін, необхідних для оновлення реального DOM.
+Односторінкові застосунки (Single Page Applications, SPA) працюють інакше. Сервер віддає одну HTML-сторінку під час першого завантаження, а подальші переходи обробляє JavaScript у браузері: він змінює адресу, не завантажуючи сторінку заново, і замінює потрібну частину інтерфейсу. Дані при цьому надходять окремими запитами до API (лекція 03), а не у складі готової HTML-розмітки.
 
 ```mermaid
-graph TB
-    A[Зміна стану компонента] --> B[Створення нового Virtual DOM]
-    B --> C[Порівняння з попереднім Virtual DOM]
-    C --> D[Обчислення мінімальних змін]
-    D --> E[Batch оновлення реального DOM]
-    E --> F[Оновлений інтерфейс]
+graph LR
+    subgraph "Серверна маршрутизація"
+        A1[Користувач натискає посилання] --> B1[HTTP-запит до сервера]
+        B1 --> C1[Сервер формує HTML]
+        C1 --> D1[Повне перезавантаження сторінки]
+        D1 --> E1[Втрата стану JavaScript]
+    end
+
+    subgraph "Клієнтська маршрутизація"
+        A2[Користувач натискає посилання] --> B2[JavaScript перехоплює клік]
+        B2 --> C2[Оновлення URL через History API]
+        C2 --> D2[Відтворення нового компонента]
+        D2 --> E2[Стан і кеш зберігаються]
+    end
 ```
 
-Процес reconciliation включає три основні фази:
+Клієнтська маршрутизація дає кілька відчутних переваг:
 
-**Render фаза**: React викликає render методи/функції компонентів та будує нове віртуальне дерево. Ця фаза може бути перервана та відновлена пізніше завдяки React Fiber архітектурі.
+**Швидкість**: перехід не потребує завантаження нового документа, браузер лише оновлює змінені частини сторінки.
 
-**Commit фаза**: React застосовує обчислені зміни до реального DOM. Ця фаза завжди виконується синхронно та не може бути перервана.
+**Плавність**: між екранами можливі анімації, а спільні елементи інтерфейсу (шапка, бічна панель) не відтворюються заново.
 
-**Effects фаза**: виконання side effects, таких як useEffect хуки, після того як DOM був оновлений.
+**Збереження стану**: форми, кеш запитів і глобальні сховища переживають навігацію.
 
-## JSX: синтаксис та можливості
+**Відчуття нативного застосунку**: інтерфейс реагує миттєво, а «Назад» і «Вперед» працюють так, як звик користувач.
 
-### Що таке JSX
+Проте за це доводиться платити. Застосунку потрібно самому стежити за історією переходів, показувати сторінку «не знайдено», керувати фокусом і прокручуванням, а також домовитися із сервером, щоб прямий перехід за адресою `/products/42` не закінчувався помилкою 404 (про це ми докладно поговоримо в розділі про розгортання). Крім того, SPA гірше піддається індексації пошуковими системами, ніж сторінки, сформовані на сервері. Для сайтів, де це критично, використовують серверне відтворення, і ми побачимо, що сучасний React Router має для цього окремий режим.
 
-JSX (JavaScript XML) — це синтаксичне розширення JavaScript, яке дозволяє писати HTML-подібний код безпосередньо в JavaScript файлах. Хоча JSX нагадує шаблонну мову, він має повну потужність JavaScript.
+### Основні поняття
 
-```javascript
-// JSX виглядає як HTML
-const element = <h1>Привіт, React!</h1>;
+Клієнтська маршрутизація базується на кількох ідеях, які варто засвоїти до того, як переходити до коду.
 
-// Але насправді це синтаксичний цукор над викликами функцій
-const element = React.createElement('h1', null, 'Привіт, React!');
-```
+**URL як частина стану застосунку.** Адреса відображає, що користувач зараз бачить. Зміна адреси призводить до зміни вмісту, а прямий вхід за адресою відновлює той самий вигляд сторінки.
 
-JSX не є обов'язковим для роботи з React, але його використання значно підвищує читабельність коду та продуктивність розробки. За лаштунками інструменти як Babel транспілюють JSX в звичайні JavaScript виклики.
+**History API.** Це браузерний інтерфейс для керування історією переходів. Метод `pushState` додає в історію новий запис, а `replaceState` замінює поточний, причому обидва змінюють адресу без перезавантаження сторінки. Саме на них побудовано всю роботу React Router, а подія `popstate` повідомляє бібліотеці про натискання «Назад» і «Вперед».
 
-### Синтаксис JSX: правила та обмеження
+**Декларативний опис маршрутів.** Замість імперативного коду «якщо адреса така, показати те» ви описуєте відповідність між шляхами й компонентами, а бібліотека сама вирішує, що відтворювати.
 
-JSX має певні правила, які відрізняють його від звичайного HTML:
+**Вкладені маршрути.** Адреса `/dashboard/users/42` природно складається з вкладених частин, і кожній відповідає власна ділянка інтерфейсу. Вкладені маршрути дозволяють відобразити цю ієрархію у структурі компонентів.
 
-**Єдиний кореневий елемент**: кожен компонент повинен повертати один кореневий елемент. Якщо потрібно повернути кілька елементів, їх можна обгорнути в фрагмент.
+### Історія та сучасний стан React Router
 
-```javascript
-// Правильно: один кореневий елемент
-function UserCard() {
-    return (
-        <div className="card">
-            <h2>Іван Петренко</h2>
-            <p>Розробник</p>
-        </div>
-    );
-}
+React Router створили 2014 року Райан Флоренс і Майкл Джексон. За понад десять років бібліотека пройшла значну еволюцію.
 
-// Правильно: використання Fragment
-function UserInfo() {
-    return (
-        <>
-            <h2>Іван Петренко</h2>
-            <p>Розробник</p>
-        </>
-    );
-}
+- **v1–v3 (2014–2016)**: статична конфігурація маршрутів, здебільшого поза компонентами;
+- **v4 (2017)**: повне переосмислення — маршрути стали звичайними компонентами, які можна розміщувати будь-де в дереві;
+- **v5 (2019)**: додано хуки (`useParams`, `useHistory`) і покращено підтримку TypeScript;
+- **v6 (2021)**: компактніший API, вкладені маршрути з `Outlet`, відносні шляхи, ранжування маршрутів;
+- **v6.4 (2022)**: «маршрутизатори даних» (data routers) — завантажувачі `loader`, дії `action`, обробка помилок на рівні маршруту; ідеї прийшли з фреймворку Remix, створеного тією самою командою;
+- **v7 (листопад 2024)**: Remix і React Router об'єднано в один проєкт. Пакет `react-router-dom` більше не потрібен — усе доступне з єдиного пакета `react-router`, мінімальна версія React — 18, а сама бібліотека розділена на три режими використання.
 
-// Неправильно: два кореневі елементи без обгортки
-function WrongComponent() {
-    return (
-        <h2>Заголовок</h2>
-        <p>Параграф</p>
-    );
-}
-```
+Тобто станом на жовтень 2026 року актуальною є гілка 7.x, і саме її ми вивчатимемо. Версія 6 багато в чому залишається сумісною з нею, тому більшість навчальних матеріалів і наявного коду, які ви зустрінете, написані для v6 і з імпортом із `react-router-dom`. Різниця майже ніколи не стосується логіки, а здебільшого — шляхів імпорту, і нижче ми розберемо, як мігрувати.
 
-**CamelCase для атрибутів**: HTML атрибути в JSX записуються в camelCase нотації, а деякі мають інші назви через конфлікти з JavaScript ключовими словами.
+### Три режими React Router
 
-```javascript
-function StyledButton() {
-    return (
-        <button
-            className="btn-primary"      // замість class
-            onClick={handleClick}        // замість onclick
-            tabIndex={0}                 // замість tabindex
-            aria-label="Кнопка дії"      // aria-атрибути залишаються з дефісом
-        >
-            Натисніть мене
-        </button>
-    );
-}
-```
+Головна новація версії 7 — чітке розмежування трьох способів користуватися бібліотекою. Кожен наступний режим додає можливості до попереднього, ціною дедалі більшого впливу бібліотеки на архітектуру застосунку.
 
-**Закриття всіх тегів**: на відміну від HTML, в JSX всі теги повинні бути явно закриті, включно з самозакриваючими тегами.
+| Режим | Як визначаються маршрути | Що додає | Коли обирати |
+|-------|--------------------------|----------|--------------|
+| **Декларативний** (declarative) | JSX: `<BrowserRouter>`, `<Routes>`, `<Route>` | Зіставлення URL і компонентів, навігація, параметри | Простий SPA, навчальні проєкти, поступова міграція з v5 і v6 |
+| **Режим даних** (data) | Об'єкти в `createBrowserRouter`, поза відтворенням | Завантажувачі `loader`, дії `action`, форми, стани очікування, межі помилок | SPA, де завантаження даних зручно прив'язати до переходів |
+| **Режим фреймворку** (framework) | Файл `routes.ts` і плагін Vite | Серверне відтворення, розбиття коду, типобезпечні маршрути, попереднє формування сторінок | Повноцінні застосунки зі SEO, наступник Remix |
 
-```javascript
-function ImageGallery() {
-    return (
-        <div>
-            <img src="photo.jpg" alt="Фото" />     {/* Обов'язково закривати */}
-            <input type="text" />                   {/* Також потрібне закриття */}
-            <br />                                  {/* Не <br> */}
-        </div>
-    );
-}
-```
+У цій лекції ми починаємо з декларативного режиму, бо він найпростіший і найкраще пояснює основні ідеї. Потім розглянемо режим даних, який є природним кроком уперед, а режим фреймворку лише окреслимо. Усі три режими поділяють спільне ядро, тому знання одного переноситься на інші.
 
-### Вбудований JavaScript в JSX
+## Основи React Router
 
-JSX дозволяє використовувати JavaScript вирази всередині фігурних дужок. Це робить компоненти динамічними та виразними.
+### Встановлення та базове налаштування
 
-```javascript
-function UserProfile({ user }) {
-    const currentYear = new Date().getFullYear();
-    const age = currentYear - user.birthYear;
-    const isAdult = age >= 18;
-
-    return (
-        <div className="profile">
-            <h1>{user.name}</h1>
-            <p>Вік: {age} років</p>
-            <p>Статус: {isAdult ? 'Повнолітній' : 'Неповнолітній'}</p>
-
-            {/* Умовний рендеринг */}
-            {user.isVerified && <span className="badge">Верифіковано</span>}
-
-            {/* Рендеринг списків */}
-            <ul>
-                {user.skills.map((skill, index) => (
-                    <li key={index}>{skill}</li>
-                ))}
-            </ul>
-
-            {/* Обчислення в атрибутах */}
-            <div
-                className={`status ${user.isOnline ? 'online' : 'offline'}`}
-                style={{ backgroundColor: user.favoriteColor }}
-            >
-                {user.isOnline ? 'В мережі' : 'Не в мережі'}
-            </div>
-        </div>
-    );
-}
-```
-
-### Умовний рендеринг в JSX
-
-React надає кілька способів умовного рендерингу елементів:
-
-```javascript
-function ProductCard({ product, user }) {
-    // 1. Тернарний оператор для вибору між двома варіантами
-    const priceDisplay = user.isPremium
-        ? <span className="premium-price">{product.price * 0.9} грн</span>
-        : <span className="regular-price">{product.price} грн</span>;
-
-    // 2. Логічний оператор && для умовного відображення
-    const discountBadge = product.discount > 0 && (
-        <div className="badge">Знижка {product.discount}%</div>
-    );
-
-    // 3. Раннє повернення для різних станів
-    if (!product) {
-        return <div>Товар не знайдено</div>;
-    }
-
-    if (product.outOfStock) {
-        return <div className="out-of-stock">Немає в наявності</div>;
-    }
-
-    // 4. IIFE для складної логіки
-    const statusMessage = (() => {
-        if (product.quantity === 0) return 'Закінчився';
-        if (product.quantity < 5) return 'Мало товару';
-        return 'В наявності';
-    })();
-
-    return (
-        <div className="product-card">
-            <h3>{product.name}</h3>
-            {priceDisplay}
-            {discountBadge}
-            <p>{statusMessage}</p>
-        </div>
-    );
-}
-```
-
-## React компоненти
-
-### Функціональні компоненти
-
-Функціональні компоненти є основним способом створення компонентів у сучасному React. Це звичайні JavaScript функції, які приймають props як аргумент та повертають JSX.
-
-```javascript
-// Найпростіший функціональний компонент
-function Welcome() {
-    return <h1>Вітаємо в React!</h1>;
-}
-
-// Компонент з props
-function Greeting({ name, title }) {
-    return (
-        <div className="greeting">
-            <h2>{title} {name}</h2>
-        </div>
-    );
-}
-
-// Компонент зі складнішою логікою
-function TaskList({ tasks, onTaskComplete }) {
-    const completedCount = tasks.filter(task => task.completed).length;
-    const pendingTasks = tasks.filter(task => !task.completed);
-
-    return (
-        <div className="task-list">
-            <div className="header">
-                <h2>Список завдань</h2>
-                <span>Виконано: {completedCount} з {tasks.length}</span>
-            </div>
-
-            <ul>
-                {pendingTasks.map(task => (
-                    <li key={task.id}>
-                        <span>{task.title}</span>
-                        <button onClick={() => onTaskComplete(task.id)}>
-                            Виконано
-                        </button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-}
-```
-
-### Class компоненти: історичний контекст
-
-До введення React Hooks у 2019 році, класові компоненти були єдиним способом використання стану та lifecycle методів. Хоча сучасні проєкти віддають перевагу функціональним компонентам, розуміння класових компонентів важливе для роботи з legacy кодом.
-
-```javascript
-// Класовий компонент з state та lifecycle методами
-class UserProfile extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            user: null,
-            loading: true,
-            error: null
-        };
-    }
-
-    componentDidMount() {
-        // Викликається після першого рендеру
-        this.fetchUserData();
-    }
-
-    componentDidUpdate(prevProps) {
-        // Викликається після кожного оновлення
-        if (prevProps.userId !== this.props.userId) {
-            this.fetchUserData();
-        }
-    }
-
-    componentWillUnmount() {
-        // Викликається перед видаленням компонента
-        this.cancelPendingRequests();
-    }
-
-    fetchUserData = async () => {
-        try {
-            const response = await fetch(`/api/users/${this.props.userId}`);
-            const user = await response.json();
-            this.setState({ user, loading: false });
-        } catch (error) {
-            this.setState({ error: error.message, loading: false });
-        }
-    };
-
-    render() {
-        const { user, loading, error } = this.state;
-
-        if (loading) return <div>Завантаження...</div>;
-        if (error) return <div>Помилка: {error}</div>;
-
-        return (
-            <div className="profile">
-                <h1>{user.name}</h1>
-                <p>{user.email}</p>
-            </div>
-        );
-    }
-}
-```
-
-### Порівняння функціональних та класових компонентів
-
-Функціональні компоненти з хуками мають численні переваги над класовими:
-
-**Менше boilerplate коду**: функціональні компоненти більш лаконічні та легші для читання. Не потрібно писати constructor, this.state, this.setState.
-
-**Краще повторне використання логіки**: кастомні хуки дозволяють виносити та переносити логіку між компонентами простіше, ніж Higher-Order Components або Render Props.
-
-**Немає проблем з this**: уникнення плутанини з контекстом виконання та необхідності біндити методи.
-
-**Кращі можливості оптимізації**: функціональні компоненти легше для React оптимізувати під час компіляції.
-
-```javascript
-// Той самий функціонал функціональним компонентом
-function UserProfile({ userId }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        let isCancelled = false;
-
-        const fetchUserData = async () => {
-            try {
-                const response = await fetch(`/api/users/${userId}`);
-                const data = await response.json();
-                if (!isCancelled) {
-                    setUser(data);
-                    setLoading(false);
-                }
-            } catch (err) {
-                if (!isCancelled) {
-                    setError(err.message);
-                    setLoading(false);
-                }
-            }
-        };
-
-        fetchUserData();
-
-        return () => {
-            isCancelled = true;
-        };
-    }, [userId]);
-
-    if (loading) return <div>Завантаження...</div>;
-    if (error) return <div>Помилка: {error}</div>;
-
-    return (
-        <div className="profile">
-            <h1>{user.name}</h1>
-            <p>{user.email}</p>
-        </div>
-    );
-}
-```
-
-## Props та композиція компонентів
-
-### Передача даних через props
-
-Props (скорочення від properties) є механізмом передачі даних від батьківського компонента до дочірнього. Props є read-only для дочірнього компонента, що забезпечує однонаправлений потік даних.
-
-```javascript
-// Батьківський компонент передає props
-function App() {
-    const user = {
-        name: 'Олена Шевченко',
-        email: 'olena@example.com',
-        role: 'Розробник'
-    };
-
-    return (
-        <div>
-            <UserCard
-                name={user.name}
-                email={user.email}
-                role={user.role}
-                isVerified={true}
-                skills={['React', 'TypeScript', 'Node.js']}
-                onContactClick={() => console.log('Контакт')}
-            />
-        </div>
-    );
-}
-
-// Дочірній компонент отримує props
-function UserCard({ name, email, role, isVerified, skills, onContactClick }) {
-    return (
-        <div className="user-card">
-            <h2>{name}</h2>
-            <p>{email}</p>
-            <span className="role">{role}</span>
-            {isVerified && <span className="verified">✓ Верифікований</span>}
-
-            <div className="skills">
-                {skills.map((skill, index) => (
-                    <span key={index} className="skill-tag">{skill}</span>
-                ))}
-            </div>
-
-            <button onClick={onContactClick}>Зв'язатися</button>
-        </div>
-    );
-}
-```
-
-### Деструктуризація props
-
-Деструктуризація робить код більш читабельним та виразним, особливо коли компонент має багато props.
-
-```javascript
-// Базова деструктуризація в параметрах
-function ProductCard({ name, price, image, inStock }) {
-    return (
-        <div className="product">
-            <img src={image} alt={name} />
-            <h3>{name}</h3>
-            <p>{price} грн</p>
-            {inStock ? <span>В наявності</span> : <span>Немає</span>}
-        </div>
-    );
-}
-
-// Деструктуризація з значеннями за замовчуванням
-function Button({
-    text = 'Натиснути',
-    variant = 'primary',
-    disabled = false,
-    onClick
-}) {
-    return (
-        <button
-            className={`btn btn-${variant}`}
-            disabled={disabled}
-            onClick={onClick}
-        >
-            {text}
-        </button>
-    );
-}
-
-// Rest оператор для решти props
-function Input({ label, error, ...inputProps }) {
-    return (
-        <div className="input-group">
-            <label>{label}</label>
-            <input {...inputProps} />
-            {error && <span className="error">{error}</span>}
-        </div>
-    );
-}
-
-// Використання
-<Input
-    label="Email"
-    type="email"
-    placeholder="your@email.com"
-    required
-    maxLength={100}
-    error="Невалідний email"
-/>
-```
-
-### Children prop та композиція
-
-Children prop є спеціальним prop, який дозволяє передавати вміст між відкриваючим та закриваючим тегами компонента. Це основа композиційних паттернів у React.
-
-```javascript
-// Базове використання children
-function Card({ children }) {
-    return (
-        <div className="card">
-            <div className="card-content">
-                {children}
-            </div>
-        </div>
-    );
-}
-
-// Використання
-<Card>
-    <h2>Заголовок картки</h2>
-    <p>Це контент всередині картки</p>
-</Card>
-
-// Layout компонент з множинними children
-function PageLayout({ header, sidebar, children, footer }) {
-    return (
-        <div className="page-layout">
-            <header className="header">{header}</header>
-            <div className="main-content">
-                <aside className="sidebar">{sidebar}</aside>
-                <main className="content">{children}</main>
-            </div>
-            <footer className="footer">{footer}</footer>
-        </div>
-    );
-}
-
-// Використання з іменованими slots
-<PageLayout
-    header={<Navigation />}
-    sidebar={<Sidebar />}
-    footer={<Footer />}
->
-    <h1>Основний контент</h1>
-    <p>Тут розміщується основний вміст сторінки</p>
-</PageLayout>
-```
-
-### Композиційні паттерни
-
-Композиція в React дозволяє будувати складні компоненти з простих будівельних блоків.
-
-```javascript
-// Container/Presentational паттерн
-function UserListContainer() {
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        fetchUsers().then(data => {
-            setUsers(data);
-            setLoading(false);
-        });
-    }, []);
-
-    if (loading) return <LoadingSpinner />;
-
-    return <UserList users={users} />;
-}
-
-function UserList({ users }) {
-    return (
-        <div className="user-list">
-            {users.map(user => (
-                <UserListItem key={user.id} user={user} />
-            ))}
-        </div>
-    );
-}
-
-// Compound Components паттерн
-function Tabs({ children, defaultTab }) {
-    const [activeTab, setActiveTab] = useState(defaultTab);
-
-    return (
-        <div className="tabs">
-            {React.Children.map(children, child => {
-                return React.cloneElement(child, {
-                    activeTab,
-                    onTabChange: setActiveTab
-                });
-            })}
-        </div>
-    );
-}
-
-function TabList({ children, activeTab, onTabChange }) {
-    return (
-        <div className="tab-list">
-            {React.Children.map(children, (child, index) => {
-                return React.cloneElement(child, {
-                    isActive: index === activeTab,
-                    onClick: () => onTabChange(index)
-                });
-            })}
-        </div>
-    );
-}
-
-function Tab({ children, isActive, onClick }) {
-    return (
-        <button
-            className={`tab ${isActive ? 'active' : ''}`}
-            onClick={onClick}
-        >
-            {children}
-        </button>
-    );
-}
-
-function TabPanel({ children, index, activeTab }) {
-    if (index !== activeTab) return null;
-    return <div className="tab-panel">{children}</div>;
-}
-
-// Використання
-<Tabs defaultTab={0}>
-    <TabList>
-        <Tab>Профіль</Tab>
-        <Tab>Налаштування</Tab>
-        <Tab>Сповіщення</Tab>
-    </TabList>
-
-    <TabPanel index={0}>
-        <UserProfile />
-    </TabPanel>
-    <TabPanel index={1}>
-        <Settings />
-    </TabPanel>
-    <TabPanel index={2}>
-        <Notifications />
-    </TabPanel>
-</Tabs>
-```
-
-## React Developer Tools
-
-### Встановлення та налаштування
-
-React Developer Tools є розширенням для браузера, яке надає потужні інструменти для відладки React додатків. Розширення доступне для Chrome, Firefox, Edge.
-
-Після встановлення в DevTools з'являються дві нові вкладки:
-
-**Components**: дозволяє інспектувати дерево компонентів, переглядати props, state, hooks та модифікувати їх у реальному часі.
-
-**Profiler**: надає інструменти для вимірювання продуктивності та виявлення повільних компонентів.
-
-### Інспекція компонентів
-
-Вкладка Components показує ієрархію компонентів вашого додатку у вигляді дерева. Кожен компонент можна вибрати для детального перегляду.
-
-```javascript
-// Приклад компонента для інспекції
-function ProductDetails({ productId }) {
-    const [product, setProduct] = useState(null);
-    const [quantity, setQuantity] = useState(1);
-    const [reviews, setReviews] = useState([]);
-
-    useEffect(() => {
-        // React DevTools покаже цей effect та його залежності
-        loadProduct(productId).then(setProduct);
-        loadReviews(productId).then(setReviews);
-    }, [productId]);
-
-    // В DevTools можна побачити:
-    // - Всі props (productId)
-    // - Всі state змінні (product, quantity, reviews)
-    // - Всі hooks та їх значення
-    // - Джерело компонента (файл та рядок коду)
-
-    return (
-        <div className="product-details">
-            {/* контент */}
-        </div>
-    );
-}
-```
-
-При виборі компонента в DevTools відображається:
-
-- **Props**: всі props, передані компоненту, з можливістю модифікації;
-- **Hooks**: стан всіх hooks в порядку виклику;
-- **Rendered by**: який компонент відрендерив поточний;
-- **Source**: посилання на вихідний код компонента.
-
-### Profiler для оптимізації
-
-Profiler допомагає знайти вузькі місця у продуктивності додатку, показуючи час рендерингу кожного компонента.
-
-```javascript
-// Компонент, який може бути проблемним для продуктивності
-function ExpensiveList({ items, filter }) {
-    // Без мемоїзації ця операція виконується при кожному рендері
-    const filteredItems = items.filter(item =>
-        item.name.toLowerCase().includes(filter.toLowerCase())
-    );
-
-    const sortedItems = filteredItems.sort((a, b) =>
-        b.price - a.price
-    );
-
-    return (
-        <ul>
-            {sortedItems.map(item => (
-                <ExpensiveListItem key={item.id} item={item} />
-            ))}
-        </ul>
-    );
-}
-
-// Profiler покаже:
-// - Скільки часу зайняв рендер
-// - Чому компонент перерендерився (props, state, parent)
-// - Скільки разів він рендерився
-```
-
-Для виявлення проблем з продуктивністю:
-
-1. Відкрити вкладку Profiler;
-2. Натиснути кнопку запису;
-3. Виконати дії в додатку;
-4. Зупинити запис та проаналізувати результати.
-
-Profiler показує:
-
-- **Flame graph**: візуалізація часу рендерингу кожного компонента;
-- **Ranked chart**: компоненти, відсортовані за часом рендерингу;
-- **Component chart**: детальна інформація про вибраний компонент;
-- **Interactions**: зв'язок між діями користувача та рендерами.
-
-## Налаштування проєкту з Vite
-
-### Що таке Vite
-
-Vite (французькою "швидкий") — це сучасний інструмент збірки, створений Еваном Ю, автором Vue.js. Vite пропонує надзвичайно швидкий dev server та оптимізовану production збірку завдяки використанню нативних ES modules та ефективного bundling через esbuild та Rollup.
-
-Переваги Vite над Create React App:
-
-- **Миттєвий холодний старт**: dev server запускається за секунди;
-- **Блискавичний Hot Module Replacement (HMR)**: зміни відображаються миттєво;
-- **Оптимізована production збірка**: менші bundle sizes;
-- **Нативна підтримка TypeScript**: без додаткового налаштування;
-- **Плагіни**: гнучка система розширення можливостей.
-
-### Створення React проєкту з Vite
+Для нових проєктів на Vite достатньо одного пакета. Не плутайте його зі старим `react-router-dom`: у версії 7 той пакет залишився лише як перехідна оболонка.
 
 ```bash
-# Створення нового проєкту
-npm create vite@latest my-react-app -- --template react
+# Створення проєкту на React (Vite)
+npm create vite@latest my-app -- --template react
+cd my-app
 
-# Або з TypeScript
-npm create vite@latest my-react-app -- --template react-ts
-
-# Перехід до директорії проєкту
-cd my-react-app
-
-# Встановлення залежностей
-npm install
-
-# Запуск dev server
-npm run dev
+# Встановлення React Router
+npm install react-router
 ```
 
-Структура створеного проєкту:
-
-```
-my-react-app/
-├── node_modules/
-├── public/
-│   └── vite.svg
-├── src/
-│   ├── assets/
-│   │   └── react.svg
-│   ├── App.css
-│   ├── App.jsx
-│   ├── index.css
-│   └── main.jsx
-├── .gitignore
-├── index.html
-├── package.json
-└── vite.config.js
-```
-
-### Конфігурація Vite
-
-Файл vite.config.js дозволяє налаштувати поведінку Vite під потреби проєкту.
+Далі потрібно підключити маршрутизатор до застосунку. Зазвичай це робиться в точці входу, щоб усі компоненти мали доступ до інформації про поточну адресу.
 
 ```javascript
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+// src/main.jsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router';
+import App from './App.jsx';
 
-export default defineConfig({
-    plugins: [react()],
-
-    // Налаштування шляхів
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, './src'),
-            '@components': path.resolve(__dirname, './src/components'),
-            '@utils': path.resolve(__dirname, './src/utils'),
-            '@hooks': path.resolve(__dirname, './src/hooks')
-        }
-    },
-
-    // Налаштування dev server
-    server: {
-        port: 3000,
-        open: true,
-        proxy: {
-            '/api': {
-                target: 'http://localhost:5000',
-                changeOrigin: true,
-                rewrite: path => path.replace(/^\/api/, '')
-            }
-        }
-    },
-
-    // Налаштування збірки
-    build: {
-        outDir: 'dist',
-        sourcemap: true,
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom'],
-                    router: ['react-router-dom']
-                }
-            }
-        }
-    }
-});
+createRoot(document.getElementById('root')).render(
+    <StrictMode>
+        <BrowserRouter>
+            <App />
+        </BrowserRouter>
+    </StrictMode>
+);
 ```
-
-### Робота з середовищами
-
-Vite підтримує змінні середовища через файли .env:
-
-```bash
-# .env
-VITE_API_URL=http://localhost:5000
-VITE_APP_TITLE=My React App
-
-# .env.development
-VITE_API_URL=http://localhost:5000
-VITE_DEBUG=true
-
-# .env.production
-VITE_API_URL=https://api.production.com
-VITE_DEBUG=false
-```
-
-Використання в коді:
 
 ```javascript
-// src/config/api.js
-export const API_URL = import.meta.env.VITE_API_URL;
-export const IS_DEBUG = import.meta.env.VITE_DEBUG === 'true';
-export const APP_TITLE = import.meta.env.VITE_APP_TITLE;
-
 // src/App.jsx
+import { Routes, Route } from 'react-router';
+
 function App() {
-    console.log('API URL:', import.meta.env.VITE_API_URL);
-
     return (
-        <div>
-            <h1>{import.meta.env.VITE_APP_TITLE}</h1>
-        </div>
+        <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+        </Routes>
+    );
+}
+
+function Home() {
+    return <h1>Головна сторінка</h1>;
+}
+
+function About() {
+    return <h1>Про нас</h1>;
+}
+
+function Contact() {
+    return <h1>Контакти</h1>;
+}
+
+export default App;
+```
+
+Три компоненти тут мають чітко розподілені ролі. `BrowserRouter` підписується на зміни історії браузера й надає поточну адресу всьому дереву. `Routes` читає цю адресу та вибирає серед своїх дочірніх `Route` найкращий збіг. `Route` описує одну відповідність: шлях (`path`) та елемент (`element`), який потрібно відтворити.
+
+### Міграція з версії 6
+
+Якщо ви працюєте з наявним проєктом, написаним для v6, перехід на v7 зазвичай відбувається без переписування логіки. Рекомендований порядок такий: спершу оновіть бібліотеку до останньої версії 6.x і ввімкніть «майбутні прапорці» (future flags), щоб побачити застереження в консолі; після цього перейдіть на v7 і замініть імпорти.
+
+```bash
+npm install react-router-dom@6    # останній v6: з'являться застереження про майбутні зміни
+npm install react-router@latest   # перехід на v7
+npm uninstall react-router-dom
+```
+
+```javascript
+// Було
+import { Link, useLocation } from 'react-router-dom';
+
+// Стало
+import { Link, useLocation } from 'react-router';
+
+// Єдиний виняток: у режимі даних RouterProvider імпортується з окремого шляху
+import { RouterProvider } from 'react-router/dom';
+```
+
+На практиці міграція зводиться до масової заміни рядка `from 'react-router-dom'` на `from 'react-router'` у файлах проєкту. Цього досить, якщо ви вже виконали вимоги прапорців.
+
+### BrowserRouter і HashRouter
+
+React Router надає кілька типів маршрутизаторів для різних умов розгортання.
+
+**BrowserRouter** використовує звичайні шляхи та History API, тож адреси виглядають як `https://example.com/about`. Це вибір за замовчуванням для більшості застосунків. Він вимагає від сервера повертати `index.html` для будь-якої адреси застосунку, інакше пряме відкриття `/about` дасть помилку 404.
+
+**HashRouter** зберігає маршрут у частині адреси після знака `#`, наприклад `https://example.com/#/about`. Браузер не надсилає цю частину на сервер, тому налаштовувати сервер не потрібно.
+
+```javascript
+import { HashRouter, Routes, Route } from 'react-router';
+
+function App() {
+    return (
+        <HashRouter>
+            {/* Адреса виглядає як https://example.com/#/about */}
+            <Routes>
+                <Route path="/about" element={<About />} />
+            </Routes>
+        </HashRouter>
     );
 }
 ```
 
-## TypeScript з React
+`HashRouter` доречний на статичних хостингах, де неможливо налаштувати перенаправлення. Його недоліки — менш охайні адреси, неможливість використовувати якорі `#section` у звичному значенні й складніша аналітика. Нарешті, **MemoryRouter** тримає історію в пам'яті, не змінюючи адреси браузера. Він використовується в тестах і середовищах без браузерної адресної стрічки (наприклад, у вбудованих віджетах).
 
-### Переваги TypeScript у React проєктах
+Якщо застосунок розгортається не в корені домену, а в підкаталозі (скажімо, `https://user.github.io/my-app/`), маршрутизатору потрібно повідомити базовий шлях: `<BrowserRouter basename="/my-app">`. Те саме значення задають у налаштуванні `base` у Vite.
 
-TypeScript додає статичну типізацію до JavaScript, що приносить численні переваги для React розробки:
+### Routes і Route
 
-**Раннє виявлення помилок**: більшість помилок виявляються під час розробки, а не в runtime.
+`Routes` вибирає з-поміж маршрутів той, що найкраще відповідає поточній адресі. Кожен `Route` описується шляхом і елементом.
 
-**Кращий IntelliSense**: IDE надає точні підказки для props, state, та API.
+```javascript
+import { Routes, Route } from 'react-router';
 
-**Самодокументування коду**: типи служать документацією для компонентів.
-
-**Безпечний рефакторинг**: TypeScript гарантує, що зміни не порушать існуючий код.
-
-**Краща підтримка великих кодових баз**: типізація робить код більш передбачуваним та легким для розуміння.
-
-### Типізація функціональних компонентів
-
-```typescript
-// Базова типізація props
-interface ButtonProps {
-    text: string;
-    onClick: () => void;
-    variant?: 'primary' | 'secondary' | 'danger';
-    disabled?: boolean;
-}
-
-function Button({ text, onClick, variant = 'primary', disabled = false }: ButtonProps) {
+function App() {
     return (
-        <button
-            className={`btn btn-${variant}`}
-            onClick={onClick}
-            disabled={disabled}
-        >
-            {text}
-        </button>
+        <Routes>
+            {/* Корінь застосунку */}
+            <Route path="/" element={<Home />} />
+
+            {/* Статичні шляхи */}
+            <Route path="/about" element={<About />} />
+            <Route path="/services" element={<Services />} />
+
+            {/* Динамічні сегменти: двокрапка на початку сегмента позначає параметр */}
+            <Route path="/users/:userId" element={<UserProfile />} />
+            <Route path="/posts/:postId" element={<Post />} />
+
+            {/* Необов'язковий сегмент: /about та /uk/about */}
+            <Route path="/:lang?/pricing" element={<Pricing />} />
+
+            {/* Решта: сторінка «не знайдено» */}
+            <Route path="*" element={<NotFound />} />
+        </Routes>
     );
 }
-
-// Типізація з children
-interface CardProps {
-    title: string;
-    children: React.ReactNode;
-    className?: string;
-}
-
-function Card({ title, children, className }: CardProps) {
-    return (
-        <div className={`card ${className || ''}`}>
-            <h2>{title}</h2>
-            <div className="card-content">{children}</div>
-        </div>
-    );
-}
-
-// Типізація з generic types
-interface ListProps<T> {
-    items: T[];
-    renderItem: (item: T) => React.ReactNode;
-    keyExtractor: (item: T) => string | number;
-}
-
-function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {
-    return (
-        <ul>
-            {items.map(item => (
-                <li key={keyExtractor(item)}>
-                    {renderItem(item)}
-                </li>
-            ))}
-        </ul>
-    );
-}
-
-// Використання
-interface User {
-    id: number;
-    name: string;
-    email: string;
-}
-
-<List<User>
-    items={users}
-    renderItem={user => <div>{user.name}</div>}
-    keyExtractor={user => user.id}
-/>
 ```
 
-### Типізація хуків
+Порядок оголошення маршрутів тут майже не має значення, адже бібліотека **ранжує** кандидатів: статичні сегменти важать більше за динамічні, а динамічні — більше за зірочку. Тому `/users/new` виграє у `/users/:userId`, навіть якщо оголошено пізніше. Це істотна відмінність від версії 4 і ранніх версій, де порядок був вирішальним.
 
-```typescript
-// useState з типом
-const [count, setCount] = useState<number>(0);
-const [user, setUser] = useState<User | null>(null);
-const [items, setItems] = useState<string[]>([]);
+Зірочка `*` у кінці шляху збирає «все, що лишилося» (її називають splat), і саме тому маршрут `path="*"` ловить усі невідомі адреси й чудово підходить для сторінки 404. Значення, зібране зірочкою, доступне як `useParams()['*']`.
 
-// useState з interface
-interface FormData {
-    username: string;
-    email: string;
-    password: string;
+### Link і NavLink
+
+Звичайне HTML-посилання `<a href>` змусило б браузер завантажити сторінку заново, а отже, і втратити всі переваги SPA. Тому для внутрішньої навігації використовують компонент `Link`: він відтворює справжній елемент `<a>` (отже, працюють відкриття в новій вкладці, копіювання посилання й доступність), але перехоплює клік і виконує перехід через History API.
+
+```javascript
+import { Link } from 'react-router';
+
+function Navigation() {
+    return (
+        <nav>
+            <Link to="/">Головна</Link>
+            <Link to="/about">Про нас</Link>
+            <Link to="/contact">Контакти</Link>
+
+            {/* Передача стану розташування (location state) */}
+            <Link to="/profile" state={{ from: 'navigation' }}>
+                Профіль
+            </Link>
+
+            {/* Відносні шляхи: рахуються від маршруту, у якому відтворено посилання */}
+            <Link to="settings">Налаштування</Link>
+            <Link to="..">На рівень вище</Link>
+        </nav>
+    );
 }
+```
 
-function LoginForm() {
-    const [formData, setFormData] = useState<FormData>({
-        username: '',
-        email: '',
-        password: ''
+Відносні шляхи заслуговують на окреме пояснення. За замовчуванням вони обчислюються відносно **маршруту**, у якому відтворено посилання, а не відносно всієї адреси. Тобто `..` піднімається на один рівень ієрархії маршрутів, а не на один сегмент URL. Якщо потрібна друга поведінка, додайте `relative="path"`. Така вибірковість зручна: розташування посилання у вкладеному маршруті залишає його коректним, навіть якщо ви змінили структуру адреси.
+
+`NavLink` — це `Link`, який знає, чи веде він на поточну сторінку. Він додає до елемента клас `active` (а також `pending` під час завантаження даних) і дозволяє налаштувати вигляд через функції у `className` і `style`.
+
+```javascript
+import { NavLink } from 'react-router';
+
+function Navigation() {
+    return (
+        <nav className="navigation">
+            {/* end: активне лише за точного збігу, а не для всіх вкладених адрес */}
+            <NavLink
+                to="/"
+                end
+                className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            >
+                Головна
+            </NavLink>
+
+            <NavLink
+                to="/about"
+                style={({ isActive }) => ({
+                    color: isActive ? 'red' : 'black',
+                    fontWeight: isActive ? 'bold' : 'normal'
+                })}
+            >
+                Про нас
+            </NavLink>
+
+            <NavLink
+                to="/dashboard"
+                className={({ isActive, isPending }) =>
+                    isPending ? 'pending' : isActive ? 'active' : ''
+                }
+            >
+                Панель керування
+            </NavLink>
+        </nav>
+    );
+}
+```
+
+Зверніть увагу на атрибут `end` у першому посиланні. Без нього `NavLink to="/"` вважається активним для **будь-якої** адреси, оскільки всі вони починаються з `/`. Це одна з найтиповіших помилок у навігаційних меню: пункт «Головна» постійно підсвічений. Коротко кажучи, `end` потрібен корінню та будь-якому розділу, який має вкладені сторінки, якщо ви не хочете підсвічувати його разом з ними.
+
+## Динамічні маршрути та параметри
+
+Адреса може нести три різних види інформації, і для кожного існує свій інструмент. Параметри шляху (`/users/42`) ідентифікують **ресурс**, параметри запиту (`?sort=price`) описують його **подання**, а стан розташування передає **тимчасові** дані, які не повинні потрапити в адресу.
+
+### Параметри шляху: useParams
+
+Параметр шляху — це змінна частина маршруту, позначена двокрапкою. Хук `useParams` повертає об'єкт зі значеннями всіх параметрів поточного маршруту.
+
+```javascript
+import { useParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+
+// Маршрут: <Route path="/users/:userId" element={<UserProfile />} />
+function UserProfile() {
+    const { userId } = useParams();
+
+    // Ключ запиту містить userId, тому при зміні адреси дані завантажуються автоматично
+    const { data: user, isPending, error } = useQuery({
+        queryKey: ['users', userId],
+        queryFn: async ({ signal }) => {
+            const res = await fetch(`/api/users/${userId}`, { signal });
+            if (res.status === 404) throw new Error('Користувача не знайдено');
+            if (!res.ok) throw new Error(`Помилка ${res.status}`);
+            return res.json();
+        }
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({
-            ...prev,
-            [e.target.name]: e.target.value
-        }));
-    };
+    if (isPending) return <p>Завантаження...</p>;
+    if (error) return <p>{error.message}</p>;
 
     return (
-        <form>
-            <input
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-            />
-        </form>
+        <article className="user-profile">
+            <h1>{user.name}</h1>
+            <p>{user.email}</p>
+        </article>
     );
 }
 
-// useEffect типізація
-useEffect(() => {
-    const fetchData = async () => {
-        try {
-            const response = await fetch('/api/users');
-            const data: User[] = await response.json();
-            setUsers(data);
-        } catch (error) {
-            console.error(error);
-        }
-    };
+// Кілька параметрів
+// <Route path="/posts/:postId/comments/:commentId" element={<Comment />} />
+function Comment() {
+    const { postId, commentId } = useParams();
 
-    fetchData();
-}, []);
-
-// useRef типізація
-const inputRef = useRef<HTMLInputElement>(null);
-const timerRef = useRef<number | null>(null);
-
-function focusInput() {
-    inputRef.current?.focus();
+    return <h2>Коментар {commentId} до допису {postId}</h2>;
 }
 ```
 
-### Типізація подій
+Порівняйте цей код із завантаженням даних через `useEffect` з лекції 08: ключ запиту автоматично реагує на зміну `userId`, скасовує застарілий запит і кешує результат, тому повернення на вже відвідану сторінку відбувається миттєво. Кілька рядків спеціального коду для гонок запитів просто зникають.
 
-```typescript
-// Типізація event handlers
-function SearchInput() {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log(e.target.value);
-    };
+Усі параметри шляху — **рядки**. Користувач може вручну набрати в адресі будь-що, тож значення потрібно перевіряти, перш ніж довіряти йому.
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        // обробка форми
-    };
+```javascript
+function ProductPage() {
+    const { productId } = useParams();
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            // обробка Enter
+    // Number('42') === 42, але Number('abc') — NaN, а Number('4.5') — 4.5
+    const id = Number(productId);
+
+    if (!Number.isInteger(id) || id <= 0) {
+        return <NotFound message="Некоректний ідентифікатор товару" />;
+    }
+
+    return <ProductDetails id={id} />;
+}
+```
+
+Перевірка `Number.isInteger` відсікає і `NaN`, і дробові значення. Якщо ж у вас ідентифікатори — UUID або слаги, перевіряйте їх регулярним виразом. Пам'ятайте, що перевірка в браузері лише поліпшує досвід користувача; остаточну валідацію завжди виконує сервер.
+
+### Параметри запиту: useSearchParams
+
+Параметри запиту зручні для фільтрів, сортування, пошуку та пагінації: усього, що змінює подання списку, але не ідентифікує ресурс. Їхня головна перевага в тому, що посилання на відфільтрований список можна надіслати іншій людині, і вона побачить те саме.
+
+Хук `useSearchParams` повертає пару, схожу на `useState`: об'єкт `URLSearchParams` і функцію для його оновлення.
+
+```javascript
+import { useSearchParams } from 'react-router';
+
+function ProductList() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Читання з розумними значеннями за замовчуванням
+    const category = searchParams.get('category') ?? 'all';
+    const sortBy = searchParams.get('sortBy') ?? 'name';
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
+
+    // Єдина функція оновлення: змінюємо лише вказані ключі, решту зберігаємо.
+    // null або порожній рядок видаляє параметр, щоб адреса лишалась охайною.
+    function updateParams(changes) {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+
+            for (const [key, value] of Object.entries(changes)) {
+                if (value === null || value === '') {
+                    next.delete(key);
+                } else {
+                    next.set(key, value);
+                }
+            }
+
+            return next;
+        });
+    }
+
+    return (
+        <div>
+            {/* Адреса: /products?category=electronics&sortBy=price&page=2 */}
+            <div className="filters">
+                <select
+                    value={category}
+                    // Після зміни фільтра повертаємося на першу сторінку
+                    onChange={(e) => updateParams({ category: e.target.value, page: null })}
+                >
+                    <option value="all">Усі категорії</option>
+                    <option value="electronics">Електроніка</option>
+                    <option value="books">Книги</option>
+                </select>
+
+                <select
+                    value={sortBy}
+                    onChange={(e) => updateParams({ sortBy: e.target.value, page: null })}
+                >
+                    <option value="name">За назвою</option>
+                    <option value="price">За ціною</option>
+                    <option value="date">За датою</option>
+                </select>
+
+                <button onClick={() => setSearchParams({})}>Скинути фільтри</button>
+            </div>
+
+            <ProductGrid category={category} sortBy={sortBy} page={page} />
+
+            <button disabled={page === 1} onClick={() => updateParams({ page: String(page - 1) })}>
+                Назад
+            </button>
+            <button onClick={() => updateParams({ page: String(page + 1) })}>Далі</button>
+        </div>
+    );
+}
+```
+
+Тут варто звернути увагу на три речі. По-перше, функція `updateParams` копіює наявні параметри й змінює лише потрібні. Поширена помилка — передати в `setSearchParams` новий об'єкт `{ sortBy: newSort }`, і тоді всі інші параметри (наприклад, категорія) безслідно зникнуть. По-друге, значення за замовчуванням задаються під час читання (`?? 'all'`), і URL не засмічується параметрами, які дорівнюють цим значенням. По-третє, номер сторінки перетворюється на число явно: `parseInt` без другого аргументу (основи системи числення) вважається поганою практикою.
+
+Для текстового пошуку, де адреса змінюється при кожному натисканні клавіші, використовуйте режим заміни, щоб не засмічувати історію сотнями записів:
+
+```javascript
+setSearchParams({ q: value }, { replace: true });
+```
+
+Для параметрів із кількома значеннями (теги, мультивибір) `URLSearchParams` має методи `getAll` і `append`:
+
+```javascript
+function TagFilter() {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const tags = searchParams.getAll('tag'); // ['react', 'javascript']
+
+    function addTag(tag) {
+        if (tags.includes(tag)) return;
+
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.append('tag', tag);
+            return next;
+        });
+    }
+
+    function removeTag(tagToRemove) {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('tag');
+            tags.filter((t) => t !== tagToRemove).forEach((t) => next.append('tag', t));
+            return next;
+        });
+    }
+
+    return (
+        <div className="tags">
+            {tags.map((tag) => (
+                <span key={tag} className="tag">
+                    {tag}
+                    <button onClick={() => removeTag(tag)} aria-label={`Прибрати тег ${tag}`}>
+                        ×
+                    </button>
+                </span>
+            ))}
+        </div>
+    );
+}
+```
+
+Наприкінці лекції 08 ми казали, що стан, яким користувачі діляться посиланням, слід зберігати в URL. Це саме той випадок: замість окремого `useReducer` для фільтрів списку (приклад із попередньої лекції) адреса сама стає джерелом істини, а `useQuery` бере ключ із параметрів. Reducer зберігає сенс для складніших випадків, коли стан не є переглядом списку.
+
+### Стан розташування: useLocation
+
+Хук `useLocation` повертає об'єкт поточного розташування. З нього можна прочитати не лише складові адреси, а й **стан розташування** (location state) — довільні дані, передані під час переходу, які не потрапляють в URL.
+
+```javascript
+import { useEffect } from 'react';
+import { useLocation } from 'react-router';
+
+function PageComponent() {
+    const location = useLocation();
+
+    console.log(location.pathname); // "/users/123"
+    console.log(location.search);   // "?sort=name&page=2"
+    console.log(location.hash);     // "#section-3"
+    console.log(location.state);    // { from: '/products' } або null
+    console.log(location.key);      // унікальний ключ запису в історії
+
+    return <h1>Поточний шлях: {location.pathname}</h1>;
+}
+
+// Відстеження переходів: корисно для аналітики
+function Analytics() {
+    const { pathname, search } = useLocation();
+
+    useEffect(() => {
+        trackPageView(pathname + search);
+    }, [pathname, search]);
+
+    return null;
+}
+```
+
+Стан розташування підходить для коротких повідомлень на кшталт «Профіль збережено» або для шляху, звідки прийшов користувач. Його не варто використовувати для даних, без яких сторінка не працює: при прямому вході за адресою, у новій вкладці чи після копіювання посилання стану не буде, а значення `location.state` дорівнюватиме `null`. Тому код завжди має вміти обійтися без нього.
+
+```javascript
+function ProductList() {
+    return products.map((product) => (
+        <Link
+            key={product.id}
+            to={`/products/${product.id}`}
+            state={{ from: '/products?category=electronics' }}
+        >
+            {product.name}
+        </Link>
+    ));
+}
+
+function ProductDetails() {
+    const location = useLocation();
+    // Якщо стану немає (прямий вхід), повертаємося до загального списку
+    const backTo = location.state?.from ?? '/products';
+
+    return (
+        <div>
+            <Link to={backTo}>← Назад до списку</Link>
+            <h1>Деталі товару</h1>
+        </div>
+    );
+}
+```
+
+## Вкладені маршрути та макети
+
+### Навіщо потрібна вкладеність
+
+Спробуйте уявити типовий застосунок: шапка з навігацією завжди на місці, а під нею змінюється вміст. У розділі «Панель керування» додається бічне меню, а всередині нього — перелік користувачів і картка вибраного користувача. Інтерфейс складається з вкладених ділянок, і кожна змінюється незалежно від зовнішніх. Вкладені маршрути дозволяють описати цю структуру напряму: батьківський маршрут відповідає за спільну оболонку (макет, layout), а дочірні — за змінний вміст усередині неї.
+
+Для порівняння: без вкладеності кожна сторінка повинна була б сама підключати шапку, меню й підвал, повторюючи їх в усіх файлах, а при переході вони відтворювалися б знову, втрачаючи свій стан (наприклад, згорнуте бічне меню).
+
+```mermaid
+graph TD
+    R["/ — RootLayout"] --> H["index — Home"]
+    R --> A["about — About"]
+    R --> D["dashboard — DashboardLayout"]
+    D --> DO["index — Overview"]
+    D --> DS["settings — Settings"]
+    D --> P["products — ProductsLayout"]
+    P --> PL["index — ProductList"]
+    P --> PD[":productId — ProductDetails"]
+    P --> PN["new — NewProduct"]
+    R --> NF["* — NotFound"]
+```
+
+### Outlet
+
+Компонент `Outlet` — це місце в батьківському макеті, куди React Router вставляє відповідний дочірній маршрут. Без нього вкладені маршрути нікуди було б відтворити.
+
+```javascript
+import { Routes, Route, Outlet, NavLink } from 'react-router';
+
+function App() {
+    return (
+        <Routes>
+            {/* Батьківський маршрут із макетом */}
+            <Route path="/" element={<RootLayout />}>
+                <Route index element={<Home />} />
+                <Route path="about" element={<About />} />
+                <Route path="contact" element={<Contact />} />
+
+                {/* Глибша вкладеність */}
+                <Route path="dashboard" element={<DashboardLayout />}>
+                    <Route index element={<Overview />} />
+                    <Route path="settings" element={<Settings />} />
+
+                    <Route path="products" element={<ProductsLayout />}>
+                        <Route index element={<ProductList />} />
+                        <Route path=":productId" element={<ProductDetails />} />
+                        <Route path="new" element={<NewProduct />} />
+                    </Route>
+                </Route>
+
+                <Route path="*" element={<NotFound />} />
+            </Route>
+        </Routes>
+    );
+}
+
+function RootLayout() {
+    return (
+        <div className="layout">
+            <header>
+                <nav>
+                    <NavLink to="/" end>Головна</NavLink>
+                    <NavLink to="/about">Про нас</NavLink>
+                    <NavLink to="/dashboard">Панель керування</NavLink>
+                </nav>
+            </header>
+
+            <main className="content">
+                {/* Сюди потрапляє відповідний дочірній маршрут */}
+                <Outlet />
+            </main>
+
+            <footer>
+                <p>© {new Date().getFullYear()} Мій застосунок</p>
+            </footer>
+        </div>
+    );
+}
+```
+
+Зауважте, що шляхи дочірніх маршрутів записано відносно батьківського: `path="about"` у `RootLayout` відповідає `/about`, а `path="settings"` усередині `dashboard` — `/dashboard/settings`. Під час переходу між дочірніми сторінками `RootLayout` не відтворюється заново, лише змінюється вміст `Outlet`.
+
+### Індексні маршрути
+
+Що має показуватися за адресою `/dashboard`, коли жоден із дочірніх шляхів не збігається? Без підказки — порожній `Outlet`, тобто макет без вмісту. Для цього існують **індексні маршрути** (`index`): вони відтворюються в `Outlet` батька, коли адреса збігається саме з батьківським шляхом.
+
+```javascript
+<Route path="dashboard" element={<DashboardLayout />}>
+    {/* /dashboard → DashboardLayout + Overview */}
+    <Route index element={<Overview />} />
+
+    {/* /dashboard/settings → DashboardLayout + Settings */}
+    <Route path="settings" element={<Settings />} />
+</Route>
+```
+
+Без `index` адреса `/dashboard` показала б лише бічне меню і порожню область справа.
+
+### Безшляхові макети та маршрути-префікси
+
+Вкладеність не обов'язково прив'язана до сегмента адреси. Маршрут **без `path`**, але з `element` називається макетним (layout route): він додає спільну оболонку групі маршрутів, не змінюючи їхніх адрес. Цим зручно користуватися, щоб розділити публічну та приватну частини застосунку.
+
+```javascript
+<Routes>
+    {/* Публічний макет: шлях не додається */}
+    <Route element={<PublicLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/login" element={<LoginPage />} />
+    </Route>
+
+    {/* Приватна частина: спільна оболонка плюс перевірка автентифікації */}
+    <Route element={<RequireAuth />}>
+        <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route index element={<Overview />} />
+            <Route path="users" element={<UsersLayout />}>
+                <Route index element={<UserList />} />
+                <Route path=":userId" element={<UserDetails />} />
+            </Route>
+        </Route>
+    </Route>
+
+    {/* Маршрут-префікс: є path, але немає element — лише спільна частина адреси */}
+    <Route path="docs">
+        <Route index element={<DocsHome />} />
+        <Route path=":slug" element={<DocPage />} />
+    </Route>
+</Routes>
+```
+
+Макет `RequireAuth` ми напишемо в наступному розділі: ця ідея добре ілюструє, чому безшляхові маршрути такі корисні. Одна обгортка закриває ціле піддерево, і потрібну перевірку неможливо забути додати до окремої сторінки.
+
+### Передавання даних через Outlet
+
+Батьківський макет може передати дані дочірнім маршрутам через властивість `context` компонента `Outlet`, а дочірні читають її хуком `useOutletContext`.
+
+```javascript
+import { Outlet, useOutletContext } from 'react-router';
+
+function DashboardLayout() {
+    const [notifications, setNotifications] = useState([]);
+
+    return (
+        <div className="dashboard">
+            <Sidebar count={notifications.length} />
+            <main>
+                <Outlet context={{ notifications, setNotifications }} />
+            </main>
+        </div>
+    );
+}
+
+function Overview() {
+    const { notifications } = useOutletContext();
+
+    return <p>Нових сповіщень: {notifications.length}</p>;
+}
+```
+
+Цей механізм підходить для невеликої кількості даних, що стосуються лише одного піддерева маршрутів. Для глобального стану (поточний користувач, тема, кошик) і далі використовуйте Context або Zustand, як описано в лекції 08, а для даних сервера — TanStack Query.
+
+## Захищені маршрути та автентифікація
+
+### Ідея захисту маршрутів
+
+Деякі сторінки мають бути доступні лише тим, хто увійшов у систему, або лише користувачам певної ролі. Типовий підхід — компонент-охоронець, який стоїть перед захищеним вмістом і вирішує, пустити користувача далі чи перенаправити його, наприклад, на сторінку входу. Він використовує провайдер автентифікації `AuthProvider` та хук `useAuth`, які ми побудували в лекції 08.
+
+Одразу зазначимо важливий момент, який часто губиться в навчальних прикладах. **Захищений маршрут на клієнті не є захистом даних.** Увесь код застосунку завантажується в браузер, і будь-який користувач може відкрити його, змінити значення в пам'яті або обійти перевірку. Клієнтські захищені маршрути вирішують завдання досвіду користувача: не показувати людині сторінку, яку вона все одно не зможе використати, і вчасно запропонувати увійти. Справжній захист забезпечує сервер, який перевіряє автентифікацію й права доступу **при кожному запиті до API**, як описано в лекції 05. Інакше кажучи, навіть якщо хтось примусово відкриє адміністративну сторінку, сервер не віддасть йому жодних даних.
+
+```mermaid
+flowchart TD
+    A["Користувач відкриває /dashboard"] --> B{"Перевірка сеансу завершена?"}
+    B -- Ні --> C["Показати індикатор завантаження"]
+    B -- Так --> D{"Користувач автентифікований?"}
+    D -- Ні --> E["Перенаправити на /login зі збереженням шляху"]
+    D -- Так --> F{"Роль дозволена?"}
+    F -- Ні --> G["Перенаправити на /forbidden"]
+    F -- Так --> H["Показати захищену сторінку"]
+```
+
+Перший крок діаграми — перевірка сеансу — особливо важливий. Після оновлення сторінки застосунок ще не знає, чи є активний сеанс: потрібно звернутися до сервера. Якщо в цей час вважати користувача «неавторизованим», його одразу ж викине на сторінку входу, хоча сеанс дійсний. Тому провайдер автентифікації має окремий прапорець `loading`, а охоронець чекає на його завершення.
+
+### Охоронець на основі Outlet
+
+Найпростіший спосіб — написати охоронця як макетний маршрут: він або відтворює `Outlet` (пускає далі), або перенаправляє. Такий компонент одразу захищає всі вкладені маршрути.
+
+```javascript
+import { Navigate, Outlet, useLocation } from 'react-router';
+import { useAuth } from './AuthProvider.jsx';
+
+export function RequireAuth() {
+    const { user, loading } = useAuth();
+    const location = useLocation();
+
+    // Поки не знаємо, чи є сеанс, нічого не вирішуємо
+    if (loading) {
+        return <LoadingSpinner />;
+    }
+
+    if (!user) {
+        // Запам'ятовуємо, куди хотів потрапити користувач
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    return <Outlet />;
+}
+
+// Використання: один охоронець для групи маршрутів
+function App() {
+    return (
+        <Routes>
+            <Route path="/login" element={<LoginPage />} />
+
+            <Route element={<RequireAuth />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Settings />} />
+            </Route>
+        </Routes>
+    );
+}
+```
+
+Параметр `replace` у `Navigate` замінює запис в історії, а не додає новий. Якби його не було, користувач, який натиснув «Назад» зі сторінки входу, повертався б на захищену сторінку, звідки його знову перенаправляло б на вхід, і так у нескінченному циклі.
+
+### Повернення після входу
+
+Користувач, якого перенаправили на вхід, очікує після автентифікації потрапити туди, куди йшов. Для цього охоронець передає початкове розташування в стані переходу, а сторінка входу його зчитує.
+
+```javascript
+import { useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router';
+
+function LoginPage() {
+    const { user, login } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [error, setError] = useState(null);
+    const [pending, setPending] = useState(false);
+
+    // Куди повернути користувача: шлях разом із параметрами запиту
+    const origin = location.state?.from;
+    const target = origin ? origin.pathname + origin.search + origin.hash : '/dashboard';
+
+    // Уже автентифікований користувач не повинен бачити форму входу
+    if (user) {
+        return <Navigate to={target} replace />;
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault(); // без цього браузер перезавантажить сторінку
+
+        const form = new FormData(event.currentTarget);
+        setPending(true);
+        setError(null);
+
+        try {
+            await login({ email: form.get('email'), password: form.get('password') });
+            // replace: «Назад» не повертає до форми входу
+            navigate(target, { replace: true });
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setPending(false);
         }
-    };
-
-    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-        console.log(e.clientX, e.clientY);
-    };
+    }
 
     return (
         <form onSubmit={handleSubmit}>
-            <input
-                type="text"
-                onChange={handleChange}
-                onKeyDown={handleKeyDown}
-            />
-            <button onClick={handleClick}>Пошук</button>
+            <label>
+                Електронна пошта
+                <input name="email" type="email" required autoComplete="username" />
+            </label>
+            <label>
+                Пароль
+                <input name="password" type="password" required autoComplete="current-password" />
+            </label>
+
+            {error && <p role="alert">{error}</p>}
+
+            <button type="submit" disabled={pending}>
+                {pending ? 'Вхід...' : 'Увійти'}
+            </button>
         </form>
     );
 }
 ```
 
-### Створення власних типів
+Кілька деталей цього прикладу заслуговують на увагу. Виклик `event.preventDefault()` обов'язковий, інакше браузер виконає звичайне надсилання форми й перезавантажить сторінку; саме його часто забувають у спрощених прикладах. Дані форми читаються через `FormData`, тому для неї не потрібно окремого стану на кожне поле. Помилка входу відображається в елементі з `role="alert"`, щоб програми екранного доступу озвучили її. Нарешті, `try/finally` гарантує, що кнопка розблокується за будь-якого результату.
 
-```typescript
-// Utility types для React
-type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+### Захист на основі ролей
 
-interface UserFormProps {
-    user: User;
-    onSave: (user: User) => void;
-    onCancel: () => void;
-}
+Найпростіша перевірка ролей розширює охоронця параметром `roles`. Ті самі правила діють і для перевірки окремих прав доступу (permissions): тоді замість `user.role` порівнюється набір дозволів користувача.
 
-// Зробити onCancel опціональним
-type OptionalCancelProps = Optional<UserFormProps, 'onCancel'>;
+```javascript
+export function RequireAuth({ roles }) {
+    const { user, loading } = useAuth();
+    const location = useLocation();
 
-// Union types для варіантів
-type Status = 'idle' | 'loading' | 'success' | 'error';
+    if (loading) return <LoadingSpinner />;
 
-interface DataState<T> {
-    data: T | null;
-    status: Status;
-    error: string | null;
-}
-
-// Discriminated unions для складних станів
-type AsyncState<T> =
-    | { status: 'idle' }
-    | { status: 'loading' }
-    | { status: 'success'; data: T }
-    | { status: 'error'; error: string };
-
-function DataDisplay({ state }: { state: AsyncState<User> }) {
-    // TypeScript знає, які поля доступні в кожному випадку
-    switch (state.status) {
-        case 'idle':
-            return <div>Натисніть завантажити</div>;
-        case 'loading':
-            return <div>Завантаження...</div>;
-        case 'success':
-            return <div>{state.data.name}</div>; // data доступна тільки тут
-        case 'error':
-            return <div>Помилка: {state.error}</div>; // error доступна тільки тут
+    if (!user) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
+
+    // Автентифікований, але без потрібної ролі
+    if (roles && !roles.includes(user.role)) {
+        return <Navigate to="/forbidden" replace />;
+    }
+
+    return <Outlet />;
+}
+
+function App() {
+    return (
+        <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/forbidden" element={<Forbidden />} />
+
+            {/* Будь-який автентифікований користувач */}
+            <Route element={<RequireAuth />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+            </Route>
+
+            {/* Лише адміністратори */}
+            <Route element={<RequireAuth roles={['admin']} />}>
+                <Route path="/admin" element={<AdminPanel />} />
+                <Route path="/admin/users" element={<UserManagement />} />
+            </Route>
+
+            {/* Модератори та адміністратори */}
+            <Route element={<RequireAuth roles={['moderator', 'admin']} />}>
+                <Route path="/moderate" element={<ModerationPanel />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
 }
 ```
 
+Розрізняйте дві ситуації: користувач не автентифікований (HTTP 401, потрібно увійти) і користувач автентифікований, але не має прав (HTTP 403, входити знову безглуздо). Перша веде на сторінку входу, друга — на сторінку «Доступ заборонено». Змішувати їх погана ідея: людині, яка вже увійшла, пропонувати знову ввести пароль — безглуздо й дратує.
+
+## Програмна навігація
+
+Посилання вирішують більшість потреб, але інколи перехід має відбутися як наслідок певної події: після успішного надсилання форми, збереження запису, закінчення таймера. Тоді вдаються до програмної навігації.
+
+### useNavigate
+
+Хук `useNavigate` повертає функцію, яка виконує перехід. Викликати її слід в обробниках подій або ефектах, але ніколи не під час відтворення компонента.
+
+```javascript
+import { useNavigate } from 'react-router';
+
+function ProductForm() {
+    const navigate = useNavigate();
+
+    async function handleSave(event) {
+        event.preventDefault();
+
+        const saved = await saveProduct(new FormData(event.currentTarget));
+
+        // Перехід зі станом: показуємо повідомлення на новій сторінці
+        navigate(`/products/${saved.id}`, {
+            state: { message: 'Товар збережено' }
+        });
+    }
+
+    return (
+        <form onSubmit={handleSave}>
+            {/* поля форми */}
+            <button type="button" onClick={() => navigate(-1)}>
+                Скасувати
+            </button>
+            <button type="submit">Зберегти</button>
+        </form>
+    );
+}
+```
+
+Числовий аргумент працює як кнопки браузера: `navigate(-1)` — назад, `navigate(1)` — вперед, `navigate(-2)` — на два записи назад. Слід, однак, пам'ятати, що `navigate(-1)` веде на попередню сторінку **історії**, а не обов'язково на попередню сторінку **застосунку**: якщо користувач відкрив форму за прямим посиланням, «назад» виведе його з вашого сайту. Коли відомо, куди саме потрібно повернутися, надійніше вказати цей шлях явно.
+
+Відносні шляхи в `navigate` поводяться так само, як і в `Link`: вони відраховуються від маршруту, у якому відтворено компонент.
+
+```javascript
+function SettingsPage() {
+    const navigate = useNavigate();
+
+    return (
+        <div>
+            <button onClick={() => navigate('profile')}>Профіль</button>
+            <button onClick={() => navigate('..')}>На рівень вище</button>
+        </div>
+    );
+}
+```
+
+### Додавання запису чи заміна: push і replace
+
+Кожен перехід або додає в історію новий запис (`push`, поведінка за замовчуванням), або замінює поточний (`replace`). Різниця проявляється в поведінці кнопки «Назад».
+
+```javascript
+function Navigation() {
+    const navigate = useNavigate();
+
+    // push: «Назад» поверне на попередню сторінку
+    const goToDashboard = () => navigate('/dashboard');
+
+    // replace: поточний запис замінюється, «Назад» його «пропустить»
+    const redirectHome = () => navigate('/', { replace: true });
+
+    return (
+        <div>
+            <button onClick={goToDashboard}>Панель керування</button>
+            <button onClick={redirectHome}>На головну (replace)</button>
+        </div>
+    );
+}
+```
+
+Замість `push` використовуйте `replace`, коли попередня сторінка вже втратила сенс: після входу чи виходу з системи, після завершення багатокрокового процесу, під час перенаправлень, а також для частих оновлень адреси (пошук за вводом). Вибір між ними — це рішення щодо досвіду користувача: що він очікує побачити, натиснувши «Назад»?
+
+### Багатокрокові форми й адреса
+
+У спрощених прикладах багатокрокову форму часто реалізують із двома джерелами істини: номером кроку в `useState` та адресою в URL. Вони легко розходяться, наприклад, коли користувач натискає «Назад» і URL змінюється, а стан — ні. Надійніше зробити адресу єдиним джерелом: номер кроку береться з параметра маршруту.
+
+```javascript
+import { Navigate, useNavigate, useParams } from 'react-router';
+
+const STEPS = [1, 2, 3];
+
+// <Route path="/form/:step" element={<Wizard />} />
+function Wizard() {
+    const { step } = useParams();
+    const navigate = useNavigate();
+    const current = Number(step);
+
+    // Некоректний крок у URL — повертаємо на початок
+    if (!STEPS.includes(current)) {
+        return <Navigate to="/form/1" replace />;
+    }
+
+    function goNext() {
+        if (current < STEPS.length) {
+            navigate(`/form/${current + 1}`); // push: «Назад» повертає на попередній крок
+        } else {
+            navigate('/success', { replace: true }); // завершення: не повертатися у форму
+        }
+    }
+
+    return (
+        <section>
+            <h2>Крок {current} із {STEPS.length}</h2>
+            {/* введені дані зберігаються в Context або Zustand — див. лекцію 08 */}
+            <button onClick={goNext}>{current < STEPS.length ? 'Далі' : 'Завершити'}</button>
+        </section>
+    );
+}
+```
+
+Тепер кнопки «Назад» і «Вперед» у браузері працюють природно, а оновлення сторінки не скидає користувача на перший крок. Введені на кроках дані тримайте у стані, який не залежить від маршрутів (Context, Zustand), інакше вони зникнуть разом із компонентом кроку.
+
+### Декларативне перенаправлення: Navigate
+
+Компонент `Navigate` виконує перехід під час відтворення. Фактичний перехід відбувається в ефекті, тому його безпечно повертати прямо з компонента, чого не можна робити з `navigate()`.
+
+```javascript
+import { Navigate } from 'react-router';
+
+// Умовне перенаправлення всередині компонента
+function Dashboard() {
+    const { user } = useAuth();
+
+    if (!user) return <Navigate to="/login" replace />;
+    if (!user.emailVerified) return <Navigate to="/verify-email" replace />;
+
+    return <h1>Панель керування</h1>;
+}
+
+// Перенаправлення як частина таблиці маршрутів
+function App() {
+    return (
+        <Routes>
+            {/* Старі адреси ведуть на нові */}
+            <Route path="/old-dashboard" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/home" element={<Navigate to="/" replace />} />
+
+            <Route path="/" element={<Home />} />
+            <Route path="*" element={<NotFound />} />
+        </Routes>
+    );
+}
+```
+
+Для старих адрес, які вже проіндексовано пошуковими системами або збережено в закладках, клієнтське перенаправлення є лише тимчасовим доповненням. Справжнє постійне перенаправлення (HTTP 301) налаштовують на сервері.
+
+## Режим даних: завантажувачі та дії
+
+### Проблема «водоспаду» запитів
+
+У декларативному режимі дані завантажує сам компонент уже після відтворення: спочатку з'являється макет, потім сторінка, потім її вкладений компонент, і кожен у свою чергу запускає запит. Такі послідовні завантаження називають **водоспадом** (waterfall): запит вкладеного компонента починається лише після того, як завершиться відтворення батька. Користувач при цьому довше бачить індикатори завантаження.
+
+Режим даних вирішує проблему інакше: маршрути оголошуються як об'єкти поза відтворенням, і до кожного можна прив'язати функцію `loader`, яка запускається **в момент переходу**, паралельно для всіх вкладених маршрутів, ще до того, як компонент з'явиться на екрані.
+
+```mermaid
+sequenceDiagram
+    participant U as Користувач
+    participant R as React Router
+    participant L as loader
+    participant C as Компонент
+
+    U->>R: Клік на посилання
+    R->>L: Запустити завантажувачі всіх збіжних маршрутів паралельно
+    L-->>R: Дані готові
+    R->>C: Відтворити компонент з даними (useLoaderData)
+    Note over U,C: Під час очікування старий екран лишається видимим, useNavigation показує стан
+```
+
+### Створення маршрутизатора
+
+Маршрути описуються масивом об'єктів і передаються в `createBrowserRouter`. Зверніть увагу, що `RouterProvider` у v7 імпортується з окремого шляху `react-router/dom`.
+
+```javascript
+// src/router.jsx
+import { createBrowserRouter } from 'react-router';
+
+export const router = createBrowserRouter([
+    {
+        path: '/',
+        Component: RootLayout,
+        ErrorBoundary: RootError,
+        children: [
+            { index: true, Component: Home },
+            {
+                path: 'products',
+                Component: ProductsLayout,
+                children: [
+                    { index: true, loader: productsLoader, Component: ProductList },
+                    { path: ':productId', loader: productLoader, Component: ProductDetails },
+                    { path: 'new', action: createProductAction, Component: NewProduct }
+                ]
+            },
+            { path: '*', Component: NotFound }
+        ]
+    }
+]);
+```
+
+```javascript
+// src/main.jsx
+import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router/dom';
+import { router } from './router.jsx';
+
+createRoot(document.getElementById('root')).render(<RouterProvider router={router} />);
+```
+
+Зверніть увагу: це лише інший спосіб запису тієї самої ієрархії, яку ми будували в JSX. Усі знання про `Outlet`, `NavLink`, `useParams`, індексні та безшляхові маршрути лишаються чинними.
+
+### Завантажувачі: loader
+
+Завантажувач — це функція, яка отримує параметри маршруту та об'єкт `request`, а повертає дані (або кидає помилку). Компонент читає результат через `useLoaderData`.
+
+```javascript
+// Завантажувач отримує params з адреси та request із AbortSignal
+export async function productLoader({ params, request }) {
+    const response = await fetch(`/api/products/${params.productId}`, {
+        signal: request.signal // запит скасується, якщо користувач перейшов кудись інде
+    });
+
+    if (response.status === 404) {
+        throw new Response('Товар не знайдено', { status: 404 });
+    }
+    if (!response.ok) {
+        throw new Response('Помилка сервера', { status: response.status });
+    }
+
+    return response.json();
+}
+
+import { useLoaderData } from 'react-router';
+
+function ProductDetails() {
+    const product = useLoaderData(); // дані вже готові, без стану завантаження
+
+    return (
+        <article>
+            <h1>{product.name}</h1>
+            <p>{product.description}</p>
+        </article>
+    );
+}
+```
+
+Компонент отримує готові дані, і йому не потрібні ні `useEffect`, ні проміжні стани `loading` та `error`. Помилки перехоплює межа помилок маршруту, про яку ми зараз розкажемо.
+
+### Межі помилок
+
+Якщо завантажувач кидає виняток, або відтворення компонента завершується помилкою, React Router показує елемент `ErrorBoundary` ближчого маршруту, не руйнуючи весь застосунок. Помилку отримують хуком `useRouteError`.
+
+```javascript
+import { isRouteErrorResponse, useRouteError, Link } from 'react-router';
+
+function RootError() {
+    const error = useRouteError();
+
+    // Відповіді, кинуті як Response (наприклад, 404 із завантажувача)
+    if (isRouteErrorResponse(error)) {
+        return (
+            <div role="alert">
+                <h1>{error.status}</h1>
+                <p>{error.data}</p>
+                <Link to="/">На головну</Link>
+            </div>
+        );
+    }
+
+    // Неочікувані помилки в коді
+    return (
+        <div role="alert">
+            <h1>Щось пішло не так</h1>
+            <p>Спробуйте оновити сторінку.</p>
+        </div>
+    );
+}
+```
+
+Межі помилок працюють ієрархічно: помилка в завантажувачі сторінки товару показується в найближчій межі помилок, а решта макета (шапка, меню) лишається працездатною. Це набагато зручніше, ніж одна загальна сторінка помилки на весь застосунок.
+
+### Форми та дії: Form і action
+
+Для змін даних режим даних пропонує дії (`action`). Компонент `Form` відправляє дані на дію маршруту без перезавантаження сторінки, після чого React Router **автоматично повторно викликає завантажувачі**, щоб інтерфейс показав актуальні дані.
+
+```javascript
+import { Form, redirect, useActionData, useNavigation } from 'react-router';
+
+export async function createProductAction({ request }) {
+    const formData = await request.formData();
+    const name = String(formData.get('name') ?? '').trim();
+
+    // Помилки валідації повертаємо як дані — вони потраплять у useActionData
+    if (name.length < 2) {
+        return { errors: { name: 'Назва має містити щонайменше 2 символи' } };
+    }
+
+    const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+    });
+
+    if (!response.ok) {
+        throw new Response('Не вдалося створити товар', { status: response.status });
+    }
+
+    const product = await response.json();
+    return redirect(`/products/${product.id}`); // успіх: перейти на сторінку товару
+}
+
+function NewProduct() {
+    const actionData = useActionData();
+    const navigation = useNavigation();
+    const isSubmitting = navigation.state === 'submitting';
+
+    return (
+        <Form method="post">
+            <label>
+                Назва
+                <input name="name" required />
+            </label>
+            {actionData?.errors?.name && <p role="alert">{actionData.errors.name}</p>}
+
+            <button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Збереження...' : 'Створити'}
+            </button>
+        </Form>
+    );
+}
+```
+
+Хук `useNavigation` повідомляє про поточний стан переходу: `idle`, `loading` (виконуються завантажувачі) або `submitting` (виконується дія). Завдяки йому можна показати індикатор над усім застосунком, не заводячи для цього власного стану.
+
+Для дій, що не повинні змінювати адресу (наприклад, кнопка «вподобати» чи видалення рядка в таблиці), існує `useFetcher`: він надсилає запит до дії або завантажувача, не здійснюючи переходу.
+
+### Поєднання з TanStack Query
+
+Режим даних і TanStack Query не конкурують, а доповнюють один одного. Завантажувач запускає запит під час переходу (щоб уникнути водоспаду), а кеш бібліотеки робить повторні переходи миттєвими. Спільний «опис запиту» використовується в обох місцях.
+
+```javascript
+import { queryOptions } from '@tanstack/react-query';
+
+export const productQuery = (id) =>
+    queryOptions({
+        queryKey: ['products', id],
+        queryFn: ({ signal }) => fetchProduct(id, { signal })
+    });
+
+// Завантажувач розігріває кеш; якщо дані свіжі, запит не повторюється
+export const productLoader = (queryClient) => async ({ params }) => {
+    await queryClient.ensureQueryData(productQuery(params.productId));
+    return null;
+};
+
+function ProductDetails() {
+    const { productId } = useParams();
+    const { data: product } = useQuery(productQuery(productId));
+    // ...
+}
+```
+
+Для невеликих навчальних застосунків достатньо чогось одного: або TanStack Query в компонентах, або завантажувачів. Для великих корисно знати обидва підходи.
+
+## Ледаче завантаження та продуктивність
+
+### Розбиття коду за маршрутами
+
+Чим більший застосунок, тим більший початковий пакет JavaScript, який користувач має завантажити, щоб побачити першу сторінку. Більшість користувачів ніколи не відкриє адміністративну панель, тож завантажувати її код разом із головною сторінкою марно. Маршрути — природні межі для розбиття коду: сторінка завантажується лише тоді, коли користувач до неї переходить.
+
+У декларативному режимі для цього використовують `React.lazy` і `Suspense`.
+
+```javascript
+import { lazy, Suspense } from 'react';
+import { Outlet } from 'react-router';
+
+// Динамічний імпорт: збирач створює окремий файл для цієї сторінки
+const Reports = lazy(() => import('./pages/Reports.jsx'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel.jsx'));
+
+function RootLayout() {
+    return (
+        <div className="layout">
+            <Header />
+            <main>
+                {/* Одна межа очікування для всіх ледачих сторінок */}
+                <Suspense fallback={<LoadingSpinner />}>
+                    <Outlet />
+                </Suspense>
+            </main>
+        </div>
+    );
+}
+```
+
+Помістивши `Suspense` у макет навколо `Outlet`, ви обходитеся однією межею очікування замість обгортання кожної сторінки. Компоненти, на які посилається `lazy`, мають експортуватися за замовчуванням.
+
+У режимі даних для цього є окрема властивість `lazy` маршруту. Вона підвантажує модуль, який експортує `Component` та, за потреби, `loader` й `action`, тож код і завантажувач сторінки приходять разом.
+
+```javascript
+{
+    path: 'reports',
+    lazy: () => import('./routes/reports.jsx') // модуль експортує Component і loader
+}
+```
+
+### Прокручування й фокус після переходу
+
+У класичному вебі кожен перехід починається з верхньої частини нової сторінки, а екранні програми оголошують нову сторінку. У SPA нічого цього не відбувається автоматично: після кліку на посилання у кінці довгої сторінки користувач потрапить на нову сторінку зі збереженою прокруткою. У режимі даних цю проблему вирішує компонент `<ScrollRestoration />`, а в декларативному — просте рішення на основі ефекту.
+
+```javascript
+import { useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router';
+
+function RootLayout() {
+    const { pathname } = useLocation();
+    const mainRef = useRef(null);
+
+    useEffect(() => {
+        window.scrollTo(0, 0);        // нова сторінка починається зверху
+        mainRef.current?.focus();     // фокус переходить до вмісту для екранних програм
+    }, [pathname]);
+
+    return (
+        <>
+            <Header />
+            {/* tabIndex={-1} дозволяє програмно фокусувати елемент без додавання в порядок Tab */}
+            <main ref={mainRef} tabIndex={-1}>
+                <Outlet />
+            </main>
+        </>
+    );
+}
+```
+
+Додатково на кожній сторінці бажано оновлювати заголовок вкладки (`document.title`), адже саме його читає екранна програма під час переходу і саме його бачить користувач в історії браузера. У React 19 зручно просто відтворити елемент `<title>` у компоненті сторінки: React самостійно перемістить його в `<head>`.
+
+## Режим фреймворку
+
+Режим фреймворку обгортає режим даних плагіном Vite та додає те, чого не вистачає чистому SPA: серверне відтворення, автоматичне розбиття коду за маршрутами, попереднє формування статичних сторінок, типобезпечні параметри й дані маршрутів. Маршрути тут задаються в окремому файлі `app/routes.ts`, а кожен маршрут — це модуль, який експортує компонент, завантажувач і дію.
+
+```bash
+npx create-react-router@latest my-framework-app
+```
+
+```typescript
+// app/routes.ts
+import { type RouteConfig, index, route, layout } from '@react-router/dev/routes';
+
+export default [
+    index('routes/home.tsx'),
+    route('about', 'routes/about.tsx'),
+    layout('routes/dashboard-layout.tsx', [
+        route('dashboard', 'routes/dashboard.tsx'),
+        route('products/:productId', 'routes/product.tsx')
+    ])
+] satisfies RouteConfig;
+```
+
+```typescript
+// app/routes/product.tsx
+import type { Route } from './+types/product';
+
+export async function loader({ params }: Route.LoaderArgs) {
+    return fetchProduct(params.productId); // працює на сервері
+}
+
+export default function Product({ loaderData }: Route.ComponentProps) {
+    return <h1>{loaderData.name}</h1>;
+}
+```
+
+Зверніть увагу, що `loaderData` і `params` тут мають точні типи, згенеровані з опису маршрутів. Серверне відтворення можна вимкнути, і тоді фреймворк збирає звичайний SPA, але зберігає решту переваг.
+
+Режим фреймворку є прямим наступником Remix і суперником Next.js, який ми згадували в лекції 01. Принципова відмінність у способі оголошення маршрутів: Next.js виводить їх зі структури папок (файлова маршрутизація), а React Router — з явного файлу конфігурації, хоча й дозволяє підключити файлову маршрутизацію пакетом. У цьому курсі ми зосереджуємось на декларативному режимі та режимі даних, оскільки вони складають основу, а інші підходи на них спираються.
+
+## Робота із сервером та розгортання
+
+### Резервний перехід на index.html
+
+Тут ми повертаємося до обіцяної проблеми. Користувач натискає на посилання в застосунку: React Router змінює адресу на `/products/42` без жодного запиту. Але якщо той самий користувач оновить сторінку або відкриє це посилання у новій вкладці, браузер надішле серверу запит `GET /products/42`. Сервер не має такого файлу й відповідає 404. Рішення — налаштувати сервер так, щоб на всі адреси, яким не відповідає реальний файл, він віддавав `index.html`: далі маршрутизатор у браузері сам розбереться, що показувати.
+
+Dev-сервер Vite робить це автоматично, тому під час розробки проблема не проявляється, і з'являється вона лише після розгортання. Ось як це налаштовується.
+
+**Nginx:**
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+**Express 5** (ES-модулі, Node.js 24):
+
+```javascript
+import express from 'express';
+import path from 'node:path';
+
+const app = express();
+const distDir = path.join(import.meta.dirname, 'dist'); // Vite збирає застосунок у dist
+
+// 1. Маршрути API — до резервного переходу
+app.use('/api', apiRouter);
+
+// 2. Статичні файли збірки
+app.use(express.static(distDir));
+
+// 3. Решта запитів — на index.html (у Express 5 символ-замінник має бути іменованим)
+app.get('/{*splat}', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+});
+
+app.listen(3000);
+```
+
+Зверніть увагу на три відмінності від багатьох застарілих прикладів. По-перше, у Express 5 запис `app.get('*', ...)` викликає помилку: символ-замінник має ім'я, а запис `/{*splat}` додатково охоплює кореневу адресу. По-друге, у модулях ES змінної `__dirname` немає, замість неї використовують `import.meta.dirname`. По-третє, Vite збирає проєкт у каталог `dist`, а не `build` (так було в застарілому Create React App, підтримку якого припинено). Також важливо, щоб маршрути API були оголошені **до** резервного переходу: інакше неправильний запит до `/api/...` отримає у відповідь HTML-сторінку замість JSON.
+
+Резервний перехід має побічний наслідок: сервер відповідає кодом 200 навіть на неіснуючі адреси, і пошукові системи можуть вважати їх нормальними сторінками. Якщо для вас це має значення, використовуйте режим фреймворку із серверним відтворенням або сервер, який знає список допустимих маршрутів.
+
+На статичних хостингах без такого налаштування (наприклад, GitHub Pages) є два шляхи: використати `HashRouter` або створити копію `index.html` під назвою `404.html`, яку хостинг показуватиме на невідомі адреси. Не забудьте також про `basename` і `base`, якщо застосунок розміщується в підкаталозі.
+
+## Тестування маршрутів
+
+Компоненти, які використовують хуки маршрутизації, не можна відтворювати без маршрутизатора: у них просто немає звідки взяти адресу. Для тестів використовують `MemoryRouter`, який приймає початкову історію у властивості `initialEntries`.
+
+```javascript
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router';
+import { expect, test } from 'vitest';
+
+test('показує профіль користувача за параметром адреси', () => {
+    render(
+        <MemoryRouter initialEntries={['/users/42']}>
+            <Routes>
+                <Route path="/users/:userId" element={<UserBadge />} />
+            </Routes>
+        </MemoryRouter>
+    );
+
+    expect(screen.getByText('Користувач 42')).toBeInTheDocument();
+});
+```
+
+Для режиму даних відповідна функція — `createMemoryRouter`. Вона дозволяє перевіряти й завантажувачі та дії, не залежачи від браузера. Захищені маршрути тестують, подаючи компоненту різні значення `AuthProvider`: з користувачем, без нього та в стані завантаження.
+
 ## Висновки та найкращі практики
 
-### Ключові концепції React
+### Розуміння React Router
 
-React змінив підхід до розробки інтерфейсів, запровадивши компонентну архітектуру та декларативний стиль програмування. Розуміння Virtual DOM, reconciliation та однонаправленого потоку даних є основою для ефективної роботи з React.
+React Router залишається стандартом клієнтської маршрутизації в екосистемі React. Версія 7 об'єднала його з Remix і запропонувала три режими використання: декларативний для простих застосунків, режим даних для тих, де завантаження даних зручно прив'язати до переходів, і режим фреймворку для повноцінних застосунків із серверним відтворенням. Ядро — зіставлення адреси й компонентів, вкладені маршрути та хуки — спільне для всіх трьох, тому знання з одного режиму легко переносяться в інший.
 
-JSX робить код виразним та інтуїтивним, дозволяючи описувати UI у знайомому HTML-подібному синтаксисі з повною потужністю JavaScript. Важливо розуміти, що JSX — це синтаксичний цукор над викликами функцій, що допомагає уникнути непорозумінь та помилок.
+Центральна ідея лекції полягає в тому, що адреса — це частина стану застосунку. Вона ідентифікує ресурс (параметри шляху), описує подання (параметри запиту) і лишається незмінною при оновленні сторінки та надсиланні посилання. Те, що користувач має вміти запам'ятати чи передати комусь, варто зберігати в URL, а не в `useState`.
 
-Функціональні компоненти з хуками стали стандартом сучасної React розробки завдяки їх простоті, виразності та можливостям повторного використання логіки. Класові компоненти залишаються важливими для розуміння legacy коду та еволюції екосистеми.
+### Організація маршрутів
 
-### Організація компонентів
+Будуйте маршрути ієрархічно: використовуйте вкладеність для спільних макетів, безшляхові маршрути для груп із загальною поведінкою (автентифікація) і індексні маршрути для вмісту за замовчуванням. Описуйте шляхи через `NavLink` із атрибутом `end` там, де потрібна підсвітка активного пункту, і завжди додавайте сторінку 404 через `path="*"`. Пам'ятайте, що відносні шляхи рахуються від маршруту, а не від адреси.
 
-Правильна організація компонентів є ключем до підтримуваної кодової бази. Компоненти повинні бути невеликими, мати єдину відповідальність та бути максимально повторно використовуваними. Композиція перевершує наслідування в React — будуйте складні компоненти з простих будівельних блоків.
+### Параметри й дані
 
-Props служать контрактом між компонентами, визначаючи їх API. Чітка типізація props через TypeScript або PropTypes документує очікування компонента та запобігає помилкам. Children prop дозволяє створювати гнучкі композиційні паттерни, які є основою для layout компонентів та compound components.
+Параметри шляху — завжди рядки, тому їх перевіряють, а параметри запиту читають із розумними значеннями за замовчуванням і оновлюють, зберігаючи решту параметрів. Дані сервера завантажуйте через TanStack Query у компонентах або через `loader` у режимі даних, а не вручну через `useEffect`. Стан розташування використовуйте лише для тимчасових даних, без яких сторінка вміє працювати.
 
-### Інструменти розробки
+### Безпека
 
-Vite революціонізував досвід розробки завдяки миттєвому старту та швидкому HMR. Правильна конфігурація Vite з alias для імпортів, proxy для API та оптимізацією збірки значно підвищує продуктивність розробки.
-
-React Developer Tools є незамінним інструментом для відладки та оптимізації. Вміння інспектувати компоненти, аналізувати їх state та props, використовувати Profiler для виявлення проблем з продуктивністю відрізняє досвідченого розробника.
-
-### TypeScript у React
-
-TypeScript приносить безпеку типів та кращий developer experience для React проєктів. Типізація props робить компоненти самодокументованими та запобігає помилкам на етапі розробки. Generic types дозволяють створювати гнучкі та типобезпечні компоненти.
-
-Правильна типізація хуків, подій та власних типів робить код більш передбачуваним та легким для рефакторингу. Discriminated unions дозволяють TypeScript розуміти, які поля доступні в кожному стані, що призводить до більш безпечного коду.
+Клієнтські захищені маршрути — це інструмент зручності, а не захисту. Кожне обмеження доступу має дублюватися на сервері. Обробляйте стан завантаження сеансу, щоб користувача не перенаправляло помилково, розрізняйте відсутність автентифікації та брак прав, повертайте користувача туди, куди він ішов, і ніколи не зберігайте токени в `localStorage`.
 
 ### Найкращі практики
 
-1. **Дотримуйтесь принципу єдиної відповідальності** для компонентів — кожен компонент повинен робити одну річ добре;
-2. **Використовуйте композицію** замість дублювання коду — створюйте переносні компоненти та комбінуйте їх;
-3. **Типізуйте всі props та state** для безпеки та кращого developer experience;
-4. **Оптимізуйте рендеринг** використовуючи React.memo, useMemo, useCallback де необхідно;
-5. **Слідкуйте за розміром компонентів** — якщо компонент стає надто великим, розділіть його на менші частини;
-6. **Використовуйте React Developer Tools** для відладки та профілювання продуктивності;
-7. **Організовуйте файлову структуру** логічно — групуйте пов'язані файли разом;
-8. **Документуйте складні компоненти** через коментарі та приклади використання.
+1. **Починайте з декларативного режиму**, переходьте до режиму даних, коли потрібні завантажувачі й дії, а режим фреймворку обирайте для застосунків із серверним відтворенням;
+2. **Імпортуйте все з `react-router`**: пакет `react-router-dom` у версії 7 не потрібен;
+3. **Використовуйте `Link` і `NavLink` замість `<a>`** для внутрішніх посилань, а `end` додавайте до кореня й розділів із вкладеними сторінками;
+4. **Організовуйте маршрути ієрархічно**: вкладені макети, `Outlet`, індексні й безшляхові маршрути;
+5. **Перевіряйте параметри шляху** та обробляйте некоректні значення;
+6. **Зберігайте в URL стан, яким діляться**: фільтри, пошук, сторінку; оновлюйте параметри, не втрачаючи інших;
+7. **Охороняйте приватні маршрути одним макетом** з обробкою стану завантаження, збереженням шляху повернення та розрізненням 401 і 403;
+8. **Не покладайтеся на клієнтські перевірки** як на захист: авторизація виконується на сервері;
+9. **Вибирайте між `push` і `replace` свідомо**: `replace` — для входу, завершення процесів і частих оновлень;
+10. **Розбивайте код за маршрутами** через `lazy` і `Suspense`;
+11. **Налаштуйте резервний перехід на `index.html`** на сервері й оголошуйте маршрути API до нього;
+12. **Піклуйтеся про прокручування й фокус** після переходів і оновлюйте заголовок сторінки;
+13. **Тестуйте маршрути через `MemoryRouter`** та `createMemoryRouter`.
 
-Розуміння цих основ React закладає фундамент для вивчення більш просунутих тем, таких як hooks, управління станом, роутинг та оптимізація продуктивності. Ключ до майстерності в React — це практика, експериментування з різними паттернами та постійне вивчення нових можливостей екосистеми.
+Розуміння цих принципів дозволяє створювати застосунки зі зручною, передбачуваною й безпечною навігацією, у яких адреса є повноцінною частиною архітектури. У наступних лекціях ми побачимо, як маршрутизація та стан поєднуються з формами, перевіркою даних і взаємодією з API.
+
+### Джерела для подальшого вивчення
+
+- Документація React Router: [reactrouter.com](https://reactrouter.com)
+- Перехід з версії 6 на 7: [reactrouter.com/upgrading/v6](https://reactrouter.com/upgrading/v6)
+- Огляд режимів: [reactrouter.com/start/modes](https://reactrouter.com/start/modes)
+- History API: [developer.mozilla.org/docs/Web/API/History_API](https://developer.mozilla.org/docs/Web/API/History_API)
