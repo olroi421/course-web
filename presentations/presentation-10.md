@@ -1,742 +1,1251 @@
-# React Hooks та управління станом
+# Форми, валідація та інтеграція із серверною частиною
+
+---
 
 ## План лекції
 
-1. Вступ до React Hooks
-2. useState: локальний стан
-3. useEffect: side effects
-4. useContext: глобальний стан
-5. Кастомні хуки
-6. useReducer для складного стану
-7. Performance оптимізації
+**Частина 1. Форми**
+- Контрольовані й неконтрольовані компоненти
+- React Hook Form
+- Валідація схемами Zod
+- Власні поля введення, файли
+- UX-патерни, нативні форми React 19
 
+**Частина 2. Взаємодія із сервером**
+- HTTP-клієнт: Fetch та Axios
+- Перехоплювачі, обробка помилок
+- Стани завантаження, кешування
+- TanStack Query, оптимістичні оновлення
+- Форма + мутація + помилки сервера
 
-## Вступ до React Hooks
+---
 
-### Що таке Hooks?
-
-**Hooks** — це функції, які дозволяють використовувати стан та lifecycle у функціональних компонентах
-
-**До Hooks (2019):**
-- Тільки класові компоненти мали стан
-- Складний код з lifecycle методами
-- Проблеми з повторним використанням логіки
-
-**Після Hooks:**
-- ✅ Стан у функціональних компонентах
-- ✅ Простіший та чистіший код
-- ✅ Легке повторне використання логіки
-
-
-## Історія Hooks
-
-### Еволюція React
+## Шлях даних: від форми до сервера
 
 ```mermaid
-graph LR
-    A[2013: React] --> B[2015: Class компоненти]
-    B --> C[2016: HOC, Render Props]
-    C --> D[2019: React Hooks]
-    D --> E[Сучасний React]
+flowchart LR
+    U[Користувач] --> F[Форма React]
+    F --> V{Схема Zod}
+    V -->|помилки| F
+    V -->|ок| M[Мутація TanStack Query]
+    M -->|Axios| S[(REST API)]
+    S -->|JSON / 422| M
+    M --> UI[Інтерфейс]
+    M -.->|помилки полів| F
 ```
 
-**React 16.8 (лютий 2019)** — революційне оновлення
+---
 
+## Виклики роботи з формами
 
-## Мотивація створення Hooks
+- Зберігання значень полів
+- Валідація: коли і як показувати помилки
+- Відправлення та блокування повторних натискань
+- Обробка відповіді сервера
+- Доступність для всіх користувачів
 
-### Проблеми, які вирішили Hooks
+**Ключове питання:** хто володіє значенням поля — React чи DOM?
 
-**Проблема 1:** Складність повторного використання логіки
-- HOCs та Render Props → "wrapper hell"
+---
 
-**Проблема 2:** Великі компоненти
-- Lifecycle методи змішують непов'язану логіку
+## Контрольований компонент
 
-**Проблема 3:** Класи заплутують
-- Проблеми з `this`
-- Необхідність біндити методи
+**Значення поля повністю керується станом React**
 
-
-## Правила Hooks
-
-### ⚠️ Критично важливі правила
-
-**Правило 1:** Викликайте хуки тільки на верхньому рівні
 ```javascript
-// ❌ НЕПРАВИЛЬНО
-if (condition) {
-    const [state, setState] = useState(0);
-}
+function ControlledForm() {
+    const [email, setEmail] = useState('');
 
-// ✅ ПРАВИЛЬНО
-const [state, setState] = useState(0);
-if (condition) {
-    // використання state
+    return (
+        <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+        />
+    );
 }
 ```
 
-**Правило 2:** Викликайте хуки тільки з React функцій
-- Функціональні компоненти
-- Кастомні хуки
+**Переваги:** повний контроль, валідація «на льоту», складна логіка
 
+**Недоліки:** більше коду, повторне відтворення при кожному символі
 
-## useState: основи
+---
 
-### Найпростіший хук
+## Неконтрольований компонент
+
+**Значення зберігається в DOM; читаємо через `ref` або `FormData`**
 
 ```javascript
-import { useState } from 'react';
+function UncontrolledForm() {
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.currentTarget));
+        console.log(data);
+    };
 
-function Counter() {
-    // [поточне значення, функція оновлення]
-    const [count, setCount] = useState(0);
+    return (
+        <form onSubmit={handleSubmit}>
+            <input name="email" type="email" />
+            <button type="submit">Відправити</button>
+        </form>
+    );
+}
+```
+
+**Переваги:** менше коду, краща швидкодія, єдиний варіант для `<input type="file">`
+
+---
+
+## Контрольовані vs неконтрольовані
+
+```mermaid
+flowchart LR
+    subgraph ctrl["Контрольований"]
+        A1[Введення] --> B1[onChange] --> C1[setState] --> D1[Відтворення] --> A1
+    end
+    subgraph unctrl["Неконтрольований"]
+        A2[Введення] --> B2[DOM зберігає] --> C2[Читання при submit]
+    end
+```
+
+| Критерій | Контрольований | Неконтрольований |
+|---|---|---|
+| Де значення | Стан React | DOM |
+| Валідація «на льоту» | Природна | Складніша |
+| Відтворення при вводі | Щоразу | Немає |
+| Файли | Неможливо | Так |
+
+---
+
+## React Hook Form: чому саме він
+
+- 🚀 Мінімум повторних відтворень
+- 📦 Невеликий розмір, без залежностей
+- ✅ Вбудовані правила + схеми через resolvers
+- 🎯 Зручний API, підтримка TypeScript
+- 💪 Вкладені об'єкти, динамічні масиви
+
+```bash
+npm install react-hook-form
+```
+
+---
+
+## React Hook Form: основний API
+
+| Елемент | Призначення |
+|---|---|
+| `register` | Підключає поле до форми |
+| `handleSubmit` | Валідація + виклик обробника |
+| `formState` | `errors`, `isSubmitting`, `isDirty`... |
+| `watch` / `useWatch` | Спостереження за значеннями |
+| `setValue`, `reset` | Зміна значень, скидання |
+| `trigger` | Ручний запуск валідації |
+| `setError` | Ручне додавання помилок (від сервера) |
+| `control` | Для `Controller`, `useFieldArray` |
+
+**Режими валідації `mode`:** `onSubmit` · `onBlur` · `onChange` · `onTouched` · `all`
+
+---
+
+## React Hook Form: базове використання
+
+```javascript
+import { useForm } from 'react-hook-form';
+
+function RegistrationForm() {
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting }
+    } = useForm();
+
+    return (
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+            <input
+                aria-invalid={!!errors.email}
+                {...register('email', {
+                    required: "Email обов'язковий"
+                })}
+            />
+            {errors.email && (
+                <span role="alert">{errors.email.message}</span>
+            )}
+
+            <button disabled={isSubmitting}>Зареєструватися</button>
+        </form>
+    );
+}
+```
+
+---
+
+## React Hook Form: динамічні поля
+
+```javascript
+const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'teamMembers'
+});
+
+return (
+    <>
+        {fields.map((field, index) => (
+            <div key={field.id}>
+                <input {...register(`teamMembers.${index}.name`)} />
+                <button type="button" onClick={() => remove(index)}>
+                    Видалити
+                </button>
+            </div>
+        ))}
+        <button type="button" onClick={() => append({ name: '' })}>
+            Додати учасника
+        </button>
+    </>
+);
+```
+
+**Правило:** `key={field.id}`, а не індекс
+
+---
+
+## Zod: схема замість розсипаних правил
+
+**Навіщо:**
+- Правила окремо від розмітки
+- Повторне використання, перевірки кількох полів
+- Типи TypeScript виводяться зі схеми
+- Одна схема — для клієнта й сервера (Express)
+
+```bash
+npm install zod @hookform/resolvers
+```
+
+**Zod 4:** `z.email()` замість `z.string().email()`, єдиний параметр `error` для повідомлень
+
+---
+
+## Zod: базова схема
+
+```javascript
+import { z } from 'zod';
+
+const schema = z.object({
+    username: z.string()
+        .min(3, 'Мінімум 3 символи')
+        .max(20, 'Максимум 20 символів'),
+
+    email: z.email('Некоректний email').toLowerCase(),
+
+    password: z.string()
+        .min(8, 'Мінімум 8 символів')
+        .regex(/[A-Z]/, 'Потрібна велика літера'),
+
+    confirmPassword: z.string(),
+
+    age: z.number({ error: 'Вкажіть вік числом' })
+        .int()
+        .min(18, 'Вік від 18 років')
+}).refine(d => d.password === d.confirmPassword, {
+    error: 'Паролі не збігаються',
+    path: ['confirmPassword']
+});
+```
+
+---
+
+## Zod + React Hook Form
+
+```javascript
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(schema)
+});
+
+const onSubmit = (data) => {
+    // Дані вже перевірені та перетворені схемою
+};
+```
+
+```typescript
+// TypeScript: тип виводиться зі схеми
+type FormData = z.infer<typeof schema>;
+```
+
+**Нюанс:** для `type="number"` потрібен `register('age', { valueAsNumber: true })`
+
+---
+
+## Складні схеми Zod
+
+```javascript
+const projectSchema = z.object({
+    title: z.string().min(1),
+    budget: z.object({
+        amount: z.number().positive(),
+        currency: z.enum(['UAH', 'USD', 'EUR'])
+    }),
+    tags: z.array(z.string()).min(1).max(5),
+    startDate: z.iso.date()
+});
+
+// Різні набори полів залежно від значення
+const deliverySchema = z.discriminatedUnion('method', [
+    z.object({
+        method: z.literal('pickup'),
+        pickupPoint: z.string().min(1)
+    }),
+    z.object({
+        method: z.literal('courier'),
+        address: z.string().min(5)
+    })
+]);
+```
+
+**Пам'ятайте:** валідація на клієнті ≠ валідація на сервері
+
+---
+
+## Власне поле введення
+
+**Принципи:** інкапсуляція, доступність, `ref` як властивість (React 19)
+
+```javascript
+function Input({ label, error, id, ref, ...props }) {
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
+    const errorId = `${inputId}-error`;
 
     return (
         <div>
-            <h2>Лічильник: {count}</h2>
-            <button onClick={() => setCount(count + 1)}>
-                +1
+            <label htmlFor={inputId}>{label}</label>
+            <input
+                ref={ref}
+                id={inputId}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? errorId : undefined}
+                {...props}
+            />
+            {error && <span id={errorId} role="alert">{error}</span>}
+        </div>
+    );
+}
+```
+
+---
+
+## Поле пароля з індикатором
+
+```javascript
+function PasswordInput({ showStrength, onChange, ref, ...props }) {
+    const [strength, setStrength] = useState(0);
+    const [visible, setVisible] = useState(false);
+
+    const handleChange = (e) => {
+        setStrength(calculateStrength(e.target.value));
+        onChange?.(e); // передаємо подію в register
+    };
+
+    return (
+        <div>
+            <input
+                ref={ref}
+                type={visible ? 'text' : 'password'}
+                onChange={handleChange}
+                {...props}
+            />
+            <button
+                type="button"
+                aria-label={visible ? 'Сховати пароль' : 'Показати пароль'}
+                onClick={() => setVisible(v => !v)}
+            >
+                {visible ? '🙈' : '👁️'}
             </button>
+            {showStrength && <StrengthBar strength={strength} />}
         </div>
     );
 }
 ```
 
-**Початкове значення** використовується тільки при першому рендері
+---
 
-
-## useState: типи даних
-
-### Працює з будь-якими даними
+## Controller: чужі компоненти у формі
 
 ```javascript
-// Примітиви
-const [name, setName] = useState('');
-const [age, setAge] = useState(0);
-const [isActive, setIsActive] = useState(false);
+<Controller
+    name="country"
+    control={control}
+    rules={{ required: 'Оберіть країну' }}
+    render={({ field, fieldState }) => (
+        <SearchableSelect
+            options={countries}
+            value={field.value}
+            onChange={field.onChange}
+            error={fieldState.error?.message}
+        />
+    )}
+/>
+```
 
-// Об'єкти
-const [user, setUser] = useState({
-    name: '',
-    email: ''
+- Для полів без нативного `<input>`: вибір дати, редактор, списки з пошуком
+- Складні списки — готові компоненти (`Combobox`, лекція 11)
+
+---
+
+## Завантаження файлів
+
+```javascript
+const files = watch('avatar');
+
+useEffect(() => {
+    const file = files?.[0];
+    if (!file) return setPreview(null);
+
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+}, [files]);
+
+<input
+    type="file"
+    accept="image/jpeg,image/png"
+    {...register('avatar', {
+        validate: {
+            fileSize: f => f[0]?.size <= 5 * 1024 * 1024 || 'Максимум 5 МБ'
+        }
+    })}
+/>
+```
+
+**Сервер обов'язково перевіряє тип і розмір повторно**
+
+---
+
+## Перетягування файлів
+
+```javascript
+import { useDropzone } from 'react-dropzone';
+
+const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: { 'image/*': ['.jpeg', '.jpg', '.png'] },
+    maxSize: 5 * 1024 * 1024,
+    onDrop: (acceptedFiles) => { /* ... */ }
 });
 
-// Масиви
-const [items, setItems] = useState([]);
-
-// Складні структури
-const [data, setData] = useState({
-    user: {},
-    settings: {},
-    preferences: {}
-});
-```
-
-
-## Оновлення стану
-
-### Два способи
-
-**Пряме значення:**
-```javascript
-const addTodo = (text) => {
-    setTodos([...todos, { id: Date.now(), text }]);
-};
-```
-
-**Функціональне оновлення:**
-```javascript
-const addTodo = (text) => {
-    setTodos(prevTodos => [
-        ...prevTodos,
-        { id: Date.now(), text }
-    ]);
-};
-```
-
-💡 **Рекомендація:** Використовуйте функціональне оновлення для множинних змін
-
-
-## Immutability: важливо!
-
-### Оновлення об'єктів та масивів
-
-```javascript
-// ❌ НЕПРАВИЛЬНО: мутація
-const updateUser = () => {
-    user.name = 'Нове ім\'я';
-    setUser(user); // React не виявить зміну
-};
-
-// ✅ ПРАВИЛЬНО: новий об'єкт
-const updateUser = () => {
-    setUser({
-        ...user,
-        name: 'Нове ім\'я'
-    });
-};
-```
-
-React порівнює стан **за посиланням**
-
-
-## Ледаче ініціалізування
-
-### Оптимізація початкового стану
-
-```javascript
-// ❌ Неефективно: обчислення при кожному рендері
-const [data, setData] = useState(
-    expensiveCalculation(props.data)
+return (
+    <div {...getRootProps()} className={isDragActive ? 'active' : ''}>
+        <input {...getInputProps()} />
+        <p>Перетягніть файли або клацніть для вибору</p>
+    </div>
 );
-
-// ✅ Ефективно: обчислення один раз
-const [data, setData] = useState(() => {
-    return expensiveCalculation(props.data);
-});
-
-// Приклад з localStorage
-const [preferences, setPreferences] = useState(() => {
-    const saved = localStorage.getItem('prefs');
-    return saved ? JSON.parse(saved) : defaults;
-});
 ```
 
+---
 
-## useEffect: side effects
+## UX: коли показувати помилку
 
-### Що таке side effects?
+- `onSubmit` — надто пізно в довгих формах
+- `onChange` — дратує, поки людина ще вводить
+- **`onTouched` / `onBlur`** — після виходу з поля, далі — «на льоту»
 
-**Side effects** — операції, які впливають на щось поза компонентом:
-- 🌐 API запити
-- 📡 Підписки на події
-- 🎯 Маніпуляції з DOM
-- 📝 Логування
-- ⏰ Таймери
+```javascript
+const { register, formState: { errors, isValidating, touchedFields } } =
+    useForm({ mode: 'onTouched' });
+
+<input {...register('username', {
+    validate: async (v) =>
+        (await isUsernameAvailable(v)) || "Це ім'я вже зайняте"
+})} />
+
+{isValidating && <span>Перевірка доступності...</span>}
+{touchedFields.username && !errors.username && <span>✓ Вільно</span>}
+```
+
+---
+
+## Багатокрокові форми
+
+```javascript
+const stepFields = {
+    1: ['firstName', 'lastName', 'email'],
+    2: ['address', 'city'],
+    3: ['deliveryMethod']
+};
+
+const nextStep = async () => {
+    const isValid = await trigger(stepFields[step]);
+    if (isValid) setStep(s => s + 1);
+};
+```
+
+- Один `useForm` на всю форму
+- Значення не губляться при переході «Назад»
+- ⚠️ Платіжні дані — лише через поля платіжного провайдера
+
+---
+
+## Автозбереження чернетки
 
 ```javascript
 useEffect(() => {
-    // Код, який виконається після рендеру
-    document.title = `Лічильник: ${count}`;
-});
-```
-
-
-## useEffect: базове використання
-
-```javascript
-function UserProfile({ userId }) {
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        // Виконається після рендеру
-        fetch(`/api/users/${userId}`)
-            .then(res => res.json())
-            .then(setUser);
-    }, [userId]); // Залежності
-
-    return <div>{user?.name}</div>;
-}
-```
-
-**Коли викликається:**
-- Після монтування компонента
-- Після зміни залежностей
-
-
-## Масив залежностей
-
-### Три варіанти
-
-```javascript
-// 1. Без масиву: після КОЖНОГО рендеру
-useEffect(() => {
-    console.log('Кожен рендер');
-});
-
-// 2. Порожній масив: ОДИН РАЗ після монтування
-useEffect(() => {
-    console.log('Тільки при монтуванні');
-}, []);
-
-// 3. З залежностями: при зміні залежностей
-useEffect(() => {
-    console.log('При зміні count');
-}, [count]);
-```
-
-
-## Cleanup функція
-
-### Очищення side effects
-
-```javascript
-function Timer() {
-    const [seconds, setSeconds] = useState(0);
-
-    useEffect(() => {
-        // Створення інтервалу
-        const interval = setInterval(() => {
-            setSeconds(s => s + 1);
+    let timer;
+    const sub = watch((values) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            localStorage.setItem('draft', JSON.stringify(values));
         }, 1000);
+    });
+    return () => { clearTimeout(timer); sub.unsubscribe(); };
+}, [watch]);
+```
 
-        // Cleanup: викликається перед unmount
-        return () => {
-            clearInterval(interval);
-        };
-    }, []);
+- Початкове значення форми — зі збереженої чернетки
+- Не зберігати паролі й чутливі дані
 
-    return <div>Секунд: {seconds}</div>;
+---
+
+## React 19: нативні форми
+
+```javascript
+async function subscribeAction(prevState, formData) {
+    const email = formData.get('email');
+    const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+    });
+    return { ok: res.ok };
+}
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return <button disabled={pending}>Підписатися</button>;
+}
+
+function SubscribeForm() {
+    const [state, formAction] = useActionState(subscribeAction, { ok: false });
+    return (
+        <form action={formAction}>
+            <input name="email" type="email" />
+            <SubmitButton />
+        </form>
+    );
 }
 ```
 
-**Cleanup викликається:**
-- Перед unmount компонента
-- Перед наступним запуском effect
+**Простим формам — Actions; складним — React Hook Form + Zod**
 
+---
 
-## Lifecycle через useEffect
+## Доступність форм
+
+- `<label htmlFor>` для кожного поля
+- `aria-invalid` та `aria-describedby` для помилок
+- `role="alert"` для повідомлень про помилки
+- Навігація клавіатурою, видимий фокус
+- Семантичні елементи: `fieldset`, `legend`
+
+```javascript
+<input
+    id="email"
+    aria-invalid={!!errors.email}
+    aria-describedby={errors.email ? 'email-error' : undefined}
+/>
+{errors.email && (
+    <span id="email-error" role="alert">{errors.email.message}</span>
+)}
+```
+
+---
+
+## Частина 2. Взаємодія із сервером: три рівні
 
 ```mermaid
-graph LR
-    A[componentDidMount] --> B["useEffect(() => {}, [])"]
-    C[componentDidUpdate] --> D["useEffect(() => {}, [deps])"]
-    E[componentWillUnmount] --> F["useEffect(() => return cleanup)"]
+flowchart TB
+    C["Компоненти React"]
+    Q["TanStack Query: кеш, стани, мутації"]
+    H["HTTP-клієнт: Fetch / Axios"]
+    A[("REST API")]
+    C --> Q --> H --> A
 ```
 
-```javascript
-useEffect(() => {
-    // componentDidMount + componentDidUpdate
-    console.log('Монтування або оновлення');
+| Інструмент | Рівень | Призначення |
+|---|---|---|
+| Fetch API | Транспорт | Нативний API браузера |
+| Axios | Транспорт | Екземпляри, перехоплювачі, винятки на помилки |
+| TanStack Query | Дані | Кеш, синхронізація, мутації |
 
-    return () => {
-        // componentWillUnmount
-        console.log('Розмонтування');
-    };
-}, [dependencies]);
-```
+---
 
-
-## useContext: проблема
-
-### Prop Drilling
+## Fetch API: пастка
 
 ```javascript
-function App() {
-    const [user, setUser] = useState(null);
-
-    return (
-        <Layout user={user}>
-            <Sidebar user={user}>
-                <Navigation user={user}>
-                    <UserMenu user={user} />
-                </Navigation>
-            </Sidebar>
-        </Layout>
-    );
-}
-```
-
-❌ **Проблема:** Props передаються через багато рівнів
-
-
-## useContext: рішення
-
-### Створення Context
-
-```javascript
-import { createContext, useContext } from 'react';
-
-// Створення контексту
-const UserContext = createContext(null);
-
-// Provider
-function App() {
-    const [user, setUser] = useState(null);
-
-    return (
-        <UserContext.Provider value={{ user, setUser }}>
-            <Layout>
-                <UserMenu />
-            </Layout>
-        </UserContext.Provider>
-    );
-}
-
-// Споживання
-function UserMenu() {
-    const { user } = useContext(UserContext);
-    return <div>{user?.name}</div>;
-}
-```
-
-
-## Custom Hook для Context
-
-### Кращі практики
-
-```javascript
-// Створення кастомного хука
-export function useAuth() {
-    const context = useContext(AuthContext);
-
-    if (!context) {
-        throw new Error(
-            'useAuth must be used within AuthProvider'
-        );
-    }
-
-    return context;
-}
-
-// Використання
-function Profile() {
-    const { user, logout } = useAuth();
-
-    return (
-        <div>
-            <h1>{user.name}</h1>
-            <button onClick={logout}>Вийти</button>
-        </div>
-    );
-}
-```
-
-
-## Кастомні хуки
-
-### Повторне використання логіки
-
-```javascript
-// Кастомний хук для API запитів
-function useFetch(url) {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        fetch(url)
-            .then(res => res.json())
-            .then(setData)
-            .catch(setError)
-            .finally(() => setLoading(false));
-    }, [url]);
-
-    return { data, loading, error };
-}
-
-// Використання
-function UserList() {
-    const { data: users, loading } = useFetch('/api/users');
-
-    if (loading) return <div>Завантаження...</div>;
-    return <div>{/* список */}</div>;
-}
-```
-
-
-## Популярні кастомні хуки
-
-### useLocalStorage
-
-```javascript
-function useLocalStorage(key, initialValue) {
-    const [value, setValue] = useState(() => {
-        const saved = localStorage.getItem(key);
-        return saved ? JSON.parse(saved) : initialValue;
+async function fetchJson(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...options.headers },
+        signal: options.signal ?? AbortSignal.timeout(10_000)
     });
 
-    useEffect(() => {
-        localStorage.setItem(key, JSON.stringify(value));
-    }, [key, value]);
-
-    return [value, setValue];
-}
-
-// Використання
-function Settings() {
-    const [theme, setTheme] = useLocalStorage('theme', 'light');
-
-    return (
-        <select value={theme} onChange={e => setTheme(e.target.value)}>
-            <option value="light">Світла</option>
-            <option value="dark">Темна</option>
-        </select>
-    );
-}
-```
-
-
-## useDebounce Hook
-
-```javascript
-function useDebounce(value, delay) {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-
-        return () => clearTimeout(timer);
-    }, [value, delay]);
-
-    return debouncedValue;
-}
-
-// Використання для пошуку
-function Search() {
-    const [search, setSearch] = useState('');
-    const debouncedSearch = useDebounce(search, 500);
-
-    // API запит тільки після 500ms затримки
-    const { data } = useFetch(`/api/search?q=${debouncedSearch}`);
-}
-```
-
-
-## useReducer: коли використовувати
-
-### useState vs useReducer
-
-**useState:** Простий стан
-```javascript
-const [count, setCount] = useState(0);
-```
-
-**useReducer:** Складний стан
-```javascript
-const [state, dispatch] = useReducer(reducer, initialState);
-```
-
-**Використовуйте useReducer коли:**
-- Складна структура стану
-- Багато способів оновлення
-- Наступний стан залежить від попереднього
-- Хочете тестувати логіку окремо
-
-
-## useReducer: приклад
-
-```javascript
-const initialState = { count: 0, history: [] };
-
-function reducer(state, action) {
-    switch (action.type) {
-        case 'increment':
-            return {
-                count: state.count + 1,
-                history: [...state.history, 'increment']
-            };
-        case 'decrement':
-            return {
-                count: state.count - 1,
-                history: [...state.history, 'decrement']
-            };
-        case 'reset':
-            return initialState;
-        default:
-            return state;
+    // Fetch НЕ кидає виняток на 404/500!
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
     }
-}
 
-function Counter() {
-    const [state, dispatch] = useReducer(reducer, initialState);
-
-    return (
-        <div>
-            <h2>Count: {state.count}</h2>
-            <button onClick={() => dispatch({ type: 'increment' })}>+</button>
-        </div>
-    );
+    return response.json();
 }
 ```
 
+**Проміс відхиляється лише при мережевому збої**
 
-## Context + useReducer
+---
 
-### Потужна комбінація
+## Axios: коли доречний
 
-```javascript
-const CartContext = createContext(null);
+- Екземпляри з базовою конфігурацією
+- Перехоплювачі запитів і відповідей
+- Автоматичний виняток на статуси поза 2xx
+- Прогрес відправлення файлів
+- Підтримка скасування й тайм-аутів
 
-function cartReducer(state, action) {
-    switch (action.type) {
-        case 'ADD_ITEM':
-            return {
-                ...state,
-                items: [...state.items, action.payload]
-            };
-        case 'REMOVE_ITEM':
-            return {
-                ...state,
-                items: state.items.filter(i => i.id !== action.payload)
-            };
-        default:
-            return state;
-    }
-}
-
-function CartProvider({ children }) {
-    const [state, dispatch] = useReducer(cartReducer, { items: [] });
-
-    return (
-        <CartContext.Provider value={{ state, dispatch }}>
-            {children}
-        </CartContext.Provider>
-    );
-}
-```
-
-
-## Performance оптимізації
-
-### Коли оптимізувати?
-
-**Правило:** Не оптимізуйте передчасно!
-
-**Оптимізуйте коли:**
-- ⚠️ Реальні проблеми з продуктивністю
-- ⚠️ Виявлені через React DevTools Profiler
-- ⚠️ Повільні компоненти або обчислення
-
-**Інструменти оптимізації:**
-- `useMemo` — мемоїзація обчислень
-- `useCallback` — мемоїзація функцій
-- `React.memo` — мемоїзація компонентів
-
-
-## useMemo: мемоїзація обчислень
+**Для малих проєктів Fetch + обгортка — достатньо**
 
 ```javascript
-import { useMemo } from 'react';
+import axios from 'axios';
 
-function ProductList({ products, filters }) {
-    // ❌ Без useMemo: фільтрація при кожному рендері
-    const filtered = products.filter(p =>
-        p.category === filters.category
-    );
-
-    // ✅ З useMemo: тільки при зміні products або filters
-    const filtered = useMemo(() => {
-        return products
-            .filter(p => p.category === filters.category)
-            .sort((a, b) => b.price - a.price);
-    }, [products, filters]);
-
-    return <div>{/* список */}</div>;
-}
-```
-
-**Використовуйте для:**
-- Складних обчислень
-- Великих масивів даних
-- Derived state
-
-
-## useCallback: мемоїзація функцій
-
-```javascript
-import { useCallback, memo } from 'react';
-
-const ProductCard = memo(function ProductCard({ product, onAdd }) {
-    return (
-        <div>
-            <h3>{product.name}</h3>
-            <button onClick={() => onAdd(product)}>Додати</button>
-        </div>
-    );
+export const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL,
+    timeout: 10_000
 });
 
-function ProductList({ products }) {
-    const [cart, setCart] = useState([]);
-
-    // ❌ Нова функція при кожному рендері
-    const addToCart = (product) => {
-        setCart(prev => [...prev, product]);
-    };
-
-    // ✅ Стабільна функція
-    const addToCart = useCallback((product) => {
-        setCart(prev => [...prev, product]);
-    }, []);
-
-    return products.map(p => (
-        <ProductCard key={p.id} product={p} onAdd={addToCart} />
-    ));
-}
+const { data } = await api.get('/users');
+await api.post('/users', userData);
 ```
 
+---
 
-## React.memo: мемоїзація компонентів
+## API-шар: функції доступу
 
 ```javascript
-// Без memo: рендериться при кожному рендері батька
-function ExpensiveComponent({ value }) {
-    return <div>{value}</div>;
-}
+export const usersApi = {
+    getAll: async () => (await api.get('/users')).data,
+    getById: async (id) => (await api.get(`/users/${id}`)).data,
+    create: async (data) => (await api.post('/users', data)).data,
+    update: async (id, data) => (await api.put(`/users/${id}`, data)).data,
+    remove: async (id) => { await api.delete(`/users/${id}`); }
+};
 
-// З memo: рендериться тільки при зміні props
-const MemoizedComponent = memo(function ExpensiveComponent({ value }) {
-    return <div>{value}</div>;
+// Параметри, скасування, прогрес
+api.get('/users/search', { params: { q, limit: 20 }, signal });
+api.post('/upload', formData, {
+    onUploadProgress: (e) => setProgress(e.loaded / e.total)
+});
+```
+
+**Помилки обробляємо централізовано, без `try/catch` у кожній функції**
+
+---
+
+## Перехоплювачі: концепція
+
+```mermaid
+flowchart LR
+    A[Застосунок] --> B[Перехоплювач запиту]
+    B -->|токен, журнал| C[Сервер]
+    C --> D[Перехоплювач відповіді]
+    D -->|помилки, оновлення токена| A
+```
+
+**Наскрізні завдання в одному місці:**
+- Авторизація
+- Журналювання, вимірювання часу
+- Перетворення помилок
+- Оновлення токена
+
+---
+
+## Перехоплювач запитів
+
+```javascript
+// Токен — у пам'яті модуля, а не в localStorage
+let accessToken = null;
+export const setAccessToken = (token) => { accessToken = token; };
+
+api.interceptors.request.use((config) => {
+    if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    config.metadata = { startTime: performance.now() };
+    return config;
 });
 
-// Кастомне порівняння
-const CustomMemo = memo(
-    function Component({ user }) {
-        return <div>{user.name}</div>;
-    },
-    (prevProps, nextProps) => {
-        // Повернути true якщо props однакові (skip рендер)
-        return prevProps.user.id === nextProps.user.id;
+api.interceptors.response.use((response) => {
+    if (import.meta.env.DEV) {
+        const ms = Math.round(performance.now() - response.config.metadata.startTime);
+        console.log(`[API] ${response.config.url} ${ms} мс`);
+    }
+    return response;
+});
+```
+
+---
+
+## Автоматичне оновлення токена
+
+```mermaid
+sequenceDiagram
+    participant C as Застосунок
+    participant I as Перехоплювач
+    participant S as Сервер
+    C->>S: GET /orders (токен прострочений)
+    S-->>I: 401
+    I->>S: POST /auth/refresh (httpOnly-cookie)
+    S-->>I: новий токен
+    I->>S: повтор GET /orders
+    S-->>C: 200 + дані
+```
+
+---
+
+## Оновлення токена: код
+
+```javascript
+let refreshPromise = null;
+
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const original = error.config;
+
+        if (error.response?.status === 401 && !original._retry) {
+            original._retry = true;
+
+            // Усі одночасні запити чекають один спільний проміс
+            refreshPromise ??= refreshAccessToken()
+                .finally(() => { refreshPromise = null; });
+
+            const token = await refreshPromise;
+            setAccessToken(token);
+            original.headers.Authorization = `Bearer ${token}`;
+            return api(original);
+        }
+
+        return Promise.reject(error);
     }
 );
 ```
 
+---
 
-## Коли НЕ оптимізувати
-
-### Приклади
+## Типізовані помилки
 
 ```javascript
-// ❌ НЕ ПОТРІБНО: простий компонент
-const Button = memo(function Button({ text }) {
-    return <button>{text}</button>;
+class ApiError extends Error {
+    constructor(message, status, data) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.data = data;
+    }
+}
+
+class NetworkError extends Error { /* ... */ }
+
+class ValidationError extends ApiError {
+    constructor(message, errors) {
+        super(message, 422, errors);
+        this.name = 'ValidationError';
+        this.errors = errors; // { поле: 'повідомлення' }
+    }
+}
+```
+
+---
+
+## Перетворення помилок
+
+```javascript
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (!axios.isAxiosError(error) || axios.isCancel(error)) {
+            return Promise.reject(error);
+        }
+
+        if (error.response) {
+            const { status, data } = error.response;
+            if (status === 422) {
+                return Promise.reject(
+                    new ValidationError('Помилка валідації', data.errors ?? {})
+                );
+            }
+            return Promise.reject(new ApiError(data?.message, status, data));
+        }
+
+        return Promise.reject(new NetworkError('Немає відповіді від сервера'));
+    }
+);
+```
+
+**Порядок реєстрації має значення**; повідомлення для користувача формує інтерфейс
+
+---
+
+## Коди відповідей та реакція інтерфейсу
+
+| Код | Реакція |
+|---|---|
+| 400 | Повідомлення біля форми |
+| 401 | Оновити токен або на сторінку входу |
+| 403 | Повідомити про відсутність доступу |
+| 404 | Сторінка або повідомлення «не знайдено» |
+| 409 | Пояснити конфлікт |
+| 422 | Помилки біля полів форми |
+| 429 | Попросити зачекати |
+| 5xx | Загальне повідомлення, повторити |
+
+---
+
+## Чотири стани запиту
+
+- ⏳ Завантаження
+- ❌ Помилка
+- 📭 Порожній результат
+- ✅ Дані є
+
+```javascript
+useEffect(() => {
+    const controller = new AbortController();
+
+    api.get('/users', { signal: controller.signal })
+        .then(r => setUsers(r.data))
+        .catch(err => { if (!axios.isCancel(err)) setError(err); })
+        .finally(() => setIsLoading(false));
+
+    return () => controller.abort();
+}, []);
+```
+
+**Проблеми вручну:** гонитва запитів, дублювання, Strict Mode
+
+---
+
+## Скелетні заглушки
+
+**Замість спінера — «скелет» майбутнього вмісту**
+
+```javascript
+function SkeletonCard() {
+    return (
+        <div className="skeleton-card" aria-hidden="true">
+            <div className="skeleton skeleton-avatar" />
+            <div className="skeleton skeleton-title" />
+            <div className="skeleton skeleton-text" />
+        </div>
+    );
+}
+
+{isLoading
+    ? Array.from({ length: 5 }, (_, i) => <SkeletonCard key={i} />)
+    : users.map(u => <UserCard key={u.id} user={u} />)}
+```
+
+---
+
+## Простий кеш у пам'яті
+
+```javascript
+class APICache {
+    constructor(ttl = 5 * 60 * 1000) {
+        this.cache = new Map();
+        this.ttl = ttl;
+    }
+
+    get(key) {
+        const cached = this.cache.get(key);
+        if (!cached) return null;
+        if (Date.now() - cached.timestamp > this.ttl) {
+            this.cache.delete(key);
+            return null;
+        }
+        return cached.data;
+    }
+
+    set(key, data) {
+        this.cache.set(key, { data, timestamp: Date.now() });
+    }
+}
+```
+
+**Відкриті питання:** дублювання запитів, інвалідація, застарілі дані
+
+---
+
+## TanStack Query: чому
+
+**Серверний стан ≠ локальний стан інтерфейсу**
+
+- Дані належать серверу й можуть змінитися без нас
+- Асинхронне завантаження
+- Спільне використання багатьма компонентами
+
+**Бібліотека бере на себе:** кеш, повторні спроби, фонове оновлення, скасування, синхронізацію
+
+```bash
+npm install @tanstack/react-query
+```
+
+**Версія 5:** `gcTime` (було `cacheTime`), `isPending` (було `isLoading`), лише об'єктний синтаксис
+
+---
+
+## Підключення
+
+```javascript
+const queryClient = new QueryClient({
+    queryCache: new QueryCache({
+        onError: (error, query) => {
+            if (query.state.data !== undefined) {
+                toast.error(getErrorMessage(error));
+            }
+        }
+    }),
+    defaultOptions: {
+        queries: { staleTime: 60_000 }
+    }
 });
 
-// ❌ НЕ ПОТРІБНО: прості обчислення
-const age = useMemo(() => 2025 - birthYear, [birthYear]);
+<QueryClientProvider client={queryClient}>
+    <App />
+    <ReactQueryDevtools initialIsOpen={false} />
+</QueryClientProvider>
+```
 
-// ❌ НЕ ПОТРІБНО: компонент завжди змінюється
-const Clock = memo(function Clock() {
-    const [time, setTime] = useState(new Date());
-    return <div>{time.toLocaleTimeString()}</div>;
+---
+
+## useQuery
+
+```javascript
+const { data: users, isPending, isError, error, refetch } = useQuery({
+    queryKey: ['users'],
+    queryFn: usersApi.getAll
+});
+
+if (isPending) return <p>Завантаження...</p>;
+if (isError) return <ErrorMessage error={error} onRetry={refetch} />;
+
+return <UserListView users={users} />;
+```
+
+- **`queryKey`** — ідентифікатор даних у кеші
+- **`queryFn`** — функція, що повертає проміс
+- **`isPending`** — даних ще немає; **`isFetching`** — запит триває
+
+---
+
+## Свіжі й застарілі дані
+
+```mermaid
+stateDiagram-v2
+    [*] --> Fresh: дані отримано
+    Fresh --> Stale: минув staleTime
+    Stale --> Fetching: фокус, монтування, мережа
+    Fetching --> Fresh: нові дані
+    Fresh --> Inactive: немає підписників
+    Stale --> Inactive: немає підписників
+    Inactive --> Fetching: компонент змонтовано
+    Inactive --> [*]: минув gcTime
+```
+
+| Параметр | За замовчуванням | Зміст |
+|---|---|---|
+| `staleTime` | 0 | Скільки дані вважаються свіжими |
+| `gcTime` | 5 хв | Скільки живе неактивний запис |
+
+---
+
+## Ключі й параметри запитів в одному місці
+
+```javascript
+export const usersQueries = {
+    list: () => queryOptions({
+        queryKey: ['users'],
+        queryFn: usersApi.getAll
+    }),
+    detail: (id) => queryOptions({
+        queryKey: ['users', id],
+        queryFn: ({ signal }) =>
+            api.get(`/users/${id}`, { signal }).then(r => r.data)
+    })
+};
+
+useQuery(usersQueries.list());
+useQuery(usersQueries.detail(5));
+```
+
+**Ключі ієрархічні:** інвалідація `['users']` зачіпає й `['users', 5]`
+
+---
+
+## Мутації та інвалідація кешу
+
+```javascript
+function useCreateUser() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: usersApi.create,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+            toast.success('Користувача створено');
+        }
+    });
+}
+
+const createUser = useCreateUser();
+createUser.mutate({ name: 'Іван' });
+// createUser.isPending, createUser.isError ...
+```
+
+**За замовчуванням — інвалідація;** `setQueryData` — лише при необхідності
+
+---
+
+## Залежні та паралельні запити
+
+```javascript
+// Залежний: пости чекають на користувача
+const { data: user } = useQuery(usersQueries.detail(userId));
+const { data: posts } = useQuery({
+    queryKey: ['posts', { userId }],
+    queryFn: () => fetchUserPosts(userId),
+    enabled: !!user
+});
+
+// Паралельні: стартують одночасно
+const users = useQuery({ queryKey: ['users'], queryFn: fetchUsers });
+const posts2 = useQuery({ queryKey: ['posts'], queryFn: fetchPosts });
+const stats = useQuery({ queryKey: ['stats'], queryFn: fetchStats });
+```
+
+**Паралельно:** ≈ 1 с. **Послідовно:** ≈ 3 с (при трьох запитах по 1 с)
+
+---
+
+## Пагінація
+
+```javascript
+const [page, setPage] = useState(1);
+
+const { data, isPending, isPlaceholderData } = useQuery({
+    queryKey: ['users', { page }],
+    queryFn: () => fetchUsers(page),
+    placeholderData: keepPreviousData
+});
+
+<UserList users={data?.users} />
+<Pagination
+    currentPage={page}
+    totalPages={data?.totalPages}
+    onPageChange={setPage}
+/>
+```
+
+`keepPreviousData` показує попередню сторінку, поки завантажується нова
+
+---
+
+## Нескінченне прокручування
+
+```javascript
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+        queryKey: ['users', 'infinite'],
+        queryFn: ({ pageParam }) => fetchUsers(pageParam),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => lastPage.nextPage
+    });
+
+{data?.pages.map(p => p.users.map(u => <UserCard key={u.id} user={u} />))}
+
+{hasNextPage && (
+    <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+        Показати більше
+    </button>
+)}
+```
+
+---
+
+## Попереднє завантаження
+
+```javascript
+const queryClient = useQueryClient();
+
+const prefetchUser = (userId) => {
+    queryClient.prefetchQuery({
+        ...usersQueries.detail(userId),
+        staleTime: 60_000
+    });
+};
+
+<li onMouseEnter={() => prefetchUser(user.id)}>
+    <Link to={`/users/${user.id}`}>{user.name}</Link>
+</li>
+```
+
+Дані вже в кеші до моменту натискання
+
+---
+
+## Оптимістичні оновлення
+
+```mermaid
+flowchart TD
+    A[Дія користувача] --> B[Миттєво оновлюємо інтерфейс]
+    B --> C[Запит на сервер]
+    C --> D{Успіх?}
+    D -->|так| E[Синхронізація з сервером]
+    D -->|ні| F[Відкат і повідомлення про помилку]
+```
+
+**Доречно:** низький ризик помилки (позначка, «вподобайка»)
+
+**Не доречно:** оплата, видалення важливих даних
+
+---
+
+## Оптимістичне оновлення: код
+
+```javascript
+useMutation({
+    mutationFn: ({ id, completed }) =>
+        api.patch(`/todos/${id}`, { completed }),
+
+    onMutate: async ({ id, completed }) => {
+        await queryClient.cancelQueries({ queryKey: ['todos'] });
+        const previous = queryClient.getQueryData(['todos']);
+
+        queryClient.setQueryData(['todos'], (old = []) =>
+            old.map(t => t.id === id ? { ...t, completed } : t)
+        );
+        return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+        queryClient.setQueryData(['todos'], context.previous);
+    },
+
+    onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: ['todos'] });
+    }
 });
 ```
 
-**Правило:** Оптимізація додає складність. Використовуйте тільки при потребі!
+---
 
+## Простіші оптимістичні варіанти
+
+**Показати, не змінюючи кеш** (`variables` + `isPending`):
+
+```javascript
+{todos.map(t => <li key={t.id}>{t.title}</li>)}
+
+{addTodo.isPending && (
+    <li style={{ opacity: 0.5 }}>{addTodo.variables}</li>
+)}
+```
+
+**React 19:** хук `useOptimistic` — тимчасовий стан поверх справжнього, зручний із `<form action>`
+
+---
+
+## Разом: форма + мутація + помилки сервера
+
+```javascript
+const { register, handleSubmit, setError, formState: { errors } } =
+    useForm({ resolver: zodResolver(registerSchema) });
+
+const registerUser = useMutation({ mutationFn: authApi.register });
+
+const onSubmit = async (values) => {
+    try {
+        await registerUser.mutateAsync(values);
+        navigate('/dashboard');
+    } catch (error) {
+        if (error instanceof ValidationError) {
+            Object.entries(error.errors).forEach(([field, message]) =>
+                setError(field, { type: 'server', message })
+            );
+        } else {
+            setError('root.serverError', { message: getErrorMessage(error) });
+        }
+    }
+};
+```
+
+---
+
+## Безпека взаємодії
+
+- Токен доступу — **у пам'яті**, refresh-токен — в **httpOnly-cookie**
+- «Шифрування токена в `localStorage`» не допомагає: ключ теж у коді
+- Cookie → `SameSite`, `Secure`, захист від CSRF, CORS із `credentials`
+- Лише HTTPS
+- Не зберігати паролі та персональні дані в чернетках і журналах
+- Клієнтські перевірки не замінюють серверних
+
+> Докладно: лекція 05
+
+---
 
 ## Найкращі практики
 
-### Hooks
+**Форми:**
+- Складні форми — React Hook Form + Zod; прості — Actions React 19
+- Помилки — після виходу з поля, з `aria`-атрибутами
 
-1. ✅ Дотримуйтесь правил Hooks
-2. ✅ Використовуйте ESLint плагін
-3. ✅ Правильно визначайте залежності
-4. ✅ Очищайте side effects
-5. ✅ Виносьте логіку в кастомні хуки
-6. ✅ Документуйте складні хуки
+**Взаємодія з сервером:**
+- Транспорт — Fetch/Axios, дані — TanStack Query
+- Авторизація й помилки — у перехоплювачах
+- Не дублювати серверні дані в `useState`
 
+**Продуктивність і UX:**
+- Паралельні запити, кеш, попереднє завантаження
+- Скелетні заглушки, оптимістичні оновлення для безпечних дій
 
-## Найкращі практики
+---
 
-### Оптимізація
+## Питання для самоперевірки
 
-1. ⚡ Профілюйте перед оптимізацією
-2. ⚡ Використовуйте React DevTools
-3. ⚡ Оптимізуйте тільки вузькі місця
-4. ⚡ Мемоїзуйте тільки важкі обчислення
-5. ⚡ Розділяйте Context за відповідальністю
-6. ⚡ Використовуйте useMemo для Context value
+1. Чим контрольований компонент відрізняється від неконтрольованого?
+2. Навіщо потрібен `Controller`?
+3. Що змінилося в Zod 4 порівняно з Zod 3?
+4. Чому клієнтська валідація не замінює серверну?
+5. Яка пастка в поведінці `fetch` при статусі 404?
+6. Навіщо потрібні перехоплювачі? Як уникнути кількох паралельних оновлень токена?
+7. Де безпечніше зберігати токени й чому?
+8. Різниця між `staleTime` і `gcTime`?
+9. Коли застосовувати оптимістичне оновлення?
+10. Як повернути помилки сервера в поля форми?
+
+---
+
+## Корисні ресурси
+
+**Документація:**
+- [React Hook Form](https://react-hook-form.com/)
+- [Zod](https://zod.dev/)
+- [Axios](https://axios-http.com/docs/intro)
+- [TanStack Query](https://tanstack.com/query/latest)
+- [React: форми та дії](https://react.dev/reference/react-dom/components/form)
+
+**Статті:**
+- [Sign-in form best practices (web.dev)](https://web.dev/articles/sign-in-form-best-practices)
+
+**Інструменти й альтернативи:**
+- [React Dropzone](https://react-dropzone.js.org/)
+- [React Query Devtools](https://tanstack.com/query/latest/docs/framework/react/devtools)
+- [Valibot](https://valibot.dev/) — легша альтернатива Zod
+- [SWR](https://swr.vercel.app/) — альтернатива TanStack Query

@@ -1,453 +1,505 @@
-# Лекція 11. Роутинг та навігація (React Router)
+# Лекція 11. Tailwind CSS та сучасна стилізація
 
-## Вступ до клієнтського роутингу
+## Вступ: від логіки до вигляду
 
-### Традиційний серверний роутинг vs SPA роутинг
+У попередніх лекціях ми навчилися будувати структуру застосунку, керувати станом, організовувати навігацію (лекції 08–09), а також працювати з формами й серверною частиною (лекція 10). Те, що ми створювали, працює, але виглядає як неоформлений документ із кнопками. Інтерфейс, яким приємно користуватися, потребує стилізації: відступів, кольорів, типографіки, адаптації до різних екранів, темної теми та анімацій. Саме на цьому етапі багато проєктів починають «обростати» тисячами рядків CSS, які ніхто не наважується видаляти.
 
-У традиційних вебзастосунках кожен перехід між сторінками вимагає нового HTTP запиту до сервера. Сервер повертає нову HTML сторінку, браузер перезавантажує всю сторінку, втрачаючи JavaScript стан та викликаючи мерехтіння інтерфейсу. Цей підхід простий у реалізації, але створює повільний та фрагментований досвід користування.
+**Tailwind CSS** пропонує радикально інший підхід порівняно з традиційними методами. Замість того щоб вигадувати назви класів і писати власні правила, розробник комбінує невеликі готові **утилітарні класи** (*utility classes*), кожен з яких відповідає за одну властивість, безпосередньо в розмітці. Така ідея може здатися дивною, особливо тим, хто звик до методологій BEM чи SMACSS. Проте вона розв'язує низку фундаментальних проблем CSS, роблячи розробку швидшою, передбачуванішою та простішою в супроводі.
 
-Single Page Applications (SPA) працюють інакше. Сервер повертає одну HTML сторінку при першому завантаженні, а всі наступні переходи обробляються JavaScript на клієнті. Контент динамічно оновлюється без перезавантаження сторінки, що створює плавний та швидкий досвід, схожий на нативні застосунки.
+У цій лекції ми розглянемо Tailwind CSS 4-ї версії, яка вийшла на початку 2025 року і є нині актуальною. Нам доведеться окремо звертати увагу на відмінності від 3-ї версії: більшість посібників в інтернеті досі написані для неї, тож ви часто бачитимете застарілий код. Ми почнемо з філософії підходу й встановлення, розглянемо базові класи й адаптивний дизайн, навчимося налаштовувати систему дизайну під власний проєкт, будувати з утиліт багаторазові компоненти, реалізовувати темну тему та користуватися «безголовими» (*headless*) компонентами для складних елементів інтерфейсу.
 
-```mermaid
-graph LR
-    subgraph "Традиційний роутинг"
-        A1[Користувач натискає посилання] --> B1[Запит до сервера]
-        B1 --> C1[Сервер рендерить HTML]
-        C1 --> D1[Повне перезавантаження сторінки]
-        D1 --> E1[Втрата JavaScript стану]
-    end
+## Підхід «utility-first»: філософія та переваги
 
-    subgraph "SPA роутинг"
-        A2[Користувач натискає посилання] --> B2[JavaScript перехоплює клік]
-        B2 --> C2[Оновлення URL без перезавантаження]
-        C2 --> D2[Рендер нового компонента]
-        D2 --> E2[Збереження стану та контексту]
-    end
+### Еволюція підходів до CSS
+
+Щоб зрозуміти, чому з'явився Tailwind, корисно коротко простежити, як змінювалося ставлення до CSS.
+
+На початку вебу стилі писали напряму: один великий файл і семантичні назви класів (`.card`, `.sidebar`). У великих проєктах це призводило до накопичення правил, непередбачуваних каскадних ефектів і страху щось видалити. Методології на кшталт **BEM** (`.card__title`, `.card__button--primary`) впорядкували іменування, але вимагали дисципліни й багато додаткового коду. **CSS Modules** та **CSS-in-JS** (styled-components, Emotion) локалізували стилі в межах компонента. Нарешті, **utility-first** підхід, який популяризував Tailwind, відмовився від самої ідеї «семантичного» CSS: стиль описується набором коротких класів, і CSS-файл майже не росте.
+
+### Порівняння з традиційним CSS
+
+```css
+/* Традиційний підхід: написання власних класів */
+.card {
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 1.5rem;
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1a202c;
+}
+
+.card-content {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #4a5568;
+}
+
+.button-primary {
+    padding: 0.75rem 1.5rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.button-primary:hover {
+    background-color: #2563eb;
+}
 ```
 
-Клієнтський роутинг надає переваги:
+```jsx
+// Традиційне використання
+<div className="card">
+    <h2 className="card-title">Заголовок картки</h2>
+    <p className="card-content">Це текст всередині картки.</p>
+    <button className="button-primary">Натисни мене</button>
+</div>
+```
 
-**Швидкість**: немає затримок на мережеві запити при переходах між сторінками.
+```jsx
+// Підхід Tailwind: утилітарні класи
+<div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
+    <h2 className="text-2xl font-bold mb-4 text-gray-900">
+        Заголовок картки
+    </h2>
+    <p className="text-base leading-relaxed text-gray-600">
+        Це текст всередині картки.
+    </p>
+    <button className="px-6 py-3 bg-blue-500 text-white rounded-md font-semibold hover:bg-blue-600 transition-colors">
+        Натисни мене
+    </button>
+</div>
+```
 
-**Плавність**: анімації та переходи можливі між сторінками, UI оновлюється без мерехтіння.
+Результат в обох випадках однаковий. Різниця — в тому, що у другому варіанті немає окремого CSS-файлу, не потрібно вигадувати назви `card-title` і `button-primary`, а видалення компонента автоматично видаляє й усі його стилі.
 
-**Збереження стану**: глобальний стан, кеші, форми зберігаються при навігації.
+### Переваги підходу
 
-**Кращий UX**: інтерфейс відповідає миттєво, створюючи досвід нативного застосунку.
+**Швидкість розробки.** Розробники не витрачають час на вигадування назв класів і перемикання між файлами розмітки та стилів. Усі стилі застосовуються безпосередньо в розмітці.
 
-Проте клієнтський роутинг додає складності: потрібна підтримка browser history API, обробка 404 сторінок, правильна SEO оптимізація, серверна конфігурація для SPA.
+**Передбачуваність.** Кожен утилітарний клас робить рівно одну річ, тому поведінка стилів прозора. Немає каскадних ефектів чи несподіваних перевизначень, коли зміна в одному місці ламає інше.
 
-### Історія React Router
+**Відсутність мертвого коду.** Стилі «прив'язані» до елемента, що їх використовує. Видалили компонент — видалили стилі. CSS не накопичується.
 
-React Router був створений в 2014 році Райаном Флоренсом та Майклом Джексоном як рішення для декларативного роутингу в React застосунках. За десятиліття бібліотека пройшла значну еволюцію через шість major версій.
+**Дизайн-система з коробки.** Tailwind надає узгоджену шкалу значень для кольорів, відступів, шрифтів і тіней. Це забезпечує візуальну консистентність усього застосунку й унеможливлює «магічні» числа на кшталт `margin: 13px`.
 
-Ключові етапи розвитку:
+**Адаптивність без медіазапитів.** Модифікатори точок зміни макета дозволяють створювати адаптивні дизайни, не пишучи `@media` вручну.
 
-- **React Router v1-3 (2014-2016)**: статична конфігурація маршрутів, імперативне API;
-- **React Router v4 (2017)**: революційне переосмислення — динамічні маршрути, роутинг як компоненти;
-- **React Router v5 (2019)**: покращення hooks API, кращі TypeScript типи;
-- **React Router v6 (2021-теперішній час)**: нове компактне API, вбудована підтримка вкладених маршрутів, відносні шляхи.
+```jsx
+// Адаптивний дизайн із Tailwind
+<div className="
+    w-full           /* На мобільних: 100% ширини */
+    md:w-1/2         /* ≥768px: 50% ширини */
+    lg:w-1/3         /* ≥1024px: 33% ширини */
+    p-4              /* Відступ 16px на всіх пристроях */
+    md:p-6           /* ≥768px: 24px */
+    lg:p-8           /* ≥1024px: 32px */
+">
+    Адаптивний вміст
+</div>
+```
 
-React Router v6 приніс найзначніші зміни, спростивши API та зробивши його більш інтуїтивним. Сучасна версія повністю використовує React hooks, надає кращу TypeScript підтримку та оптимізована для продуктивності.
+> **Примітка щодо коментарів.** Тут і в наступних прикладах `/* ... */` усередині `className` — це навчальні позначки. Насправді рядок класів є звичайним рядком JavaScript, тож такі «коментарі» стають його частиною (Tailwind просто ігнорує їх як невідомі класи). У робочому коді так не пишуть: пояснення виносять за межі рядка.
 
-### Концепції клієнтського роутингу
+### Недоліки та критика
 
-Клієнтський роутинг базується на декількох ключових концепціях:
+Було б нечесно не згадати, чому підхід викликає суперечки. Довгі списки класів роблять розмітку «шумною» і ускладнюють читання, особливо новачкам. Тісно «злипаються» структура та вигляд, що суперечить класичному принципу розділення відповідальності. Повторювані набори класів доводиться виносити в компоненти (у React це природно, а у простому HTML — незручно). Нарешті, потрібен час, щоб запам'ятати назви класів. Практика показує: вищі витрати на старті окупаються швидкістю подальшої роботи, а більшість проблем розв'язують компонентним підходом і сучасними засобами редактора, про які мова нижче.
 
-**URL як стан застосунку**: URL відображає поточний стан інтерфейсу. Зміна URL призводить до зміни відображеного контенту без перезавантаження сторінки.
+## Встановлення та налаштування
 
-**History API**: браузерний API для маніпуляції з історією навігації. React Router використовує методи pushState та replaceState для оновлення URL без перезавантаження сторінки.
-
-**Декларативний роутинг**: маршрути визначаються через React компоненти, що робить конфігурацію зрозумілою та композиційною.
-
-**Вкладені маршрути**: підтримка ієрархічної структури маршрутів, де дочірні маршрути рендеряться всередині батьківських.
-
-## React Router v6 основи
-
-### Встановлення та базове налаштування
-
-React Router встановлюється через npm або yarn як окремий пакет.
+У версії 4 встановлення значно спростилося: більше не потрібні ні `postcss`, ні `autoprefixer`, ні файл `tailwind.config.js`. Для проєктів на Vite достатньо двох пакетів і двох рядків коду.
 
 ```bash
-# Встановлення React Router
-npm install react-router-dom
-
-# Або через yarn
-yarn add react-router-dom
+npm install tailwindcss @tailwindcss/vite
 ```
 
-Базова структура застосунку з роутингом:
-
 ```javascript
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
-function App() {
-    return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/contact" element={<Contact />} />
-            </Routes>
-        </BrowserRouter>
-    );
-}
-
-// Компоненти сторінок
-function Home() {
-    return <h1>Головна сторінка</h1>;
-}
-
-function About() {
-    return <h1>Про нас</h1>;
-}
-
-function Contact() {
-    return <h1>Контакти</h1>;
-}
+export default defineConfig({
+    plugins: [react(), tailwindcss()]
+});
 ```
 
-### BrowserRouter vs HashRouter
-
-React Router надає різні типи роутерів для різних сценаріїв використання.
-
-**BrowserRouter** використовує звичайні URL шляхи та History API браузера. Це стандартний вибір для більшості веб застосунків.
-
-```javascript
-import { BrowserRouter } from 'react-router-dom';
-
-function App() {
-    return (
-        <BrowserRouter>
-            {/* URL виглядають як https://example.com/about */}
-            <Routes>
-                <Route path="/about" element={<About />} />
-            </Routes>
-        </BrowserRouter>
-    );
-}
+```css
+/* src/index.css */
+@import "tailwindcss";
 ```
 
-BrowserRouter вимагає серверної конфігурації для правильної обробки SPA маршрутів. Сервер повинен повертати index.html для всіх запитів, щоб React Router міг обробити роутинг на клієнті.
+Залишається підключити цей CSS-файл у точці входу (`import './index.css'` у `main.jsx`) — і утилітарні класи працюють. Для інших середовищ є свої інтеграції: наприклад, Next.js використовує пакет `@tailwindcss/postcss`.
 
-**HashRouter** використовує хеш частину URL для роутингу, що не вимагає серверної конфігурації.
+Варто звернути увагу на те, чого *немає* в налаштуванні. Tailwind 4 **автоматично знаходить** файли з вашими класами (він сканує вихідний код проєкту, ігноруючи `node_modules` та файли з `.gitignore`), тож масив `content` більше не потрібен. Якщо потрібно просканувати додатковий каталог (наприклад, пакет у моно-репозиторії), використовують директиву `@source`.
 
-```javascript
-import { HashRouter } from 'react-router-dom';
+> **Підтримувані браузери.** Tailwind 4 спирається на сучасні можливості CSS (каскадні шари, `@property`, `color-mix()`), тому потребує Safari 16.4+, Chrome 111+ та Firefox 128+. Якщо вам доводиться підтримувати старші браузери, лишайтеся на версії 3.4.
 
-function App() {
-    return (
-        <HashRouter>
-            {/* URL виглядають як https://example.com/#/about */}
-            <Routes>
-                <Route path="/about" element={<About />} />
-            </Routes>
-        </HashRouter>
-    );
-}
+Як саме з утилітарних класів формується CSS, показано на схемі: Tailwind не містить заздалегідь згенерованої гігантської таблиці стилів, а створює лише ті правила, що справді зустрічаються у вашому коді.
+
+```mermaid
+flowchart LR
+    A["Вихідний код<br/>(JSX, HTML)"] --> B[Сканер класів Tailwind]
+    T["@theme<br/>токени дизайну"] --> C
+    B --> C[Генератор CSS]
+    C --> D["Підсумковий CSS<br/>лише використані класи"]
 ```
 
-HashRouter корисний для статичних хостингів без можливості налаштування серверних redirects, але має недоліки: гірша SEO, менш естетичні URL, проблеми з деякими аналітичними інструментами.
+Через це розмір підсумкового CSS залежить від використання, а не від розміру фреймворку. Це відрізняється від поширеного уявлення, що Tailwind «видаляє зайве» зовнішнім інструментом: він просто не створює того, чого ви не вживали. Звідси випливає й важливе правило, про яке часто забувають: Tailwind бачить лише **цілі назви класів**, записані в коді, тому динамічно скласти їх з частин не можна.
 
-### Routes та Route компоненти
+```jsx
+// ❌ Tailwind не знайде такий клас у вихідному коді й не створить його
+<div className={`bg-${color}-500`} />
 
-Routes є контейнером для всіх маршрутів застосунку. Він відповідає за вибір найкращого відповідного маршруту на основі поточного URL.
-
-```javascript
-import { Routes, Route } from 'react-router-dom';
-
-function App() {
-    return (
-        <Routes>
-            {/* Точна відповідність шляху */}
-            <Route path="/" element={<Home />} />
-
-            {/* Статичні шляхи */}
-            <Route path="/about" element={<About />} />
-            <Route path="/services" element={<Services />} />
-
-            {/* Динамічні сегменти */}
-            <Route path="/users/:userId" element={<UserProfile />} />
-            <Route path="/posts/:postId" element={<Post />} />
-
-            {/* Catch-all маршрут для 404 */}
-            <Route path="*" element={<NotFound />} />
-        </Routes>
-    );
-}
+// ✅ Повні назви класів записані явно
+const colors = {
+    blue: 'bg-blue-500',
+    red: 'bg-red-500'
+};
+<div className={colors[color]} />
 ```
 
-Route компонент визначає окремий маршрут. Він приймає два основні props:
+## Базові концепції та система дизайну
 
-**path**: визначає URL шлях, який повинен відповідати поточному URL.
+### Система відступів
 
-**element**: React компонент, який рендериться при відповідності шляху.
+Tailwind використовує передбачувану шкалу відступів. У версії 4 вона побудована на одній змінній `--spacing` (за замовчуванням `0.25rem`, тобто 4px), тому одна одиниця дорівнює 0.25rem, а будь-яке ціле число працює «автоматично» — `p-13` дасть відступ 3.25rem без жодного налаштування.
 
-React Router v6 використовує алгоритм ранжування для вибору найкращого відповідного маршруту, що робить порядок визначення маршрутів менш важливим порівняно з попередніми версіями.
+```jsx
+// Margin та padding
+<div className="m-4">Зовнішній відступ з усіх боків (16px)</div>
+<div className="mx-4">Горизонтальний відступ (16px)</div>
+<div className="my-4">Вертикальний відступ (16px)</div>
+<div className="mt-4">Відступ зверху (16px)</div>
+<div className="mr-4">Відступ праворуч (16px)</div>
+<div className="mb-4">Відступ знизу (16px)</div>
+<div className="ml-4">Відступ ліворуч (16px)</div>
 
-### Link та NavLink для навігації
+// Padding працює аналогічно
+<div className="p-6">Внутрішній відступ з усіх боків (24px)</div>
+<div className="px-6 py-4">Горизонтальний 24px, вертикальний 16px</div>
 
-Link компонент замінює стандартні HTML теги для створення навігації без перезавантаження сторінки.
+// Від'ємні відступи
+<div className="-mt-4">Від'ємний відступ зверху</div>
 
-```javascript
+// Проміжки між дочірніми елементами
+<div className="space-y-4">
+    <div>Елемент 1</div>
+    <div>Елемент 2</div>
+    <div>Елемент 3</div>
+</div>
+
+// Квадратний елемент: ширина й висота одним класом
+<div className="size-12 bg-blue-500" />
+```
+
+Для проміжків між елементами у `flex`- та `grid`-контейнерах сучасніше використовувати `gap-*`, ніж `space-*`: він не залежить від порядку елементів і не ламається при їх перестановці.
+
+### Система кольорів
+
+Tailwind надає багату палітру з градаціями від 50 (найсвітліший) до 950 (найтемніший). У версії 4 палітру перераховано в просторі `oklch`, завдяки чому кольори стали яскравішими на сучасних дисплеях. Для сірих відтінків є кілька родин (`gray`, `slate`, `zinc`, `neutral`, `stone`) з легкими відмінностями в тоні.
+
+```jsx
+// Кольори тексту
+<p className="text-gray-900">Темно-сірий текст</p>
+<p className="text-blue-500">Синій текст</p>
+<p className="text-red-600">Червоний текст</p>
+
+// Кольори фону
+<div className="bg-white">Білий фон</div>
+<div className="bg-gray-100">Світло-сірий фон</div>
+<div className="bg-blue-500">Синій фон</div>
+
+// Кольори рамки: колір слід вказувати явно
+<div className="border border-gray-300">Сіра рамка</div>
+<div className="border-2 border-blue-500">Товста синя рамка</div>
+
+// Прозорість задається через «скісну риску» після назви кольору
+<div className="bg-blue-500/50">Напівпрозорий синій фон</div>
+<p className="text-gray-900/75">Напівпрозорий текст</p>
+```
+
+> **Змінилося у версії 4.** Окремих класів прозорості (`bg-opacity-50`, `text-opacity-75`) більше немає — натомість використовується запис із `/`. Крім того, колір рамки за замовчуванням тепер дорівнює поточному кольору тексту (раніше був світло-сірий), тому клас `border` без кольору виглядатиме інакше. Завжди вказуйте колір рамки явно: `border border-gray-200`.
+
+### Типографіка
+
+```jsx
+// Розміри шрифту
+<h1 className="text-4xl">Великий заголовок (36px)</h1>
+<h2 className="text-3xl">Середній заголовок (30px)</h2>
+<p className="text-base">Звичайний текст (16px)</p>
+<small className="text-sm">Малий текст (14px)</small>
+
+// Товщина шрифту
+<p className="font-light">Легкий (300)</p>
+<p className="font-normal">Звичайний (400)</p>
+<p className="font-semibold">Напівжирний (600)</p>
+<p className="font-bold">Жирний (700)</p>
+
+// Міжрядковий інтервал
+<p className="leading-tight">Щільний інтервал</p>
+<p className="leading-normal">Звичайний інтервал</p>
+<p className="leading-relaxed">Вільний інтервал</p>
+
+// Вирівнювання тексту
+<p className="text-left">Ліворуч</p>
+<p className="text-center">По центру</p>
+<p className="text-right">Праворуч</p>
+<p className="text-justify">По ширині</p>
+
+// Декорація та регістр
+<p className="underline">Підкреслений текст</p>
+<p className="line-through">Закреслений текст</p>
+<p className="uppercase">ВЕЛИКІ ЛІТЕРИ</p>
+<p className="lowercase">малі літери</p>
+<p className="capitalize">Кожне Слово З Великої</p>
+
+// Балансування рядків у заголовках
+<h2 className="text-balance">Заголовок, який красиво переноситься на кілька рядків</h2>
+```
+
+### Flexbox та Grid
+
+```jsx
+// Flexbox
+<div className="flex items-center justify-between">
+    <div>Лівий елемент</div>
+    <div>Правий елемент</div>
+</div>
+
+// Напрямок
+<div className="flex flex-col">         {/* Вертикально */}
+<div className="flex flex-row">         {/* Горизонтально */}
+<div className="flex flex-col-reverse"> {/* Вертикально у зворотному порядку */}
+
+// Вирівнювання вздовж основної осі
+<div className="flex justify-start">    {/* На початку */}
+<div className="flex justify-center">   {/* По центру */}
+<div className="flex justify-end">      {/* В кінці */}
+<div className="flex justify-between">  {/* Із проміжками між елементами */}
+<div className="flex justify-around">   {/* Рівномірно навколо елементів */}
+
+// Вирівнювання впоперек
+<div className="flex items-start">      {/* Вгорі */}
+<div className="flex items-center">     {/* По центру */}
+<div className="flex items-end">        {/* Внизу */}
+<div className="flex items-stretch">    {/* Розтягнуто */}
+
+// Розтягування та стискання
+<div className="flex-1">Займає вільний простір</div>
+<div className="flex-none">Фіксований розмір</div>
+
+// Проміжки між елементами
+<div className="flex gap-4">            {/* 16px */}
+<div className="flex gap-x-4 gap-y-2">  {/* Різні проміжки */}
+
+// Grid
+<div className="grid grid-cols-3 gap-4">
+    <div>Колонка 1</div>
+    <div>Колонка 2</div>
+    <div>Колонка 3</div>
+</div>
+
+// Адаптивна сітка
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {/* На мобільних — 1 колонка, на планшетах — 2, на десктопах — 3 */}
+</div>
+
+// Розтягування елемента на кілька колонок
+<div className="grid grid-cols-4 gap-4">
+    <div className="col-span-2">Займає 2 колонки</div>
+    <div>Колонка 3</div>
+    <div>Колонка 4</div>
+</div>
+
+// Довільні значення в квадратних дужках
+<div className="grid grid-cols-[200px_auto_200px] gap-4">
+    <div>Фіксована 200px</div>
+    <div>Гнучка</div>
+    <div>Фіксована 200px</div>
+</div>
+```
+
+Останній приклад показує ще одну важливу можливість — **довільні значення** (*arbitrary values*) у квадратних дужках: `w-[372px]`, `bg-[#1da1f2]`, `top-[calc(100%-2rem)]`. Вони дозволяють виходити за межі шкали в одиничних випадках, не створюючи для цього окремого CSS. Але зловживати ними не слід: якщо одне й те саме значення зустрічається часто, його краще додати в налаштування (про це далі).
+
+### Стани й варіанти
+
+Окрім звичайних властивостей, Tailwind дозволяє змінювати стилі залежно від стану елемента за допомогою **модифікаторів** (префіксів). Достатньо додати до будь-якого класу префікс зі станом.
+
+```jsx
+<button className="
+    bg-blue-500 text-white
+    hover:bg-blue-600          /* при наведенні курсора */
+    active:bg-blue-700         /* під час натискання */
+    focus-visible:ring-2       /* при фокусі з клавіатури */
+    focus-visible:ring-blue-500
+    disabled:opacity-50        /* для вимкненої кнопки */
+    disabled:cursor-not-allowed
+">
+    Зберегти
+</button>
+```
+
+Є також модифікатори, що залежать від *іншого* елемента: `group` та `peer`. Клас `group` на батьківському елементі дозволяє дочірнім реагувати на його стан (`group-hover:`), а `peer` — сусіднім елементам, наприклад, показувати помилку біля невалідного поля (`peer-invalid:`). Модифікатор `hover:` у версії 4 спрацьовує лише на пристроях, які справді підтримують наведення, тож на сенсорних екранах «залипання» стану наведення зникає.
+
+```jsx
+<label className="group flex items-center gap-2 cursor-pointer">
+    <input type="checkbox" className="peer sr-only" />
+    <span className="size-5 rounded border border-gray-300 peer-checked:bg-blue-500 group-hover:border-blue-400" />
+    Запам'ятати мене
+</label>
+```
+
+## Адаптивний дизайн із Tailwind
+
+### Система точок зміни макета
+
+Tailwind застосовує підхід **mobile-first**: стилі без префікса діють на всіх екранах, а стилі з префіксом — починаючи із зазначеної ширини екрана (*breakpoint*) й вище.
+
+| Префікс | Мінімальна ширина | Типовий пристрій |
+|---|---|---|
+| (без префікса) | 0 | Мобільні телефони |
+| `sm:` | 640px | Великі телефони |
+| `md:` | 768px | Планшети |
+| `lg:` | 1024px | Ноутбуки |
+| `xl:` | 1280px | Монітори |
+| `2xl:` | 1536px | Великі монітори |
+
+Проєктуючи, спершу описуйте мобільний вигляд, а потім «дописуйте» зміни для більших екранів. Помилка, якою часто зловживають початківці, — застосовувати `sm:` для «телефону»: цей префікс означає «від 640px і більше», а не «для малих екранів». Для обмеження «до певної ширини» є префікси `max-md:`, а для діапазону їх можна поєднувати: `md:max-lg:`.
+
+```jsx
+// Приклад адаптивного компонента
+<div className="
+    w-full          /* Мобільні: 100% */
+    sm:w-auto       /* ≥640px: за вмістом */
+    md:w-1/2        /* ≥768px: 50% */
+    lg:w-1/3        /* ≥1024px: 33% */
+    xl:w-1/4        /* ≥1280px: 25% */
+
+    p-4             /* Усюди: 16px */
+    md:p-6          /* ≥768px: 24px */
+    lg:p-8          /* ≥1024px: 32px */
+
+    text-sm         /* Мобільні: малий текст */
+    md:text-base    /* ≥768px: звичайний */
+    lg:text-lg      /* ≥1024px: великий */
+">
+    Адаптивний вміст
+</div>
+```
+
+### Практичний приклад: адаптивна навігація
+
+Для навігації між сторінками ми користуємося компонентом `Link` із React Router (лекція 09), а не звичайним `<a>`, щоб не перезавантажувати застосунок.
+
+```jsx
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-function Navigation() {
-    return (
-        <nav>
-            <Link to="/">Головна</Link>
-            <Link to="/about">Про нас</Link>
-            <Link to="/contact">Контакти</Link>
-
-            {/* Передача state через навігацію */}
-            <Link
-                to="/profile"
-                state={{ from: 'navigation' }}
-            >
-                Профіль
-            </Link>
-
-            {/* Відносні шляхи */}
-            <Link to="settings">Налаштування</Link>
-            <Link to="../parent">Повернутись</Link>
-        </nav>
-    );
-}
-```
-
-NavLink є розширенням Link з додатковими можливостями для активних посилань.
-
-```javascript
-import { NavLink } from 'react-router-dom';
-
-function Navigation() {
-    return (
-        <nav className="navigation">
-            <NavLink
-                to="/"
-                className={({ isActive }) =>
-                    isActive ? 'nav-link active' : 'nav-link'
-                }
-            >
-                Головна
-            </NavLink>
-
-            <NavLink
-                to="/about"
-                style={({ isActive }) => ({
-                    color: isActive ? 'red' : 'black',
-                    fontWeight: isActive ? 'bold' : 'normal'
-                })}
-            >
-                Про нас
-            </NavLink>
-
-            {/* Функція для складної логіки */}
-            <NavLink
-                to="/dashboard"
-                className={({ isActive, isPending }) =>
-                    isPending ? 'pending' : isActive ? 'active' : ''
-                }
-            >
-                Dashboard
-            </NavLink>
-        </nav>
-    );
-}
-```
-
-NavLink автоматично додає класи або стилі для активного посилання, що робить створення навігаційних меню простішим.
-
-## Динамічні маршрути та параметри
-
-### URL параметри через useParams
-
-URL параметри дозволяють створювати динамічні маршрути, де частина шляху є змінною.
-
-```javascript
-import { useParams } from 'react-router-dom';
-
-// Визначення маршруту з параметрами
-function App() {
-    return (
-        <Routes>
-            <Route path="/users/:userId" element={<UserProfile />} />
-            <Route path="/posts/:postId/comments/:commentId" element={<Comment />} />
-        </Routes>
-    );
-}
-
-// Використання параметрів в компоненті
-function UserProfile() {
-    const { userId } = useParams();
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        fetch(`/api/users/${userId}`)
-            .then(res => res.json())
-            .then(setUser);
-    }, [userId]);
-
-    if (!user) return <div>Завантаження...</div>;
+function ResponsiveNavigation() {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
-        <div className="user-profile">
-            <h1>{user.name}</h1>
-            <p>{user.email}</p>
-        </div>
-    );
-}
+        <nav className="bg-white shadow-lg">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between h-16">
+                    {/* Логотип */}
+                    <div className="flex items-center">
+                        <img src="/logo.svg" alt="Логотип" className="h-8 w-auto" />
+                    </div>
 
-// Множинні параметри
-function Comment() {
-    const { postId, commentId } = useParams();
+                    {/* Меню для великих екранів */}
+                    <div className="hidden md:flex md:items-center md:space-x-4">
+                        <Link to="/" className="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            Головна
+                        </Link>
+                        <Link to="/about" className="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            Про нас
+                        </Link>
+                        <Link to="/contact" className="px-3 py-2 text-gray-700 hover:text-blue-600">
+                            Контакти
+                        </Link>
+                        <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                            Увійти
+                        </button>
+                    </div>
 
-    return (
-        <div>
-            <h2>Коментар {commentId} до поста {postId}</h2>
-        </div>
-    );
-}
-```
-
-URL параметри є завжди рядками. Якщо потрібен числовий тип, необхідна явна конвертація.
-
-```javascript
-function Product() {
-    const { productId } = useParams();
-
-    // Конвертація в число
-    const id = Number(productId);
-
-    // Або з валідацією
-    const id = parseInt(productId, 10);
-    if (isNaN(id)) {
-        return <div>Невалідний ID продукту</div>;
-    }
-
-    return <div>Продукт #{id}</div>;
-}
-```
-
-### Query параметри через useSearchParams
-
-Query параметри передають додаткову інформацію через URL після знаку питання.
-
-```javascript
-import { useSearchParams } from 'react-router-dom';
-
-function ProductList() {
-    const [searchParams, setSearchParams] = useSearchParams();
-
-    // Читання параметрів
-    const category = searchParams.get('category') || 'all';
-    const sortBy = searchParams.get('sortBy') || 'name';
-    const page = parseInt(searchParams.get('page')) || 1;
-
-    // Оновлення параметрів
-    const updateCategory = (newCategory) => {
-        setSearchParams(params => {
-            params.set('category', newCategory);
-            params.set('page', '1'); // Скинути на першу сторінку
-            return params;
-        });
-    };
-
-    const updateSort = (newSort) => {
-        setSearchParams({
-            category,
-            sortBy: newSort,
-            page: '1'
-        });
-    };
-
-    // Видалення параметра
-    const clearFilters = () => {
-        setSearchParams({});
-    };
-
-    return (
-        <div>
-            {/* URL: /products?category=electronics&sortBy=price&page=2 */}
-            <div className="filters">
-                <select
-                    value={category}
-                    onChange={e => updateCategory(e.target.value)}
-                >
-                    <option value="all">Всі категорії</option>
-                    <option value="electronics">Електроніка</option>
-                    <option value="books">Книги</option>
-                </select>
-
-                <select
-                    value={sortBy}
-                    onChange={e => updateSort(e.target.value)}
-                >
-                    <option value="name">За назвою</option>
-                    <option value="price">За ціною</option>
-                    <option value="date">За датою</option>
-                </select>
-
-                <button onClick={clearFilters}>Очистити фільтри</button>
+                    {/* Кнопка мобільного меню */}
+                    <div className="flex items-center md:hidden">
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="p-2 rounded-md text-gray-700 hover:bg-gray-100"
+                            aria-label={isMenuOpen ? 'Закрити меню' : 'Відкрити меню'}
+                            aria-expanded={isMenuOpen}
+                        >
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                {isMenuOpen ? (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                ) : (
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                )}
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <ProductGrid
-                category={category}
-                sortBy={sortBy}
-                page={page}
-            />
-        </div>
+            {/* Мобільне меню */}
+            {isMenuOpen && (
+                <div className="md:hidden">
+                    <div className="px-2 pt-2 pb-3 space-y-1">
+                        <Link to="/" className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+                            Головна
+                        </Link>
+                        <Link to="/about" className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+                            Про нас
+                        </Link>
+                        <Link to="/contact" className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+                            Контакти
+                        </Link>
+                        <button className="w-full text-left px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+                            Увійти
+                        </button>
+                    </div>
+                </div>
+            )}
+        </nav>
     );
 }
 ```
 
-Робота з складними query параметрами:
+Зверніть увагу на логіку: класи `hidden md:flex` та `md:hidden` по черзі вмикають і вимикають показ блоків залежно від ширини екрана (повне меню — на великих екранах, кнопка — на малих), а кнопка меню отримала `aria-label` та `aria-expanded`, щоб бути зрозумілою для екранних читачів.
 
-```javascript
-function SearchPage() {
-    const [searchParams, setSearchParams] = useSearchParams();
+### Адаптивна сітка
 
-    // Множинні значення для одного параметра
-    const tags = searchParams.getAll('tag'); // ['react', 'javascript', 'web']
-
-    // Перевірка наявності параметра
-    const hasFilter = searchParams.has('filter');
-
-    // Ітерація по всіх параметрах
-    const allParams = {};
-    for (const [key, value] of searchParams.entries()) {
-        allParams[key] = value;
-    }
-
-    // Додавання тега
-    const addTag = (tag) => {
-        const current = searchParams.getAll('tag');
-        setSearchParams({
-            ...Object.fromEntries(searchParams),
-            tag: [...current, tag]
-        });
-    };
-
-    // Видалення конкретного тега
-    const removeTag = (tagToRemove) => {
-        const current = searchParams.getAll('tag');
-        const updated = current.filter(t => t !== tagToRemove);
-
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('tag');
-        updated.forEach(tag => newParams.append('tag', tag));
-
-        setSearchParams(newParams);
-    };
+```jsx
+function ResponsiveGrid() {
+    const items = Array.from({ length: 12 }, (_, i) => i + 1);
 
     return (
-        <div>
-            <div className="tags">
-                {tags.map(tag => (
-                    <span key={tag} className="tag">
-                        {tag}
-                        <button onClick={() => removeTag(tag)}>×</button>
-                    </span>
+        <div className="container mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {items.map(item => (
+                    <div
+                        key={item}
+                        className="
+                            bg-white rounded-lg shadow-md p-6
+                            hover:shadow-xl transition-shadow
+                            hover:-translate-y-1
+                        "
+                    >
+                        <h3 className="text-xl font-bold mb-2">Картка {item}</h3>
+                        <p className="text-gray-600">Опис картки з адаптивним дизайном</p>
+                    </div>
                 ))}
             </div>
         </div>
@@ -455,707 +507,809 @@ function SearchPage() {
 }
 ```
 
-### useLocation для доступу до поточної локації
+### Контейнерні запити
 
-useLocation надає доступ до об'єкта поточної локації з інформацією про URL та state.
+Адаптація до ширини *екрана* не завжди доречна: один і той самий компонент (картка) може опинитися і в широкій основній колонці, і у вузькій бічній панелі, і на однаковому екрані виглядати має по-різному. Для цього призначено **контейнерні запити** (*container queries*): компонент реагує на ширину свого *контейнера*. У Tailwind 4 вони вбудовані: достатньо позначити батьківський елемент класом `@container`, а до дочірніх застосувати префікси `@sm:`, `@md:`, `@lg:`.
+
+```jsx
+<div className="@container">
+    <div className="flex flex-col gap-2 @md:flex-row @md:items-center">
+        <img src="/photo.jpg" alt="" className="w-full @md:w-32 rounded" />
+        <div>
+            <h3 className="font-bold">Заголовок</h3>
+            <p className="text-gray-600">Розташування залежить від ширини контейнера</p>
+        </div>
+    </div>
+</div>
+```
+
+## Налаштування та розширення
+
+### Токени дизайну в директиві @theme
+
+У версії 3 налаштування жили в JavaScript-файлі `tailwind.config.js`. У версії 4 їх перенесено в сам CSS — директиву `@theme`. Кожна змінна, оголошена в ній, стає **токеном дизайну**: Tailwind автоматично створює відповідні утилітарні класи, а в підсумковому CSS вони доступні як нативні змінні (`var(--color-primary-500)`), тому ними можна користуватися й у власному CSS та навіть у JavaScript.
+
+```css
+/* src/index.css */
+@import "tailwindcss";
+
+@theme {
+    /* Власні кольори: --color-* → bg-primary-500, text-primary-900 тощо */
+    --color-primary-50: #f0f9ff;
+    --color-primary-100: #e0f2fe;
+    --color-primary-500: #0ea5e9;
+    --color-primary-900: #0c4a6e;
+    --color-secondary-500: #8b5cf6;
+
+    /* Власні шрифти: --font-* → font-heading */
+    --font-sans: "Inter", sans-serif;
+    --font-heading: "Poppins", sans-serif;
+
+    /* Додаткові точки зміни макета: --breakpoint-* → xs:, 3xl: */
+    --breakpoint-xs: 475px;
+    --breakpoint-3xl: 1920px;
+
+    /* Тіні та заокруглення */
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
+    --shadow-card-hover: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+    --radius-card: 1.5rem;
+
+    /* Анімації: --animate-* → animate-fade-in; кадри оголошуються поруч */
+    --animate-fade-in: fade-in 0.5s ease-in-out;
+    --animate-slide-up: slide-up 0.3s ease-out;
+
+    @keyframes fade-in {
+        0% { opacity: 0; }
+        100% { opacity: 1; }
+    }
+
+    @keyframes slide-up {
+        0% { transform: translateY(20px); opacity: 0; }
+        100% { transform: translateY(0); opacity: 1; }
+    }
+}
+```
+
+Назва змінної визначає, які класи з'являться. Основні «простори імен» зведено в таблицю.
+
+| Простір імен | Створює класи | Приклад |
+|---|---|---|
+| `--color-*` | `bg-*`, `text-*`, `border-*`, `ring-*` | `--color-primary-500` → `bg-primary-500` |
+| `--font-*` | `font-*` | `--font-heading` → `font-heading` |
+| `--text-*` | `text-*` (розмір) | `--text-huge` → `text-huge` |
+| `--breakpoint-*` | Адаптивні префікси | `--breakpoint-3xl` → `3xl:` |
+| `--shadow-*` | `shadow-*` | `--shadow-card` → `shadow-card` |
+| `--radius-*` | `rounded-*` | `--radius-card` → `rounded-card` |
+| `--animate-*` | `animate-*` | `--animate-fade-in` → `animate-fade-in` |
+| `--spacing` | Уся шкала відступів | `--spacing: 0.25rem` |
+
+За замовчуванням `@theme` *додає* значення до стандартних. Якщо потрібно замінити весь простір імен (наприклад, залишити тільки власну палітру), його спершу скидають: `--color-*: initial;`.
+
+### Використання власних значень
+
+```jsx
+function CustomStyledComponent() {
+    return (
+        <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="
+                bg-primary-50
+                text-primary-900
+                font-heading
+                shadow-card hover:shadow-card-hover
+                rounded-card
+                p-6
+                animate-fade-in
+            ">
+                <h1 className="text-3xl xs:text-4xl lg:text-5xl 3xl:text-6xl">
+                    Налаштований компонент
+                </h1>
+                <p className="text-secondary-500 mt-4">
+                    Використання власних значень із файлу стилів
+                </p>
+            </div>
+        </div>
+    );
+}
+```
+
+### Власні утилітарні класи та варіанти
+
+Іноді потрібної утиліти немає. У версії 4 її оголошують директивою `@utility`: клас автоматично отримує підтримку всіх модифікаторів (`hover:`, `md:`, `dark:` тощо) і з'являється у підсумковому CSS лише тоді, коли його використано.
+
+```css
+/* Приховування смуги прокручування */
+@utility scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Розмір табуляції */
+@utility tab-4 {
+    tab-size: 4;
+}
+```
+
+> **Змінилося у версії 4.** Раніше такі класи оголошували в `@layer utilities { ... }`. Тепер для утиліт потрібен `@utility`. Також багато «звичних» власних класів уже вбудовані: наприклад, тіні тексту (`text-shadow-*`) з'явилися у версії 4.1, а градієнтний текст не потребує власного CSS — його можна скласти з готових класів: `bg-linear-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent`.
+
+Директива `@apply` дозволяє «зібрати» набір утиліт в один CSS-клас. Вона залишається працездатною, але її слід застосовувати помірно (докладніше — у розділі про компоненти).
+
+```css
+@layer components {
+    .btn-primary {
+        @apply px-6 py-3 bg-blue-500 text-white rounded-md font-semibold;
+        @apply hover:bg-blue-600 active:bg-blue-700;
+        @apply transition-colors duration-200;
+        @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500;
+    }
+}
+```
+
+Власні модифікатори оголошуються директивою `@custom-variant`. Ми скористаємося нею в розділі про темну тему.
+
+### Структура шарів і сумісність з версією 3
+
+Tailwind 4 використовує нативні каскадні шари CSS (`@layer`) у порядку `theme → base → components → utilities`. Завдяки цьому утиліти завжди «перемагають» стилі компонентів, незалежно від порядку в файлі й специфічності селекторів.
+
+Якщо вам потрібно підтримувати проєкт на версії 3 або перенести його, корисно знати, що змінилося. Офіційний засіб `npx @tailwindcss/upgrade` виконує більшу частину перетворень автоматично, але значення варто перевірити вручну.
+
+| Версія 3 | Версія 4 |
+|---|---|
+| `@tailwind base; @tailwind components; @tailwind utilities;` | `@import "tailwindcss";` |
+| `tailwind.config.js` | `@theme` у CSS (старий файл підключається через `@config`) |
+| Масив `content` | Автоматичне знаходження (`@source` — для додаткових шляхів) |
+| `postcss` + `autoprefixer` | Плагін `@tailwindcss/vite` (або `@tailwindcss/postcss`) |
+| `@layer utilities { .x { } }` | `@utility x { }` |
+| `bg-opacity-50`, `text-opacity-75` | `bg-blue-500/50`, `text-gray-900/75` |
+| `shadow-sm`, `shadow` | `shadow-xs`, `shadow-sm` |
+| `rounded-sm`, `rounded` | `rounded-xs`, `rounded-sm` |
+| `outline-none` | `outline-hidden` |
+| `ring` (3px) | `ring-3` (клас `ring` тепер 1px) |
+| `bg-gradient-to-r` | `bg-linear-to-r` |
+| `flex-shrink-0`, `flex-grow` | `shrink-0`, `grow` |
+| `darkMode: 'class'` | `@custom-variant dark (...)` |
+
+## Компонентний підхід з Tailwind
+
+### Чому компоненти, а не @apply
+
+Побачивши довгі списки класів, перша реакція — «зберу їх в одне ім'я за допомогою `@apply`». Така реакція зрозуміла, але веде назад до традиційного CSS з усіма його проблемами: потрібно вигадувати назви, стилі знову відокремлюються від розмітки. Правильна відповідь у React — **компонент**. Список класів записується *один раз* у компоненті `Button`, а далі скрізь використовується `<Button>`. `@apply` залишається корисним у вузьких випадках: стилізація вмісту, який згенерував сторонній код (Markdown, редактор тексту), де вставити класи в розмітку неможливо.
+
+### Допоміжна функція cn
+
+У компонентах з варіантами виникають дві проблеми. Умовні класи складно записувати (`cond ? 'a' : ''` у шаблонних рядках швидко стають нечитабельними). А ще при об'єднанні класів можливі **конфлікти**: якщо компонент має `px-6`, а викликаючий код додає `px-2`, переможе не «останній», а той клас, який вище в згенерованому CSS, тобто результат непередбачуваний. Обидві проблеми розв'язує невелика допоміжна функція, що поєднує пакети `clsx` (умовні класи) та `tailwind-merge` (вирішення конфліктів):
+
+```bash
+npm install clsx tailwind-merge
+```
 
 ```javascript
-import { useLocation } from 'react-router-dom';
+// src/lib/cn.js
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-function PageComponent() {
-    const location = useLocation();
+export function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
+```
 
-    console.log(location.pathname);  // "/users/123"
-    console.log(location.search);    // "?sort=name&page=2"
-    console.log(location.hash);      // "#section-3"
-    console.log(location.state);     // { from: '/previous-page' }
-    console.log(location.key);       // "ac3df4" - унікальний ключ локації
+### Багаторазові компоненти: кнопка
 
+```jsx
+import { cn } from '../lib/cn';
+
+const baseStyles =
+    'font-semibold rounded-md transition-colors duration-200 ' +
+    'focus-visible:outline-2 focus-visible:outline-offset-2 ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed';
+
+const variants = {
+    primary: 'bg-blue-500 text-white hover:bg-blue-600 focus-visible:outline-blue-500',
+    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus-visible:outline-gray-500',
+    danger: 'bg-red-500 text-white hover:bg-red-600 focus-visible:outline-red-500',
+    success: 'bg-green-500 text-white hover:bg-green-600 focus-visible:outline-green-500',
+    outline: 'border-2 border-blue-500 text-blue-500 hover:bg-blue-50 focus-visible:outline-blue-500'
+};
+
+const sizes = {
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-6 py-3 text-base',
+    lg: 'px-8 py-4 text-lg'
+};
+
+function Button({
+    children,
+    variant = 'primary',
+    size = 'md',
+    fullWidth = false,
+    className,
+    ...props
+}) {
     return (
-        <div>
-            <h1>Поточний шлях: {location.pathname}</h1>
-        </div>
+        <button
+            className={cn(
+                baseStyles,
+                variants[variant],
+                sizes[size],
+                fullWidth && 'w-full',
+                className // дозволяє викликаючому коду доповнити або перевизначити стилі
+            )}
+            {...props}
+        >
+            {children}
+        </button>
     );
 }
 
-// Передача state між сторінками
-function ProductList() {
+// Використання
+function Example() {
     return (
-        <div>
-            {products.map(product => (
-                <Link
-                    key={product.id}
-                    to={`/products/${product.id}`}
-                    state={{
-                        from: '/products',
-                        previousFilters: { category: 'electronics' }
-                    }}
-                >
-                    {product.name}
-                </Link>
-            ))}
+        <div className="space-y-4">
+            <Button variant="primary" size="md">Первинна кнопка</Button>
+            <Button variant="secondary" size="lg">Вторинна кнопка</Button>
+            <Button variant="danger" fullWidth>Кнопка на всю ширину</Button>
+            <Button variant="outline" disabled>Вимкнена кнопка</Button>
+            <Button className="px-2">Перевизначений відступ</Button>
         </div>
     );
 }
+```
 
-function ProductDetails() {
-    const location = useLocation();
-    const from = location.state?.from;
-    const filters = location.state?.previousFilters;
+Вимкнений стан не потребує жодного умовного класу: модифікатор `disabled:` реагує на атрибут `disabled`, який ми просто передаємо в `...props`. А завдяки `tailwind-merge` останній приклад дасть кнопку з `px-2`, а не з двома конкурентними відступами.
 
+Коли варіантів багато, їх зручно описувати бібліотекою `class-variance-authority` (`cva`): вона поєднує базові класи, варіанти й типові значення в одному об'єкті, який легко типізується. Саме цей підхід лежить в основі популярної колекції компонентів **shadcn/ui**.
+
+```javascript
+import { cva } from 'class-variance-authority';
+
+const button = cva('font-semibold rounded-md transition-colors', {
+    variants: {
+        variant: {
+            primary: 'bg-blue-500 text-white hover:bg-blue-600',
+            secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+        },
+        size: {
+            sm: 'px-3 py-1.5 text-sm',
+            md: 'px-6 py-3 text-base'
+        }
+    },
+    defaultVariants: { variant: 'primary', size: 'md' }
+});
+
+// button({ variant: 'secondary', size: 'sm' }) → рядок класів
+```
+
+### Компонент картки
+
+```jsx
+import { cn } from '../lib/cn';
+
+function Card({ title, description, image, footer, hoverable = true, className }) {
     return (
-        <div>
-            <h1>Деталі продукту</h1>
-            {from && (
-                <Link to={from} state={{ filters }}>
-                    ← Назад до списку
-                </Link>
+        <div className={cn(
+            'bg-white rounded-lg shadow-md overflow-hidden',
+            hoverable && 'hover:shadow-xl transition-shadow duration-300',
+            className
+        )}>
+            {image && (
+                <div className="h-48 overflow-hidden">
+                    <img
+                        src={image}
+                        alt={title}
+                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                    />
+                </div>
+            )}
+
+            <div className="p-6">
+                {title && (
+                    <h3 className="text-xl font-bold mb-2 text-gray-900">{title}</h3>
+                )}
+                {description && (
+                    <p className="text-gray-600 leading-relaxed">{description}</p>
+                )}
+            </div>
+
+            {footer && (
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                    {footer}
+                </div>
             )}
         </div>
     );
 }
 
-// Відстеження зміни маршруту
-function Analytics() {
-    const location = useLocation();
-
-    useEffect(() => {
-        // Надсилання аналітичних даних при зміні сторінки
-        trackPageView(location.pathname);
-    }, [location]);
-
-    return null;
-}
-```
-
-## Nested routes та layouts
-
-### Концепція вкладених маршрутів
-
-Вкладені маршрути дозволяють створювати ієрархічну структуру, де дочірні маршрути рендеряться всередині батьківських компонентів.
-
-```javascript
-import { Routes, Route, Outlet } from 'react-router-dom';
-
-function App() {
+// Використання
+function CardExample() {
     return (
-        <Routes>
-            {/* Батьківський маршрут з Outlet для дочірніх */}
-            <Route path="/" element={<Layout />}>
-                <Route index element={<Home />} />
-                <Route path="about" element={<About />} />
-                <Route path="contact" element={<Contact />} />
-            </Route>
-
-            {/* Вкладена структура для dashboard */}
-            <Route path="/dashboard" element={<DashboardLayout />}>
-                <Route index element={<DashboardHome />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="settings" element={<Settings />} />
-
-                {/* Глибша вкладеність */}
-                <Route path="products" element={<ProductsLayout />}>
-                    <Route index element={<ProductList />} />
-                    <Route path=":productId" element={<ProductDetails />} />
-                    <Route path="new" element={<NewProduct />} />
-                </Route>
-            </Route>
-        </Routes>
-    );
-}
-```
-
-### Outlet компонент
-
-Outlet є placeholder для рендерингу дочірніх маршрутів всередині батьківського компонента.
-
-```javascript
-import { Outlet, Link } from 'react-router-dom';
-
-function Layout() {
-    return (
-        <div className="layout">
-            <header>
-                <nav>
-                    <Link to="/">Головна</Link>
-                    <Link to="/about">Про нас</Link>
-                    <Link to="/contact">Контакти</Link>
-                </nav>
-            </header>
-
-            <main className="content">
-                {/* Дочірні маршрути рендеряться тут */}
-                <Outlet />
-            </main>
-
-            <footer>
-                <p>© 2025 My App</p>
-            </footer>
-        </div>
-    );
-}
-
-// Передача контексту через Outlet
-function DashboardLayout() {
-    const [user, setUser] = useState(null);
-    const [notifications, setNotifications] = useState([]);
-
-    return (
-        <div className="dashboard">
-            <Sidebar user={user} />
-
-            <main>
-                {/* Передача props до дочірніх маршрутів */}
-                <Outlet context={{ user, notifications, setUser }} />
-            </main>
-        </div>
-    );
-}
-
-// Використання контексту в дочірньому компоненті
-import { useOutletContext } from 'react-router-dom';
-
-function Profile() {
-    const { user, setUser } = useOutletContext();
-
-    return (
-        <div>
-            <h1>Профіль {user?.name}</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card
+                title="Заголовок картки"
+                description="Опис картки з важливою інформацією для користувача"
+                image="/card-image.jpg"
+                footer={<Button variant="primary" fullWidth>Дізнатися більше</Button>}
+            />
         </div>
     );
 }
 ```
 
-### Index routes
+### Поле введення з валідацією
 
-Index route визначає компонент за замовчуванням для батьківського маршруту.
+Тут ми повертаємося до компонента `Input` із лекції 10: його розмітку ми вже зробили доступною, а тепер додаємо стилі. Зверніть увагу, що `aria-invalid` можна використати і як модифікатор Tailwind (`aria-invalid:`), тож окремий умовний клас для помилки не потрібен.
 
-```javascript
-function App() {
+```jsx
+import { useId } from 'react';
+import { cn } from '../lib/cn';
+
+function Input({ label, error, helperText, icon, id, className, ref, ...props }) {
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
+
     return (
-        <Routes>
-            <Route path="/dashboard" element={<DashboardLayout />}>
-                {/* Index route - рендериться за /dashboard */}
-                <Route index element={<DashboardHome />} />
+        <div className="w-full">
+            {label && (
+                <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-2">
+                    {label}
+                    {props.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+            )}
 
-                {/* Дочірні маршрути */}
-                <Route path="profile" element={<Profile />} />
-                <Route path="settings" element={<Settings />} />
-            </Route>
-        </Routes>
+            <div className="relative">
+                {icon && (
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        {icon}
+                    </div>
+                )}
+
+                <input
+                    ref={ref}
+                    id={inputId}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? `${inputId}-error` : undefined}
+                    className={cn(
+                        'w-full px-4 py-2 rounded-md border border-gray-300',
+                        'placeholder:text-gray-400',
+                        'focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        'aria-invalid:border-red-500 aria-invalid:focus:ring-red-500',
+                        'disabled:bg-gray-100 disabled:cursor-not-allowed',
+                        'transition-colors duration-200',
+                        icon && 'pl-10',
+                        className
+                    )}
+                    {...props}
+                />
+            </div>
+
+            {error && (
+                <p id={`${inputId}-error`} role="alert" className="mt-1 text-sm text-red-600">
+                    {error}
+                </p>
+            )}
+
+            {helperText && !error && (
+                <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+            )}
+        </div>
     );
 }
-
-// Без index route
-// /dashboard -> показує тільки Layout без контенту
-// /dashboard/profile -> Layout + Profile
-
-// З index route
-// /dashboard -> Layout + DashboardHome
-// /dashboard/profile -> Layout + Profile
 ```
 
-### Складні layout структури
+### Скелетні заглушки на Tailwind
 
-```javascript
-function App() {
+У лекції 10 ми будували скелетні заглушки з окремих CSS-класів. З Tailwind для цього потрібна одна утиліта анімації:
+
+```jsx
+function SkeletonCard() {
     return (
-        <Routes>
-            {/* Публічний layout */}
-            <Route element={<PublicLayout />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/login" element={<Login />} />
-            </Route>
-
-            {/* Dashboard layout з авторизацією */}
-            <Route element={<ProtectedLayout />}>
-                <Route path="/dashboard" element={<DashboardLayout />}>
-                    <Route index element={<Overview />} />
-
-                    <Route path="users" element={<UsersLayout />}>
-                        <Route index element={<UserList />} />
-                        <Route path=":userId" element={<UserDetails />} />
-                        <Route path="new" element={<NewUser />} />
-                    </Route>
-
-                    <Route path="settings" element={<Settings />} />
-                </Route>
-            </Route>
-
-            {/* Admin layout */}
-            <Route element={<AdminLayout />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-            </Route>
-        </Routes>
+        <div className="animate-pulse rounded-lg bg-white p-6 shadow-md" aria-hidden="true">
+            <div className="size-12 rounded-full bg-gray-200" />
+            <div className="mt-4 h-4 w-3/4 rounded bg-gray-200" />
+            <div className="mt-2 h-4 w-1/2 rounded bg-gray-200" />
+        </div>
     );
 }
+```
 
-// Захищений layout
-function ProtectedLayout() {
-    const { user } = useAuth();
+## Темна та світла теми
 
-    if (!user) {
-        return <Navigate to="/login" replace />;
+### Як працює темна тема
+
+За замовчуванням у Tailwind 4 модифікатор `dark:` спрацьовує, коли в операційній системі користувача увімкнено темну тему (медіазапит `prefers-color-scheme`). Це найпростіший варіант і для багатьох сайтів достатній. Але зазвичай користувач хоче мати перемикач у самому застосунку, незалежний від системного. Для цього модифікатор `dark:` перевизначають так, щоб він залежав від класу `dark` на кореневому елементі `<html>`.
+
+> **Змінилося у версії 4.** Налаштування `darkMode: 'class'` у `tailwind.config.js` більше не діє. Власну поведінку модифікатора оголошують директивою `@custom-variant` у CSS.
+
+```css
+/* src/index.css */
+@import "tailwindcss";
+
+/* dark: працює, коли на <html> (або предку) є клас .dark */
+@custom-variant dark (&:where(.dark, .dark *));
+```
+
+### Реалізація перемикання теми
+
+Початкову тему обираємо за такою логікою: якщо користувач уже робив вибір — використовуємо його, якщо ні — слідуємо системним налаштуванням. Вибір зберігаємо в `localStorage`.
+
+```jsx
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+
+const ThemeContext = createContext(null);
+
+function getInitialTheme() {
+    try {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'dark') return saved;
+    } catch {
+        // доступ до localStorage може бути заблокований
     }
-
-    return <Outlet />;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-// Layout з завантаженням даних
-function DataLayout() {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+export function ThemeProvider({ children }) {
+    const [theme, setTheme] = useState(getInitialTheme);
 
     useEffect(() => {
-        loadData().then(data => {
-            setData(data);
-            setLoading(false);
-        });
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        try {
+            localStorage.setItem('theme', theme);
+        } catch {
+            // ігноруємо помилку збереження
+        }
+    }, [theme]);
+
+    const toggleTheme = useCallback(() => {
+        setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
     }, []);
 
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
-    return <Outlet context={{ data }} />;
-}
-```
-
-## Protected routes та аутентифікація
-
-### Захист маршрутів від неавторизованих користувачів
-
-Protected routes обмежують доступ до певних сторінок на основі стану аутентифікації користувача.
-
-```javascript
-import { Navigate, Outlet } from 'react-router-dom';
-
-// Простий захищений маршрут
-function ProtectedRoute({ children }) {
-    const { user } = useAuth();
-
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-
-    return children;
-}
-
-// Використання з children
-function App() {
+    // У React 19 контекст можна використовувати як провайдер напряму
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-
-            <Route
-                path="/dashboard"
-                element={
-                    <ProtectedRoute>
-                        <Dashboard />
-                    </ProtectedRoute>
-                }
-            />
-        </Routes>
+        <ThemeContext value={{ theme, toggleTheme }}>
+            {children}
+        </ThemeContext>
     );
 }
 
-// Використання з Outlet для вкладених маршрутів
-function ProtectedLayout() {
-    const { user, loading } = useAuth();
-
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-
-    return <Outlet />;
+export function useTheme() {
+    const context = useContext(ThemeContext);
+    if (!context) throw new Error('useTheme потрібно викликати всередині ThemeProvider');
+    return context;
 }
 
-function App() {
-    return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
+// Компонент перемикача теми
+function ThemeToggle() {
+    const { theme, toggleTheme } = useTheme();
 
-            <Route element={<ProtectedLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/settings" element={<Settings />} />
-            </Route>
-        </Routes>
+    return (
+        <button
+            onClick={toggleTheme}
+            className="
+                p-2 rounded-lg
+                bg-gray-200 dark:bg-gray-700
+                text-gray-800 dark:text-gray-200
+                hover:bg-gray-300 dark:hover:bg-gray-600
+                transition-colors duration-200
+            "
+            aria-label={theme === 'light' ? 'Увімкнути темну тему' : 'Увімкнути світлу тему'}
+        >
+            {theme === 'light' ? '🌙' : '☀️'}
+        </button>
     );
 }
 ```
 
-### Редирект з збереженням попереднього шляху
+Ця реалізація має відомий недолік: React ще не завантажився, а сторінка вже відображена зі світлою темою, і користувач із темною побачить коротке «миготіння». Щоб його уникнути, клас виставляють найпершим вбудованим скриптом у `index.html`, до завантаження застосунку:
 
-При редиректі на сторінку логіну корисно зберегти попередній шлях, щоб повернути користувача після успішної авторизації.
-
-```javascript
-function ProtectedRoute() {
-    const { user } = useAuth();
-    const location = useLocation();
-
-    if (!user) {
-        // Зберігаємо поточний шлях в state
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-
-    return <Outlet />;
-}
-
-function LoginPage() {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { login } = useAuth();
-
-    // Шлях, звідки користувач був перенаправлений
-    const from = location.state?.from?.pathname || '/dashboard';
-
-    const handleSubmit = async (credentials) => {
+```html
+<script>
+    (function () {
         try {
-            await login(credentials);
-            // Повертаємо на попередню сторінку
-            navigate(from, { replace: true });
-        } catch (error) {
-            console.error('Помилка логіну:', error);
-        }
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            {/* форма логіну */}
-        </form>
-    );
-}
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (saved === 'dark' || (!saved && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            }
+        } catch (e) {}
+    })();
+</script>
 ```
 
-### Захист на основі ролей
+### Стилізація з підтримкою теми
 
-Більш складні сценарії вимагають перевірки ролей користувача.
-
-```javascript
-function RoleBasedRoute({ allowedRoles, children }) {
-    const { user } = useAuth();
-    const location = useLocation();
-
-    if (!user) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-
-    if (!allowedRoles.includes(user.role)) {
-        return <Navigate to="/unauthorized" replace />;
-    }
-
-    return children || <Outlet />;
-}
-
-function App() {
+```jsx
+function ThemedCard() {
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
+        <div className="
+            bg-white dark:bg-gray-800
+            text-gray-900 dark:text-gray-100
+            border border-gray-200 dark:border-gray-700
+            rounded-lg shadow-md
+            p-6
+            transition-colors duration-200
+        ">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                Картка з підтримкою теми
+            </h2>
 
-            {/* Доступ тільки для звичайних користувачів */}
-            <Route element={<RoleBasedRoute allowedRoles={['user', 'admin']} />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile />} />
-            </Route>
+            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                Цей текст автоматично адаптується до обраної теми
+            </p>
 
-            {/* Доступ тільки для адміністраторів */}
-            <Route element={<RoleBasedRoute allowedRoles={['admin']} />}>
-                <Route path="/admin" element={<AdminPanel />} />
-                <Route path="/admin/users" element={<UserManagement />} />
-            </Route>
-
-            {/* Доступ для модераторів та адміністраторів */}
-            <Route element={<RoleBasedRoute allowedRoles={['moderator', 'admin']} />}>
-                <Route path="/moderate" element={<ModerationPanel />} />
-            </Route>
-        </Routes>
-    );
-}
-
-// Розширена версія з правами доступу
-function PermissionBasedRoute({ requiredPermissions, children }) {
-    const { user, hasPermissions } = useAuth();
-
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-
-    if (!hasPermissions(requiredPermissions)) {
-        return <Navigate to="/forbidden" replace />;
-    }
-
-    return children || <Outlet />;
-}
-
-// Використання
-<Route element={<PermissionBasedRoute requiredPermissions={['posts.create', 'posts.edit']} />}>
-    <Route path="/posts/new" element={<NewPost />} />
-</Route>
-```
-
-## Програмна навігація
-
-### useNavigate для програмного переходу
-
-useNavigate hook дозволяє програмно ініціювати навігацію з будь-якого місця в коді.
-
-```javascript
-import { useNavigate } from 'react-router-dom';
-
-function LoginForm() {
-    const navigate = useNavigate();
-
-    const handleSubmit = async (credentials) => {
-        try {
-            await login(credentials);
-            // Програмний перехід після успішного логіну
-            navigate('/dashboard');
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            {/* поля форми */}
-        </form>
-    );
-}
-
-// Навігація з параметрами
-function ProductForm({ productId }) {
-    const navigate = useNavigate();
-
-    const handleSave = async (data) => {
-        const savedProduct = await saveProduct(data);
-
-        // Перехід з передачею state
-        navigate(`/products/${savedProduct.id}`, {
-            state: { message: 'Продукт успішно збережено' }
-        });
-    };
-
-    const handleCancel = () => {
-        // Перехід назад
-        navigate(-1);
-    };
-
-    return (
-        <div>
-            <button onClick={handleCancel}>Скасувати</button>
-            <button onClick={handleSave}>Зберегти</button>
-        </div>
-    );
-}
-
-// Відносні переходи
-function SettingsPage() {
-    const navigate = useNavigate();
-
-    const goToProfile = () => {
-        navigate('profile'); // Відносний шлях
-    };
-
-    const goToParent = () => {
-        navigate('..'); // На рівень вище
-    };
-
-    return (
-        <div>
-            <button onClick={goToProfile}>Профіль</button>
-            <button onClick={goToParent}>Назад</button>
+            <button className="
+                mt-4 px-6 py-2 rounded-md text-white
+                bg-blue-500 dark:bg-blue-600
+                hover:bg-blue-600 dark:hover:bg-blue-700
+                transition-colors duration-200
+            ">
+                Кнопка
+            </button>
         </div>
     );
 }
 ```
 
-### Replace vs Push навігація
+Якщо кожен елемент стилізується парою `light dark:dark`, розмітка швидко розростається. Масштабований підхід — **семантичні токени**: оголосити в `@theme` кольори на кшталт `--color-surface` та `--color-text`, а їх значення перевизначати для `.dark`. Тоді в розмітці досить писати `bg-surface text-text`, а тема змінюється в одному місці.
 
-Navigate може працювати в двох режимах: push (додає новий запис в історію) та replace (замінює поточний запис).
-
-```javascript
-function Navigation() {
-    const navigate = useNavigate();
-
-    // Push navigation (за замовчуванням)
-    const goToDashboard = () => {
-        navigate('/dashboard');
-        // Додає /dashboard в історію
-        // Кнопка "Назад" поверне на попередню сторінку
-    };
-
-    // Replace navigation
-    const redirectToHome = () => {
-        navigate('/', { replace: true });
-        // Замінює поточний запис в історії
-        // Кнопка "Назад" пропустить цю сторінку
-    };
-
-    return (
-        <div>
-            <button onClick={goToDashboard}>Dashboard</button>
-            <button onClick={redirectToHome}>Home (Replace)</button>
-        </div>
-    );
+```css
+@theme {
+    --color-surface: #ffffff;
+    --color-text: #111827;
 }
 
-// Практичний приклад: форма логіну
-function LoginPage() {
-    const navigate = useNavigate();
-
-    const handleLogin = async (credentials) => {
-        await login(credentials);
-
-        // Replace щоб не дати користувачу повернутись на логін
-        navigate('/dashboard', { replace: true });
-    };
-
-    return <form onSubmit={handleLogin}>{/* форма */}</form>;
+@layer base {
+    .dark {
+        --color-surface: #1f2937;
+        --color-text: #f3f4f6;
+    }
 }
+```
 
-// Приклад: multi-step форма
-function MultiStepForm() {
-    const navigate = useNavigate();
-    const [step, setStep] = useState(1);
+## Headless UI: доступні компоненти без стилів
 
-    const nextStep = () => {
-        if (step < 3) {
-            // Push для можливості повернутись назад
-            navigate(`/form/step-${step + 1}`);
-            setStep(step + 1);
-        }
-    };
+### Що таке «безголові» компоненти
 
-    const complete = () => {
-        // Replace після завершення
-        navigate('/success', { replace: true });
-    };
+Деякі елементи інтерфейсу (модальне вікно, випадне меню, вкладки, випадний список із пошуком) складні не візуально, а поведінково: треба керувати фокусом, закривати вікно по `Escape`, підтримувати навігацію стрілками, коректно озвучувати елементи екранним читачам. Реалізувати це вручну — довго й легко припуститися помилки. **Headless UI** надає такі компоненти *без жодного оформлення*: вони беруть на себе поведінку й доступність, а вигляд повністю визначаєте ви за допомогою класів Tailwind.
+
+```bash
+npm install @headlessui/react
+```
+
+> **Версія.** Нині актуальна гілка 2. Порівняно з 1-ю змінилися імена компонентів: замість точкових (`Dialog.Panel`, `Menu.Button`) використовуються окремі експорти (`DialogPanel`, `MenuButton`), а анімацію виконує проста властивість `transition` разом із модифікаторами станів `data-closed:`, `data-open:`, `data-focus:` — окремий компонент `Transition` здебільшого не потрібен. Користуйтеся цим при перегляді старих прикладів.
+
+Серед альтернатив варто знати Radix UI та React Aria — вони пропонують схожий набір та глибшу підтримку доступності; на них побудовані, зокрема, компоненти shadcn/ui.
+
+| Бібліотека | Особливості |
+|---|---|
+| Headless UI | Створена командою Tailwind, найтісніша інтеграція з ним |
+| Radix UI | Дуже повний набір примітивів, основа shadcn/ui |
+| React Aria | Максимальна глибина доступності й інтернаціоналізації |
+
+### Діалогове вікно
+
+```jsx
+import { useState } from 'react';
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
+
+function Modal() {
+    const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div>
-            {/* контент форми */}
-        </div>
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+                Відкрити модальне вікно
+            </button>
+
+            <Dialog open={isOpen} onClose={() => setIsOpen(false)} className="relative z-50">
+                {/* Затемнення тла: transition вмикає анімацію, data-closed задає початковий стан */}
+                <DialogBackdrop
+                    transition
+                    className="fixed inset-0 bg-black/25 duration-300 ease-out data-closed:opacity-0"
+                />
+
+                <div className="fixed inset-0 flex w-screen items-center justify-center p-4">
+                    <DialogPanel
+                        transition
+                        className="
+                            w-full max-w-md rounded-2xl bg-white p-6 shadow-xl
+                            duration-300 ease-out
+                            data-closed:scale-95 data-closed:opacity-0
+                        "
+                    >
+                        <DialogTitle className="text-lg font-medium leading-6 text-gray-900">
+                            Заголовок модального вікна
+                        </DialogTitle>
+
+                        <p className="mt-2 text-sm text-gray-500">
+                            Вміст модального вікна з важливою інформацією
+                        </p>
+
+                        <div className="mt-4 flex gap-2">
+                            <button
+                                type="button"
+                                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                Підтвердити
+                            </button>
+                            <button
+                                type="button"
+                                className="px-4 py-2 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300"
+                                onClick={() => setIsOpen(false)}
+                            >
+                                Скасувати
+                            </button>
+                        </div>
+                    </DialogPanel>
+                </div>
+            </Dialog>
+        </>
     );
 }
 ```
 
-### Navigate компонент для декларативного редиректу
+Скільки поведінки ми отримали, не написавши жодного рядка для неї: фокус «замикається» всередині вікна, `Escape` і клік по затемненню закривають його, а скрол сторінки під ним блокується, екранні читачі розпізнають вікно як діалог і знають його заголовок.
 
-Navigate компонент дозволяє виконувати редиректи декларативно через JSX.
+### Випадне меню
 
-```javascript
-import { Navigate } from 'react-router-dom';
+```jsx
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 
-// Простий редирект
-function OldProfilePage() {
-    return <Navigate to="/profile" replace />;
-}
-
-// Умовний редирект
-function Dashboard() {
-    const { user } = useAuth();
-
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
-
-    if (!user.isEmailVerified) {
-        return <Navigate to="/verify-email" />;
-    }
-
+function Dropdown() {
     return (
-        <div>
-            <h1>Dashboard</h1>
-        </div>
+        <Menu>
+            <MenuButton className="
+                inline-flex items-center px-4 py-2
+                bg-white border border-gray-300 rounded-md shadow-xs
+                hover:bg-gray-50
+                focus-visible:outline-2 focus-visible:outline-blue-500
+            ">
+                Опції
+                <svg className="w-5 h-5 ml-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+            </MenuButton>
+
+            {/* anchor позиціонує меню відносно кнопки */}
+            <MenuItems
+                transition
+                anchor="bottom end"
+                className="
+                    w-56 origin-top-right bg-white rounded-md shadow-lg
+                    ring-1 ring-black/5 p-1
+                    transition duration-100 ease-out
+                    data-closed:scale-95 data-closed:opacity-0
+                "
+            >
+                <MenuItem>
+                    <button className="flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 data-focus:bg-blue-500 data-focus:text-white">
+                        Редагувати
+                    </button>
+                </MenuItem>
+                <MenuItem>
+                    <button className="flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 data-focus:bg-blue-500 data-focus:text-white">
+                        Дублювати
+                    </button>
+                </MenuItem>
+                <MenuItem>
+                    <button className="flex w-full items-center rounded-md px-2 py-2 text-sm text-gray-900 data-focus:bg-red-500 data-focus:text-white">
+                        Видалити
+                    </button>
+                </MenuItem>
+            </MenuItems>
+        </Menu>
     );
 }
+```
 
-// Редирект з state
-function ProtectedPage() {
-    const { user } = useAuth();
-    const location = useLocation();
+Стан «елемент у фокусі» (навігація стрілками або наведення) компонент позначає атрибутом `data-focus`, який ми підхоплюємо модифікатором `data-focus:`. У 1-й версії для цього використовували функцію `({ active }) => ...` та умовні класи — тепер вона не потрібна.
 
-    if (!user) {
-        return (
-            <Navigate
-                to="/login"
-                state={{ from: location }}
-                replace
+### Випадний список із пошуком
+
+Тепер ми можемо повернутися до `SearchableSelect` із лекції 10. Там ми попередили, що повноцінний випадний список із пошуком потребує складної поведінки. Саме її й дає `Combobox`:
+
+```jsx
+import { useState } from 'react';
+import { Combobox, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react';
+
+function CountrySelect({ countries, value, onChange }) {
+    const [query, setQuery] = useState('');
+
+    const filtered = query === ''
+        ? countries
+        : countries.filter(c => c.label.toLowerCase().includes(query.toLowerCase()));
+
+    return (
+        <Combobox value={value} onChange={onChange} onClose={() => setQuery('')}>
+            <ComboboxInput
+                aria-label="Країна"
+                displayValue={(country) => country?.label ?? ''}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-4 py-2 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
-        );
-    }
 
-    return <div>Protected Content</div>;
-}
-
-// Використання в маршрутах
-function App() {
-    return (
-        <Routes>
-            {/* Редирект старого URL */}
-            <Route path="/old-dashboard" element={<Navigate to="/dashboard" replace />} />
-
-            {/* Редирект кореневого шляху */}
-            <Route path="/" element={<Navigate to="/home" />} />
-
-            {/* Catch-all з редиректом */}
-            <Route path="*" element={<Navigate to="/404" />} />
-        </Routes>
+            <ComboboxOptions
+                anchor="bottom"
+                className="w-(--input-width) rounded-md border border-gray-200 bg-white p-1 shadow-lg empty:invisible"
+            >
+                {filtered.map(country => (
+                    <ComboboxOption
+                        key={country.value}
+                        value={country}
+                        className="cursor-pointer rounded px-3 py-2 data-focus:bg-blue-500 data-focus:text-white"
+                    >
+                        {country.label}
+                    </ComboboxOption>
+                ))}
+            </ComboboxOptions>
+        </Combobox>
     );
 }
 ```
+
+Такий компонент легко підключається до React Hook Form через `Controller`, як і наш навчальний варіант, що ми розглядали раніше.
+
+## Продуктивність, інструменти та альтернативи
+
+### Розмір CSS і швидкість збірки
+
+Як ми бачили на початку, Tailwind генерує лише ті правила, які реально використовуються, тому підсумковий CSS зазвичай невеликий і майже не росте разом із проєктом: нові компоненти повторно використовують уже наявні утиліти. Новий рушій версії 4, написаний на Rust, суттєво швидший за попередній: розробники заявляють прискорення повних збірок до 5 разів і інкрементальних — більш ніж у 100 разів. Реальний ефект залежить від проєкту, тож орієнтуйтеся не на цифри, а на власні вимірювання.
+
+### Інструменти розробника
+
+- **Tailwind CSS IntelliSense** — розширення для VS Code: автодоповнення класів, підказки значень, попередження про конфлікти.
+- **prettier-plugin-tailwindcss** — автоматично впорядковує класи в єдиному, узгодженому порядку, що значно полегшує перегляд змін у команді.
+- **Tailwind Play** (play.tailwindcss.com) — онлайн-пісочниця для експериментів.
+
+```bash
+npm install -D prettier prettier-plugin-tailwindcss
+```
+
+### Альтернативи і коли Tailwind не підходить
+
+| Підхід | Коли доречний |
+|---|---|
+| CSS Modules | Проста локалізація стилів, звичний синтаксис CSS |
+| CSS-in-JS (styled-components, Emotion) | Динамічні стилі на основі властивостей; врахуйте додаткові витрати виконання та складнощі із серверним відтворенням |
+| Власна система на змінних CSS | Повний контроль, жорсткі вимоги до дизайн-системи компанії |
+| Tailwind CSS | Швидка розробка, командна консистентність, компонентна архітектура |
+
+Tailwind менш зручний, коли дизайн дуже специфічний та складно виражається через шкалу значень, коли команда принципово не приймає utility-first підхід або коли потрібно підтримувати старі браузери. Важливо й те, що в **тестах** не слід перевіряти наявність класів Tailwind: вони є деталлю реалізації. У лекції 12 ми поговоримо про це докладніше.
 
 ## Висновки та найкращі практики
 
-### Розуміння React Router
+Tailwind CSS пропонує сучасний підхід до стилізації, який значно прискорює розробку та полегшує супровід коду. Основні принципи ефективного використання:
 
-React Router є стандартом для клієнтського роутингу в React екосистемі. Версія 6 принесла значні покращення в API, зробивши його більш інтуїтивним та потужним. Розуміння різниці між серверним та клієнтським роутингом є основою для ефективного використання бібліотеки.
+**Прийміть філософію utility-first.** Спочатку вона здається незвичною, але забезпечує консистентність, передбачуваність і швидкість. Не бійтеся довгих списків класів у JSX — це нормально, якщо вони інкапсульовані в компоненти.
 
-Ключові концепції React Router включають декларативне визначення маршрутів через компоненти, використання History API для маніпуляції URL без перезавантаження сторінки, підтримку вкладених маршрутів для складних ієрархічних структур.
+**Налаштовуйте систему дизайну через `@theme`.** Tailwind пропонує продуману шкалу «з коробки», але кольори бренду, шрифти й точки зміни макета слід винести в токени, а не повторювати довільні значення в розмітці.
 
-BrowserRouter є стандартним вибором для більшості застосунків, надаючи чисті URL та кращу SEO. HashRouter залишається корисним для статичних хостингів без серверної конфігурації, але має обмеження в SEO та естетиці URL.
+**Створюйте компоненти, а не класи.** Замість дублювання довгих списків класів інкапсулюйте їх у React-компоненти з варіантами. `@apply` використовуйте лише в винятках. Для об'єднання класів застосовуйте `cn` (clsx + tailwind-merge).
 
-### Організація маршрутів
+**Пишіть mobile-first.** Спершу описуйте мобільний вигляд, потім додавайте префікси `md:`, `lg:` для більших екранів, а для компонентів, що опиняються в контейнерах різної ширини, застосовуйте контейнерні запити.
 
-Правильна організація маршрутів є критичною для підтримуваності застосунку. Використовуйте вкладені маршрути для створення ієрархічних структур, де батьківські компоненти надають спільну функціональність для групи дочірніх маршрутів.
+**Не складайте назви класів динамічно.** Tailwind бачить лише цілі рядки в коді: `bg-${color}-500` не працюватиме.
 
-Outlet компонент дозволяє створювати гнучкі layout структури, де спільні елементи інтерфейсу рендеряться один раз, а контент динамічно змінюється. Передача контексту через Outlet context дозволяє ділитися даними між батьківськими та дочірніми компонентами без prop drilling.
+**Пам'ятайте про доступність.** Використовуйте семантичні елементи, видимий фокус (`focus-visible:`), атрибути `aria-*`; для складних інтерактивних елементів беріть готові «безголові» компоненти (Headless UI, Radix UI, React Aria) замість власних реалізацій.
 
-Index routes визначають компонент за замовчуванням для батьківського маршруту, забезпечуючи зрозумілу навігацію та уникаючи порожніх сторінок. Використовуйте їх для створення home сторінок всередині секцій застосунку.
+**Слідкуйте за версіями.** Більшість матеріалів в інтернеті описують Tailwind 3. Перш ніж копіювати код, перевірте, чи не змінилася назва класу чи спосіб налаштування.
 
-### Робота з параметрами
+Розуміння та застосування цих принципів дозволяє створювати красиві, консистентні й доступні інтерфейси швидше, зберігаючи високу якість і підтримуваність коду в довгостроковій перспективі. А щоб упевнитися, що такий інтерфейс працює й надалі після кожної зміни, у наступній лекції ми навчимося його тестувати.
 
-URL параметри через useParams дозволяють створювати динамічні маршрути для ресурсів. Завжди валідуйте параметри та обробляйте помилкові значення, оскільки користувачі можуть вводити URL вручну.
+## Питання для самоперевірки
 
-Query параметри через useSearchParams ідеальні для фільтрів, пошуку, пагінації та інших параметрів, які не є частиною ідентифікатора ресурсу. Синхронізація UI з URL через query параметри дозволяє користувачам ділитися посиланнями з застосованими фільтрами.
-
-Location state надає спосіб передачі даних між сторінками без відображення їх в URL. Використовуйте його для тимчасової інформації, такої як повідомлення про успіх, попередні фільтри, або контекст навігації.
-
-### Безпека та аутентифікація
-
-Protected routes є фундаментальним патерном для захисту приватного контенту. Створюйте переносні компоненти для різних рівнів доступу: базова аутентифікація, ролі користувачів, детальні права доступу.
-
-Завжди зберігайте шлях, з якого користувач був перенаправлений на логін, щоб повернути його після успішної аутентифікації. Використовуйте replace навігацію для сторінок логіну та завершення процесів, щоб запобігти поверненню через кнопку "Назад".
-
-Обробляйте стани завантаження при перевірці аутентифікації, щоб уникнути мерехтіння інтерфейсу та передчасних редиректів. Створюйте чіткі повідомлення про помилки та незрозумілі дозволи.
-
-### Найкращі практики
-
-1. **Використовуйте BrowserRouter для production** застосунків з правильною серверною конфігурацією;
-2. **Організовуйте маршрути ієрархічно** використовуючи вкладені маршрути та layouts;
-3. **Створюйте переносні protected route компоненти** для різних рівнів доступу;
-4. **Завжди валідуйте URL параметри** та обробляйте невалідні значення;
-5. **Синхронізуйте UI стан з URL** через query параметри для кращого UX;
-6. **Використовуйте NavLink для активних станів** в навігаційних меню;
-7. **Обробляйте 404 помилки** через catch-all маршрут;
-8. **Документуйте структуру маршрутів** для кращого розуміння архітектури застосунку.
-
-Розуміння цих концепцій та дотримання найкращих практик дозволяє створювати інтуїтивні, безпечні та підтримувані React застосунки з професійною системою навігації та роутингу.
+1. У чому суть підходу utility-first і які його переваги та недоліки?
+2. Як працює адаптивний дизайн у Tailwind? Що означає «mobile-first»?
+3. Яку роль відіграє директива `@theme` і чим вона замінила `tailwind.config.js`?
+4. Чому клас `bg-${color}-500` не працює, і як правильно записувати динамічні класи?
+5. Для чого потрібна функція `cn` і яку проблему розв'язує `tailwind-merge`?
+6. Коли доречно використовувати `@apply`, а коли краще створити компонент?
+7. Як налаштувати перемикання темної теми у версії 4?
+8. Що таке «безголові» компоненти і навіщо вони потрібні? Чим Headless UI 2 відрізняється від 1-ї версії?
+9. Як Tailwind формує розмір підсумкового CSS?
+10. Які основні зміни у Tailwind 4 порівняно з версією 3?

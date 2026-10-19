@@ -1,884 +1,835 @@
-# Тестування React компонентів
+# Безпека вебзастосунків та сучасні тенденції
+
+## Про що лекція
+
+### Частина I — безпека
+
+OWASP Top 10:2025 · валідація · XSS і CSRF · заголовки й CSP · тестування
+
+### Частина II — майбутнє
+
+ШІ та агенти · WebAssembly · WebGPU · edge · нові можливості платформи · доступність · кар'єра
+
+### Зв'язок
+
+Кожна нова технологія розширює **поверхню атаки**
 
 ---
 
-## План лекції
+## Масштаби проблеми
 
-- React Testing Library основи
-- Unit тестування компонентів
-- Мокування API викликів
-- Integration тести
-- E2E тестування (Cypress/Playwright)
-- Test-driven development
+- Середня вартість витоку даних (IBM, 2025): **≈ 4,44 млн $**
+- Виявлення й локалізація: **≈ 241 день**
+- США: понад 10 млн $
 
----
-
-## Навіщо тестувати?
-
-**Основні причини:**
-- 🐛 Раннє виявлення помилок
-- 🔄 Впевненість при рефакторингу
-- 📖 Документація коду
-- 🚀 Швидший розвиток в довгостроковій перспективі
-- 👥 Полегшення колаборації
-
-**Статистика:**
-- 40% часу витрачається на баги в продакшені
-- Вартість виправлення бага зростає в 100 разів після релізу
-- Тести економлять час і гроші
+Більшість атак використовують **відомі, давно описані помилки**
 
 ---
 
-## Піраміда тестування
+## Правове поле
 
-```mermaid
-graph TB
-    A[E2E Tests<br/>Повільні, дорогі, стабільні] --> B[Integration Tests<br/>Середні за швидкістю]
-    B --> C[Unit Tests<br/>Швидкі, дешеві, багато]
+**GDPR** — захист за задумом, повідомлення про витік за 72 години, штрафи до 4% обороту
+
+**Закон України «Про захист персональних даних»** (2010) — актуальність норм перевіряйте на початку проєкту
+
+**EU Cyber Resilience Act**
+
+- повідомлення про активно експлуатовані вразливості — з **11.09.2026**
+- повне застосування — **11.12.2027**
+- SBOM, оновлення, розкриття вразливостей — обов'язкові практики
+
+---
+
+## Принципи безпечної розробки
+
+- **Захист у глибину** — кілька шарів
+- **Найменші привілеї**
+- **Безпека за замовчуванням**
+- **Fail closed** — у разі збою доступ закривається
+- **Недовіра до вхідних даних**
+- **Простота** — менше коду, менше залежностей
+- Не вигадуйте криптографію
+
+---
+
+## OWASP Top 10:2025
+
+| № | Категорія | Зміна відносно 2021 |
+|---|-----------|---------------------|
+| A01 | Порушення контролю доступу | включає SSRF |
+| A02 | Неправильна конфігурація | піднялася з 5-го |
+| A03 | Збої ланцюга постачання ПЗ | розширила «вразливі компоненти» |
+| A04 | Криптографічні збої | було 2-ге |
+| A05 | Ін'єкції | включає XSS |
+| A06 | Небезпечне проєктування | було 4-те |
+| A07 | Збої автентифікації | збережено |
+| A08 | Порушення цілісності ПЗ чи даних | збережено |
+| A09 | Збої журналювання та сповіщення | акцент на сповіщенні |
+| A10 | Неправильна обробка виняткових ситуацій | **нова** |
+
+---
+
+## A01: IDOR
+
+```typescript
+// ❌ Перевірено вхід, але не належність ресурсу
+const order = await prisma.order.findUnique({ where: { id: Number(req.params.id) } });
+
+// ✅ Власник — із сесії
+const order = await prisma.order.findFirst({
+    where: { id: Number(req.params.id), userId: req.user!.id },
+});
+if (!order) { res.status(404).json({ /* ... */ }); return; }
 ```
 
-**Розподіл:**
-- 70% Unit Tests - тестують окремі функції/компоненти
-- 20% Integration Tests - тестують взаємодію компонентів
-- 10% E2E Tests - тестують повні сценарії користувача
+Чужий ресурс → **404**, а не 403
 
 ---
 
-## React Testing Library: філософія
+## A01: ролі та масове присвоєння
 
-**Ключовий принцип:**
-> Тестуйте те, що бачить користувач, а не деталі реалізації
+```typescript
+export const requireRole = (...roles: UserRole[]): RequestHandler => (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+        res.status(403).json({ error: { code: "FORBIDDEN", message: "Недостатньо прав" } });
+        return;
+    }
+    next();
+};
 
-**Відмінності від enzyme:**
-- ❌ Enzyme: доступ до стану та методів
-- ✅ RTL: пошук через доступні атрибути
-
-**Переваги:**
-- Більш стійкі тести
-- Кращі практики доступності
-- Схожість з реальною поведінкою користувача
-- Легший рефакторинг
-
----
-
-## Налаштування тестового середовища
-
-```bash
-# Встановлення залежностей
-npm install --save-dev @testing-library/react
-npm install --save-dev @testing-library/jest-dom
-npm install --save-dev @testing-library/user-event
-npm install --save-dev vitest jsdom
+const UpdateProfileSchema = z.object({
+    firstName: z.string().min(1).max(100),
+    lastName: z.string().min(1).max(100),
+}).strict();   // role, isAdmin → помилка
 ```
+
+---
+
+## A01: SSRF
+
+Сервер завантажує URL від користувача → `http://169.254.169.254/` (метадані хмари), `localhost`
+
+Захист:
+
+1. **Список дозволених доменів**
+2. Лише `https`
+3. Перевірити **IP** після DNS: не приватні/локальні діапазони
+4. `redirect: "manual"`, таймаут, ліміт розміру
+5. Мережеві обмеження для сервера
+
+```typescript
+return fetch(url, { redirect: "manual", signal: AbortSignal.timeout(5_000) });
+```
+
+---
+
+## A02: Неправильна конфігурація
+
+- Паролі за замовчуванням · режим налагодження у production
+- Відкриті порти, бакети, зайві сервіси
+- Детальні повідомлення про помилки
+
+```typescript
+app.disable("x-powered-by");
+app.use(cors({
+    origin: ["https://app.example.com"],   // ❌ не "*" разом з credentials
+    credentials: true,
+}));
+```
+
+Інфраструктура як код · перевірка конфігурації при старті · `helmet`
+
+---
+
+## A03: Ланцюг постачання
+
+Атаки: відомі вразливості · тайпосквоттинг · dependency confusion · **компрометація супровідника** · `postinstall`-скрипти · компрометація CI
+
+**2025:** самопоширюваний «хробак» npm (Shai-Hulud) викрадав токени та заражав пакети
+
+---
+
+## A03: Захист
+
+1. Мінімізуйте залежності
+2. `package-lock.json` + **`npm ci`**
+3. `npm audit`, Dependabot / Renovate, OSV-Scanner
+4. `--ignore-scripts`; затримка прийняття щойно опублікованих версій
+5. Публікація: 2FA, **trusted publishing (OIDC)**, `--provenance`
+6. CI: дії за хешем, мінімальні `permissions`
+7. Образи: скан, дайджест
+8. **SBOM** (CycloneDX, SPDX)
+9. **SRI** для CDN-скриптів
+
+```html
+<script src="…/lib.min.js" integrity="sha384-…" crossorigin="anonymous"></script>
+```
+
+---
+
+## A04: Криптографія
+
+- HTTPS, TLS 1.2+ (бажано 1.3), **HSTS**
+- Паролі — **Argon2id** (далі scrypt, bcrypt ≥ 10); MD5/SHA-256 — ні
+- Випадкові значення: `crypto.randomBytes`, **не `Math.random()`**
+- AES-256-GCM, унікальний IV, ключі в менеджері секретів
+- Мінімізація даних
+
+```typescript
+const ARGON_OPTIONS = {
+    type: argon2.argon2id,
+    memoryCost: 19456,   // 19 МіБ
+    timeCost: 2,
+    parallelism: 1,
+} as const;
+```
+
+---
+
+## A05: SQL-ін'єкція
+
+```typescript
+// ❌ Конкатенація
+await prisma.$queryRawUnsafe(`SELECT * FROM users WHERE email = '${email}'`);
+
+// ✅ Параметризація
+const user  = await prisma.user.findUnique({ where: { email } });
+const users = await prisma.$queryRaw`SELECT id FROM users WHERE email = ${email}`;
+const res   = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+```
+
+- Назви стовпців / сортування — лише зі **списку дозволених**
+- «Санітизація» рядків власноруч — ненадійна
+- Мінімальні права БД
+
+---
+
+## A05: NoSQL, команди ОС
+
+### NoSQL
 
 ```javascript
-// vite.config.js
-export default defineConfig({
-    plugins: [react()],
-    test: {
-        globals: true,
-        environment: 'jsdom',
-        setupFiles: './src/test/setup.js',
-    },
+// { "password": { "$ne": null } } — умова істинна для будь-якого пароля
+User.findOne({ email: req.body.email, password: req.body.password });
+```
+
+Захист: схема (`z.string()`), `sanitizeFilter: true`, хеші замість паролів
+
+### Команди ОС
+
+```typescript
+exec(`convert ${filename} out.png`);              // ❌
+execFile("convert", [filename, "out.png"]);       // ✅ без оболонки
+```
+
+---
+
+## A05: XSS
+
+**Відбитий** · **збережений** · **на основі DOM**
+
+```tsx
+<p>{comment.text}</p>                                       {/* ✅ React екранує */}
+<div dangerouslySetInnerHTML={{ __html: comment.text }} />  {/* ❌ */}
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.html) }} />  {/* ✅ */}
+```
+
+Також небезпечні: `href={userUrl}` (`javascript:`), `eval`, `innerHTML`, `document.write`
+
+HTML очищує **DOMPurify**, а не регулярні вирази
+
+Другий рівень: **CSP**, Trusted Types, `HttpOnly`
+
+---
+
+## A06: Небезпечне проєктування
+
+- **Моделювання загроз — STRIDE:** Spoofing · Tampering · Repudiation · Information disclosure · Denial of service · Elevation of privilege
+- Сценарії зловживання: «що, якщо надіслати 10 000 разів?»
+- Ціни й права — на сервері
+- Однакові відповіді для існуючих і неіснуючих облікових записів
+
+```typescript
+rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8" });
+```
+
+`limit` (раніше `max`)
+
+---
+
+## A07: Автентифікація
+
+**NIST SP 800-63B (ред. 4) та OWASP:**
+
+- **Довжина > складність:** єдиний фактор — мінімум **15 символів**; до 64+ дозволено
+- ❌ Правила складності · ❌ примусова ротація
+- ✅ Перевірка за списком витеклих (HIBP, k-anonymity)
+- ✅ Дозволяти вставляти пароль
+- ✅ Обмеження спроб входу
+
+**MFA:** SMS (слабко) → TOTP → **passkeys (WebAuthn)** — стійкі до фішингу
+
+---
+
+## A07: Сесії та токени
+
+```typescript
+res.cookie("session", sessionId, {
+    httpOnly: true,     // недоступна JS
+    secure: true,       // лише HTTPS
+    sameSite: "lax",    // проти CSRF
+    maxAge: 60 * 60 * 1000,
 });
 ```
 
+- Новий ідентифікатор сесії **після входу**
+- JWT: `algorithms: ["HS256"]`, короткий термін, ротація refresh
+- Не зберігати токени в `localStorage`
+- Не писати автентифікацію самим: перевірені бібліотеки, OAuth 2.1 / OIDC
+
 ---
 
-## Setup файл
+## A08: Цілісність ПЗ і даних
 
-```javascript
-// src/test/setup.js
-import { expect, afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
-import matchers from '@testing-library/jest-dom/matchers';
+- Небезпечна десеріалізація, `eval`, автооновлення без підпису
+- Незахищений CI/CD
+- CDN без SRI
 
-// Розширення expect з jest-dom matchers
-expect.extend(matchers);
+Захист:
 
-// Очищення після кожного тесту
-afterEach(() => {
-    cleanup();
-});
+- `JSON.parse` + **перевірка схемою**
+- Контрольні суми й підписи артефактів
+- Захищені гілки, рецензія workflow, підписані образи
+
+---
+
+## A09: Журналювання та сповіщення
+
+**Журналюємо:** вхід, зміну пароля/MFA, 401/403, адмін-дії, підозрілі вхідні дані
+
+**Не журналюємо:** паролі, токени, картки, персональні дані
+
+Структурований JSON → проти ін'єкції в журнал
+
+```typescript
+logger.warn({ event: "auth.login_failed", email: maskEmail(email), ip: req.ip, requestId },
+            "Невдала спроба входу");
 ```
 
-**jest-dom matchers:**
-- `toBeInTheDocument()`
-- `toHaveClass()`
-- `toHaveValue()`
-- `toBeDisabled()`
-- багато інших...
+Головне — щоб на події **хтось реагував**: сповіщення
 
 ---
 
-## Перший тест
+## A10: Виняткові ситуації
 
-```jsx
-// Button.jsx
-function Button({ onClick, children }) {
-    return (
-        <button onClick={onClick}>
-            {children}
-        </button>
-    );
+```typescript
+// ❌ Fail open
+try { if (!(await permissions.check(req.user, "orders:read"))) return res.status(403).end(); }
+catch { /* ігноруємо */ }
+next();
+
+// ✅ Fail closed
+catch (error) {
+    logger.error({ err: error }, "Не вдалося перевірити права");
+    res.status(503).json({ error: { code: "UNAVAILABLE" } });
 }
 ```
 
-```javascript
-// Button.test.jsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import Button from './Button';
+Централізований обробник · `express.json({ limit: "100kb" })` · транзакції · обробка `unhandledRejection`
 
-describe('Button Component', () => {
-    it('рендериться з текстом', () => {
-        render(<Button>Натисни мене</Button>);
+---
 
-        expect(screen.getByRole('button')).toHaveTextContent('Натисни мене');
-    });
+## Валідація вхідних даних
 
-    it('викликає onClick при натисканні', async () => {
-        const handleClick = vi.fn();
-        const user = userEvent.setup();
+- На **сервері** (клієнтська — лише зручність)
+- **Allowlist**, а не blocklist
+- Якомога **раніше**, на межі системи
+- Тип · формат · довжина · діапазон · набір значень · узгодженість полів
+- Відхиляти, а не «лагодити»
 
-        render(<Button onClick={handleClick}>Click</Button>);
-        await user.click(screen.getByRole('button'));
-
-        expect(handleClick).toHaveBeenCalledTimes(1);
-    });
+```typescript
+const RegisterSchema = z.object({
+    email: z.email().max(254),
+    password: z.string().min(15).max(128),
+    role: z.enum(["student", "teacher"]),
+    username: z.string().regex(/^[a-z0-9_]{3,30}$/i),
 });
 ```
 
 ---
 
-## Queries: пошук елементів
+## Файли від користувача
 
-**Пріоритет (від кращого до гіршого):**
+- Розмір — ліміт на сервері
+- Тип — за **вмістом** («магічні байти»), не за розширенням
+- Ім'я — генеруйте власне (проти `../`)
+- Зберігайте поза каталогом статики; `nosniff`
+- Об'єктне сховище + тимчасові підписані адреси
 
-1. **getByRole** - найкращий для доступності
-```javascript
-screen.getByRole('button', { name: /submit/i })
-```
+---
 
-2. **getByLabelText** - для форм
-```javascript
-screen.getByLabelText(/email/i)
-```
+## Кодування на виході
 
-3. **getByPlaceholderText** - якщо немає label
-```javascript
-screen.getByPlaceholderText(/enter email/i)
-```
+| Контекст | Захист |
+|----------|--------|
+| HTML-текст | Автоекранування (React) |
+| Атрибут | Екранування; перевірка протоколу `href` |
+| Сирий HTML | DOMPurify |
+| SQL | Параметризація |
+| Оболонка ОС | `execFile` + масив |
+| URL-параметр | `encodeURIComponent` |
+| Ім'я файла | Власне ім'я |
 
-4. **getByText** - для не-інтерактивних елементів
-```javascript
-screen.getByText(/hello world/i)
-```
+---
 
-5. **getByTestId** - останній варіант
-```javascript
-screen.getByTestId('custom-element')
+## CSRF
+
+Браузер **автоматично додає кукі** до будь-якого запиту до домену
+
+Можлива лише для автентифікації через кукі (не `Authorization: Bearer`)
+
+### Захист (замість застарілого `csurf`)
+
+1. `SameSite=Lax/Strict`
+2. Перевірка `Origin` / **`Sec-Fetch-Site`**
+3. Токени (`csrf-csrf`, double-submit) для чутливих дій
+4. Не змінювати стан через GET
+
+```typescript
+const site = req.get("sec-fetch-site");
+if (site === "same-origin" || site === "none") return next();
 ```
 
 ---
 
-## Variants запитів
+## Заголовки безпеки
 
-**getBy** - знаходить один елемент, помилка якщо ні
-```javascript
-const button = screen.getByRole('button');
+```typescript
+app.use(helmet());
 ```
 
-**queryBy** - знаходить один елемент, null якщо ні
-```javascript
-const button = screen.queryByRole('button');
-expect(button).not.toBeInTheDocument();
-```
+| Заголовок | Призначення |
+|-----------|-------------|
+| `Strict-Transport-Security` | Завжди HTTPS |
+| `Content-Security-Policy` | Джерела скриптів, стилів; захист від XSS |
+| `X-Content-Type-Options: nosniff` | Заборона «вгадувати» тип |
+| `Referrer-Policy` | Скільки даних про джерело передавати |
+| `Permissions-Policy` | Вимкнути зайві функції браузера |
+| `frame-ancestors` (CSP) | Захист від clickjacking |
 
-**findBy** - асинхронний, чекає на елемент
-```javascript
-const button = await screen.findByRole('button');
-```
+`X-XSS-Protection` — не використовується (`0`)
 
-**getAllBy/queryAllBy/findAllBy** - для множинних елементів
-```javascript
-const buttons = screen.getAllByRole('button');
-expect(buttons).toHaveLength(3);
-```
+Перевірка: securityheaders.com, Mozilla Observatory
 
 ---
 
-## User Event API
+## CSP з nonce
 
-**userEvent vs fireEvent:**
-- fireEvent - низькорівневий, миттєвий
-- userEvent - імітує справжнього користувача
-
-```javascript
-import userEvent from '@testing-library/user-event';
-
-it('тестує взаємодію користувача', async () => {
-    const user = userEvent.setup();
-    render(<LoginForm />);
-
-    // Введення тексту
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-
-    // Клік
-    await user.click(screen.getByRole('button', { name: /submit/i }));
-
-    // Подвійний клік
-    await user.dblClick(element);
-
-    // Hover
-    await user.hover(element);
-
-    // Keyboard
-    await user.keyboard('{Enter}');
-});
-```
-
----
-
-## Тестування форм
-
-```jsx
-function LoginForm({ onSubmit }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-
-    return (
-        <form onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit({ email, password });
-        }}>
-            <label htmlFor="email">Email</label>
-            <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <label htmlFor="password">Пароль</label>
-            <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <button type="submit">Увійти</button>
-        </form>
-    );
-}
-```
-
----
-
-## Тестування форм (продовження)
-
-```javascript
-it('відправляє правильні дані при submit', async () => {
-    const handleSubmit = vi.fn();
-    const user = userEvent.setup();
-
-    render(<LoginForm onSubmit={handleSubmit} />);
-
-    // Заповнення форми
-    await user.type(
-        screen.getByLabelText(/email/i),
-        'test@example.com'
-    );
-    await user.type(
-        screen.getByLabelText(/пароль/i),
-        'password123'
-    );
-
-    // Відправка
-    await user.click(screen.getByRole('button', { name: /увійти/i }));
-
-    // Перевірка
-    expect(handleSubmit).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'password123'
-    });
-});
-```
-
----
-
-## Тестування валідації
-
-```javascript
-it('показує помилку при некоректному email', async () => {
-    const user = userEvent.setup();
-    render(<LoginForm />);
-
-    const emailInput = screen.getByLabelText(/email/i);
-    await user.type(emailInput, 'invalid-email');
-
-    await user.click(screen.getByRole('button', { name: /увійти/i }));
-
-    expect(screen.getByText(/некоректний email/i)).toBeInTheDocument();
+```typescript
+app.use((_req, res, next) => {
+    res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
+    next();
 });
 
-it('показує помилку при порожньому паролі', async () => {
-    const user = userEvent.setup();
-    render(<LoginForm />);
-
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    await user.click(screen.getByRole('button', { name: /увійти/i }));
-
-    expect(screen.getByText(/пароль обов'язковий/i)).toBeInTheDocument();
-});
+app.use(helmet({ contentSecurityPolicy: { directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", (_req, res) => `'nonce-${(res as express.Response).locals.cspNonce}'`],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    frameAncestors: ["'none'"],
+}}}));
 ```
+
+- Nonce додається **один раз** (функція-директива)
+- Спершу `Content-Security-Policy-Report-Only`
+- Next.js 16: `proxy.ts`
+- **Trusted Types**: `require-trusted-types-for 'script'`
 
 ---
 
-## Мокування API: vi.fn()
-
-```javascript
-// Створення mock функції
-const mockFunction = vi.fn();
-
-// Виклик
-mockFunction('arg1', 'arg2');
-
-// Перевірки
-expect(mockFunction).toHaveBeenCalled();
-expect(mockFunction).toHaveBeenCalledTimes(1);
-expect(mockFunction).toHaveBeenCalledWith('arg1', 'arg2');
-
-// Налаштування повернення значення
-mockFunction.mockReturnValue(42);
-mockFunction.mockResolvedValue({ data: 'success' });
-mockFunction.mockRejectedValue(new Error('Failed'));
-
-// Реалізація
-mockFunction.mockImplementation((x, y) => x + y);
-```
-
----
-
-## Мокування модулів
-
-```javascript
-// api.js
-export async function fetchUser(userId) {
-    const response = await fetch(`/api/users/${userId}`);
-    return response.json();
-}
-
-// UserProfile.test.jsx
-import * as api from './api';
-
-vi.mock('./api');
-
-describe('UserProfile', () => {
-    it('відображає дані користувача', async () => {
-        api.fetchUser.mockResolvedValue({
-            id: 1,
-            name: 'Іван Петренко'
-        });
-
-        render(<UserProfile userId={1} />);
-
-        expect(await screen.findByText('Іван Петренко')).toBeInTheDocument();
-    });
-});
-```
-
----
-
-## MSW: Mock Service Worker
-
-**Переваги MSW:**
-- Мокування на рівні мережі
-- Один код для тестів та розробки
-- Реалістичніше тестування
-
-```bash
-npm install --save-dev msw
-```
-
-```javascript
-// mocks/handlers.js
-import { http, HttpResponse } from 'msw';
-
-export const handlers = [
-    http.get('/api/users/:userId', ({ params }) => {
-        return HttpResponse.json({
-            id: params.userId,
-            name: 'Іван Петренко'
-        });
-    }),
-
-    http.post('/api/users', async ({ request }) => {
-        const data = await request.json();
-        return HttpResponse.json({ id: 1, ...data });
-    })
-];
-```
-
----
-
-## MSW: налаштування
-
-```javascript
-// mocks/server.js
-import { setupServer } from 'msw/node';
-import { handlers } from './handlers';
-
-export const server = setupServer(...handlers);
-```
-
-```javascript
-// src/test/setup.js
-import { beforeAll, afterEach, afterAll } from 'vitest';
-import { server } from '../mocks/server';
-
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
-```
-
-**Тепер всі HTTP запити будуть перехоплюватися!**
-
----
-
-## Тестування async компонентів
-
-```javascript
-it('показує loading, потім дані', async () => {
-    render(<UserProfile userId={1} />);
-
-    // Перевірка loading стану
-    expect(screen.getByText(/завантаження/i)).toBeInTheDocument();
-
-    // Очікування появи даних
-    expect(await screen.findByText('Іван Петренко')).toBeInTheDocument();
-
-    // Перевірка що loading зник
-    expect(screen.queryByText(/завантаження/i)).not.toBeInTheDocument();
-});
-
-it('показує помилку при невдачі', async () => {
-    server.use(
-        http.get('/api/users/:userId', () => {
-            return new HttpResponse(null, { status: 500 });
-        })
-    );
-
-    render(<UserProfile userId={1} />);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/помилка/i);
-});
-```
-
----
-
-## waitFor для складних сценаріїв
-
-```javascript
-import { waitFor } from '@testing-library/react';
-
-it('оновлює дані після mutation', async () => {
-    const user = userEvent.setup();
-    render(<UserEditor userId={1} />);
-
-    // Чекаємо завантаження
-    await screen.findByText('Іван Петренко');
-
-    // Редагування
-    await user.type(screen.getByLabelText(/ім'я/i), 'Нове ім\'я');
-    await user.click(screen.getByRole('button', { name: /зберегти/i }));
-
-    // Чекаємо на оновлення (може бути складна логіка)
-    await waitFor(() => {
-        expect(screen.getByText('Нове ім\'я')).toBeInTheDocument();
-    }, { timeout: 3000 });
-});
-```
-
----
-
-## Integration тести
-
-**Тестування взаємодії декількох компонентів:**
-
-```javascript
-describe('Todo List Integration', () => {
-    it('повний CRUD workflow', async () => {
-        const user = userEvent.setup();
-        render(<TodoApp />);
-
-        // CREATE
-        await user.type(screen.getByPlaceholderText(/додати/i), 'Купити молоко');
-        await user.click(screen.getByRole('button', { name: /додати/i }));
-        expect(screen.getByText('Купити молоко')).toBeInTheDocument();
-
-        // UPDATE
-        await user.click(screen.getByRole('checkbox'));
-        expect(screen.getByText('Купити молоко')).toHaveClass('completed');
-
-        // DELETE
-        await user.click(screen.getByRole('button', { name: /видалити/i }));
-        expect(screen.queryByText('Купити молоко')).not.toBeInTheDocument();
-    });
-});
-```
-
----
-
-## E2E тестування: Playwright
-
-**Переваги Playwright:**
-- Швидкий та надійний
-- Підтримка всіх браузерів
-- Автоматичне очікування
-- Потужні селектори
-- Паралельне виконання
-
-```bash
-npm init playwright@latest
-```
-
-```javascript
-// playwright.config.js
-export default defineConfig({
-    testDir: './e2e',
-    use: {
-        baseURL: 'http://localhost:5173',
-    },
-    webServer: {
-        command: 'npm run dev',
-        url: 'http://localhost:5173',
-    },
-});
-```
-
----
-
-## Playwright: перший тест
-
-```javascript
-// e2e/login.spec.js
-import { test, expect } from '@playwright/test';
-
-test('користувач може увійти', async ({ page }) => {
-    await page.goto('/login');
-
-    // Заповнення форми
-    await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'password123');
-
-    // Відправка
-    await page.click('button[type="submit"]');
-
-    // Перевірка редіректу
-    await expect(page).toHaveURL('/dashboard');
-
-    // Перевірка вмісту
-    await expect(page.locator('text=Вітаємо')).toBeVisible();
-});
-```
-
----
-
-## Playwright: складні сценарії
-
-```javascript
-test('повний user journey', async ({ page }) => {
-    // Реєстрація
-    await page.goto('/register');
-    await page.fill('input[name="name"]', 'Іван');
-    await page.fill('input[name="email"]', 'ivan@example.com');
-    await page.fill('input[name="password"]', 'secure123');
-    await page.click('button:has-text("Зареєструватися")');
-
-    // Створення проєкту
-    await page.goto('/projects/new');
-    await page.fill('input[name="title"]', 'Новий проєкт');
-    await page.fill('textarea[name="description"]', 'Опис проєкту');
-    await page.click('button:has-text("Створити")');
-
-    // Перевірка
-    await expect(page).toHaveURL(/\/projects\/\d+/);
-    await expect(page.locator('h1')).toContainText('Новий проєкт');
-});
-```
-
----
-
-## Playwright: API тестування
-
-```javascript
-test('API authentication', async ({ request }) => {
-    // Login request
-    const response = await request.post('/api/auth/login', {
-        data: {
-            email: 'test@example.com',
-            password: 'password123'
-        }
-    });
-
-    expect(response.ok()).toBeTruthy();
-
-    const body = await response.json();
-    expect(body).toHaveProperty('token');
-
-    // Використання токену
-    const userResponse = await request.get('/api/user', {
-        headers: {
-            'Authorization': `Bearer ${body.token}`
-        }
-    });
-
-    expect(userResponse.ok()).toBeTruthy();
-});
-```
-
----
-
-## Test-Driven Development (TDD)
-
-**Процес Red-Green-Refactor:**
+## DevSecOps: тестування безпеки
 
 ```mermaid
 graph LR
-    A[RED<br/>Написати тест] --> B[GREEN<br/>Написати код]
-    B --> C[REFACTOR<br/>Покращити код]
-    C --> A
+    A[Проєктування<br/>моделювання загроз] --> B[Написання коду<br/>лінтер безпеки, секрети]
+    B --> C[Коміт та PR<br/>SAST, залежності]
+    C --> D[Збирання<br/>сканування образу, SBOM]
+    D --> E[Тестове середовище<br/>DAST, тести на проникнення]
+    E --> F[Виробництво<br/>моніторинг, bug bounty]
+    F -.-> A
 ```
-
-**Переваги TDD:**
-- Кращий дизайн коду
-- Повне покриття тестами
-- Документація через тести
-- Впевненість при рефакторингу
 
 ---
 
-## TDD приклад: Counter
+## Інструменти
 
-```javascript
-// RED: Тести не проходять
-describe('Counter', () => {
-    it('починається з 0', () => {
-        render(<Counter />);
-        expect(screen.getByText('0')).toBeInTheDocument();
-    });
+| Клас | Приклади |
+|------|----------|
+| **SAST** | CodeQL, Semgrep, `eslint-plugin-security` |
+| **SCA** | `npm audit`, Dependabot, OSV-Scanner, Snyk |
+| **Секрети** | gitleaks, GitHub push protection |
+| **Контейнери / IaC** | Trivy, Docker Scout, Grype |
+| **DAST** | OWASP ZAP, Nuclei |
+| **Пентест** | Burp Suite |
+| **Bug bounty** | HackerOne, Bugcrowd |
 
-    it('збільшується при кліку', async () => {
-        const user = userEvent.setup();
-        render(<Counter />);
+---
 
-        await user.click(screen.getByRole('button', { name: /\+/i }));
-        expect(screen.getByText('1')).toBeInTheDocument();
-    });
+## Пентест: етика і закон
 
-    it('зменшується при кліку', async () => {
-        const user = userEvent.setup();
-        render(<Counter />);
+Фази: розвідка → сканування → експлуатація → закріплення → звіт
 
-        await user.click(screen.getByRole('button', { name: /-/i }));
-        expect(screen.getByText('-1')).toBeInTheDocument();
-    });
+⚠️ Лише з **письмовим дозволом** власника. Несанкціонований доступ — злочин (зокрема за Кримінальним кодексом України)
+
+Практика: OWASP Juice Shop, DVWA, WebGoat, PortSwigger Academy, HackTheBox
+
+---
+
+## Контрольний список
+
+- [ ] Доступ + **належність ресурсу** (A01)
+- [ ] Схеми на вході; зайві поля відхиляються (A05, A06)
+- [ ] Запити параметризовані (A05)
+- [ ] Argon2id, 15+ символів, список витеклих (A04, A07)
+- [ ] Кукі `HttpOnly`/`Secure`/`SameSite`; rate limiting (A06, A07)
+- [ ] `helmet`, CSP, CORS зі списком (A02)
+- [ ] Lock-файл, Dependabot, `npm ci`, `npm audit` (A03)
+- [ ] Помилки без подробиць; fail closed (A10)
+- [ ] Безпекові події → журнал → сповіщення (A09)
+- [ ] Секрети поза репозиторієм; `SECURITY.md`
+
+---
+
+## Підсумок частини I
+
+- Атаки використовують **відомі помилки**; OWASP Top 10 — мінімальна карта
+- Три питання до кожної функції: **хто може викликати? що зламається? що, якщо дані ворожі?**
+- Довіряйте серверу, не клієнту
+- Ланцюг постачання — одна з головних проблем індустрії
+- **Автоматизуйте** безпеку у CI
+
+---
+
+## Частина II. Що змінюється у веброзробці
+
+**Змінюються інструменти, принципи залишаються**
+
+Чотири сили:
+
+1. **Продуктивність** — швидше й дешевше
+2. **Платформа** — браузери вміють усе більше
+3. **ШІ** — змінює сам процес створення ПЗ
+4. **Регулювання й очікування** — безпека, приватність, доступність
+
+---
+
+## Еволюція ШІ-інструментів
+
+```mermaid
+timeline
+    title Еволюція ШІ-інструментів розробника
+    2021-2022 : Автодоповнення
+              : Підказки наступного рядка в редакторі
+    2023-2024 : Чат-асистенти
+              : Питання й відповіді, генерація фрагментів
+              : Асистент «бачить» відкритий файл і проєкт
+    2025-2026 : Агенти
+              : Самостійно читають репозиторій і запускають команди
+              : Запускають тести, виправляють помилки, відкривають PR
+```
+
+**Асистент** допомагає писати · **Агент** виконує *завдання*
+
+---
+
+## Інженерія з агентом
+
+**Вайб-кодинг** — для прототипів і одноразових скриптів
+
+**Для production — інженерія з агентом:**
+
+1. Спершу **контекст і специфікація**; план перед змінами
+2. **Малі кроки**
+3. **Тести й типи** — страховка
+4. **Рецензуйте як чужий код**
+5. **Обмежуйте права** агента; незворотні дії — з підтвердженням
+
+Центр ваги: від набору коду → до **постановки завдання, архітектури й перевірки**
+
+---
+
+## AGENTS.md, контекст і MCP
+
+```markdown
+# AGENTS.md
+## Команди
+- Перевірка: `npm run check`
+## Правила
+- TypeScript strict, без `any`
+- Вхід валідуємо Zod
+- Коміти — Conventional Commits
+## Безпека
+- Без секретів у коді; SQL лише параметризований
+```
+
+**Інженерія контексту** — дати моделі саме потрібну інформацію
+
+**MCP** — відкритий протокол підключення інструментів до моделей; MCP та AGENTS.md — під Agentic AI Foundation (Linux Foundation)
+
+---
+
+## Реальний вплив: без ілюзій
+
+- **METR (2025):** досвідчені розробники в знайомих репозиторіях — повільніше (≈ на п'яту частину), хоча вважали, що швидше
+- **DORA 2025:** ШІ **підсилює** наявну якість процесів
+- Користь: чіткі завдання з легкою перевіркою (тести, міграції, пояснення)
+- Слабкість: архітектура, глибока предметна логіка, брак контексту
+- Швидкість набору коду — не вузьке місце; **міряйте результат**
+
+---
+
+## Ризики ШІ-коду
+
+- **Вразливий код** — модель відтворює найімовірніше, не найбезпечніше → рецензія + SAST
+- **Галюцинації пакетів** → *slopsquatting* → перевіряйте кожну залежність (A03)
+- **Витік даних** — секрети й ПД не вставляйте в чат
+- **Ін'єкція запитів (prompt injection)** — недовірений текст містить інструкції; є *OWASP Top 10 для LLM-застосунків*
+- Вихід моделі — **ворожі дані**: не виконувати й не вставляти в HTML
+- Ліцензії й відповідальність
+
+---
+
+## ШІ у власному застосунку
+
+1. **Ключ API — лише на сервері**
+2. Валідуйте вхід (довжина) і вихід (схема Zod)
+3. **Стрімінг** відповідей
+4. Контролюйте вартість: ліміти, кеш, `max_tokens`
+
+```typescript
+const message = await client.messages.create({
+    model: "claude-sonnet-5-5",
+    max_tokens: 1024,
+    system: "Ти помічник студентів курсу. Відповідай українською.",
+    messages: [{ role: "user", content: question }],
 });
 ```
 
+**RAG** — пошук у вашій базі знань; дотримуйтесь прав доступу!
+
+Chrome built-in AI — як поступове покращення
+
 ---
 
-## TDD приклад: реалізація
+## Що означає для кар'єри
 
-```jsx
-// GREEN: Мінімальна реалізація
-function Counter() {
-    const [count, setCount] = useState(0);
+- Рутинний код дешевшає
+- Зростає цінність: **предметна область, проєктування, надійність і безпека, комунікація, критичне мислення**
+- Початківцям: не «аутсорсьте розуміння»
+- ШІ — **наставник**, а не заміна власного мислення
 
-    return (
-        <div>
-            <p>{count}</p>
-            <button onClick={() => setCount(count + 1)}>+</button>
-            <button onClick={() => setCount(count - 1)}>-</button>
-            <button onClick={() => setCount(0)}>Reset</button>
-        </div>
-    );
-}
+---
 
-// REFACTOR: Покращення
-function Counter({ initialValue = 0 }) {
-    const [count, setCount] = useState(initialValue);
+## WebAssembly
 
-    const increment = () => setCount(prev => prev + 1);
-    const decrement = () => setCount(prev => prev - 1);
-    const reset = () => setCount(initialValue);
+```mermaid
+graph LR
+    S[Вихідний код<br/>Rust, C++, Go] --> C[Компілятор]
+    C --> W[module.wasm]
+    W --> B[Браузер / Node.js / периферія]
+    J[JavaScript] <-->|імпорт та експорт<br/>функцій| W
+```
 
-    return (/* ... */);
-}
+- **Доповнює** JS, а не замінює
+- **Wasm 3.0** (2025): збирач сміття, 64-розрядна пам'ять, кілька пам'ятей, винятки
+- **WASI** — Wasm поза браузером, суворі «пісочниці»
+- Figma, відеоредактори, SQLite у браузері
+
+Для типового CRUD — не потрібен
+
+---
+
+## WebGPU і WebRTC
+
+### WebGPU
+
+- Сучасний доступ до GPU: графіка **і** обчислення (ML у браузері)
+- Підтримка в основних браузерах → перевіряйте `navigator.gpu`
+- Three.js, Babylon.js, Transformers.js, WebLLM
+
+### WebRTC
+
+- Аудіо, відео, дані між браузерами
+- Сигнальний сервер · STUN/TURN · peer-to-peer
+
+```mermaid
+sequenceDiagram
+    participant A as Браузер A
+    participant S as Сигнальний сервер
+    participant B as Браузер B
+    A->>S: Пропозиція (offer, SDP)
+    S->>B: Пересилає пропозицію
+    B->>S: Відповідь (answer, SDP)
+    S->>A: Пересилає відповідь
+    A-->>B: ICE-кандидати (через STUN/TURN)
+    A<<->>B: Пряме захищене з'єднання
 ```
 
 ---
 
-## Coverage: покриття тестами
+## Edge і Serverless
 
-```bash
-# Запуск з coverage
-npm test -- --coverage
+### Edge
+
+Код ближче до користувача: менший TTFB, логіка до основного сервера. **Дані мусять бути поруч**
+
+```typescript
+export default {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+        return Response.json({ message: "Привіт з периферії!" });
+    },
+} satisfies ExportedHandler<Env>;   // модульний синтаксис; addEventListener — застаріло
 ```
 
-**Метрики покриття:**
-- **Statements** - рядки коду
-- **Branches** - умови (if/else)
-- **Functions** - функції
-- **Lines** - фізичні рядки
+### Serverless (FaaS)
 
-**Цілі:**
-- Критичний код: 90-100%
-- Бізнес-логіка: 80-90%
-- UI компоненти: 70-80%
-- Допоміжні функції: 60-70%
-
-**⚠️ Висока coverage ≠ якісні тести**
+| | Сервер / контейнер | Функції |
+|---|---|---|
+| Масштабування | Налаштовується | Автоматичне, від нуля |
+| Вартість | За час роботи | За виклики |
+| Недоліки | Простій оплачується | Холодний старт, ліміти, прив'язка |
 
 ---
 
-## Що тестувати?
+## Нові можливості CSS і HTML
 
-**✅ Тестуйте:**
-- Критичний функціонал (оплата, реєстрація)
-- Складну бізнес-логіку
-- Краєві випадки (edge cases)
-- Обробку помилок
-- Доступність (a11y)
-
-**❌ Не тестуйте:**
-- Деталі реалізації
-- Зовнішні бібліотеки
-- Очевидні речі
-- Константи
-- Тривіальні функції
+| Можливість | Що дає |
+|-----------|---------|
+| Контейнерні запити `@container` | Адаптація до розміру контейнера |
+| `:has()` | Батьківський селектор |
+| Вкладеність CSS | Без препроцесорів |
+| View Transitions | Плавні переходи |
+| `<dialog>` та `popover` | Модалки й меню без бібліотек |
+| Anchor positioning | Прив'язка підказок без JS |
+| Speculation Rules | Попереднє завантаження сторінок |
+| **Temporal** | Сучасний API дат |
 
 ---
 
-## Найкращі практики
+## Temporal
 
-**Організація тестів:**
-- Один файл тестів поряд з компонентом
-- Групуйте тести через describe
-- Зрозумілі назви тестів (it should...)
-- Arrange-Act-Assert паттерн
+```typescript
+const start = Temporal.PlainDate.from("2026-11-30");
+const end = start.add({ months: 3 });          // 2027-02-28
 
-**Написання тестів:**
-- Тестуйте поведінку, не реалізацію
-- Один assert на один тест (коли можливо)
-- Використовуйте getByRole для доступності
-- Уникайте getByTestId
-
-**Мокування:**
-- Мокуйте зовнішні залежності
-- Використовуйте MSW для API
-- Не мокуйте все підряд
-
----
-
-## Debugging тестів
-
-**Корисні інструменти:**
-
-```javascript
-// Виведення DOM
-screen.debug();
-
-// Виведення окремого елемента
-screen.debug(screen.getByRole('button'));
-
-// Logгing
-screen.logTestingPlaygroundURL();
-
-// Пауза для дослідження
-await screen.findByRole('button');
-await new Promise(resolve => setTimeout(resolve, 1000000));
+const now = Temporal.Now.zonedDateTimeISO("Europe/Kyiv");
 ```
 
-**VS Code extensions:**
-- Testing Library
-- Jest Runner
-- Vitest
+- Незмінні об'єкти · часові пояси · календарі · точна арифметика
+- Chrome 144 · Firefox 139 · Node.js 26
+- **Safari — ще ні** → поліфіл
+
+Перевіряйте підтримку: caniuse.com, Baseline
 
 ---
 
-## CI/CD Integration
+## Доступність
 
-```yaml
-# .github/workflows/test.yml
-name: Tests
+**WCAG 2.2 (AA)** · **European Accessibility Act** — діє з 28.06.2025
 
-on: [push, pull_request]
+**POUR:** сприйнятність · керованість · зрозумілість · надійність
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+- Семантичний HTML: `<button>`, `<nav>`, `<main>`, `<label>`
+- Перше правило ARIA: є нативний елемент — не використовуйте ARIA
+- Клавіатура + видимий фокус · контраст ≥ 4,5:1 · `alt`
+- Помилки пов'язані з полями (`aria-describedby`, `role="alert"`)
 
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test -- --coverage
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
+```typescript
+const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+expect(results.violations).toEqual([]);
 ```
 
----
-
-## Performance тестів
-
-**Прискорення виконання:**
-- Паралелізація тестів
-- Правильний setup/teardown
-- Уникнення зайвих async операцій
-- Використання shallow rendering (коли можливо)
-
-```javascript
-// vitest.config.js
-export default defineConfig({
-    test: {
-        threads: true,
-        maxThreads: 4,
-        minThreads: 1,
-    }
-});
-```
-
-**Типові проблеми:**
-- Забуття await
-- Зайві waitFor
-- Повільні mock імплементації
+Автотести ловлять лише частину — потрібна ручна перевірка
 
 ---
 
-## Корисні ресурси
+## Low-code та no-code
 
-**Документація:**
-- [React Testing Library](https://testing-library.com/react)
-- [Vitest](https://vitest.dev/)
-- [Playwright](https://playwright.dev/)
-- [Jest DOM](https://github.com/testing-library/jest-dom)
+- Webflow, Wix · Zapier, Make, n8n · Retool, Appsmith · Airtable
+- Сила: швидкість типових речей, автоматизація силами нерозробників
+- Роль розробника: **інтеграції, власні компоненти, модель даних, безпека, межі платформи**
+- Ризики: прив'язка до постачальника, гнучкість, тестування й версіонування, вартість
 
-**Практика:**
-- [Testing Playground](https://testing-playground.com/)
-- [Kent C. Dodds Blog](https://kentcdodds.com/blog)
-- [Common mistakes](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
+---
 
-**Інструменти:**
-- [Storybook](https://storybook.js.org/) - для visual testing
-- [Chromatic](https://www.chromatic.com/) - visual regression
+## Спеціалізації
+
+| Спеціалізація | Фокус |
+|---------------|-------|
+| **Frontend** | Інтерфейс, продуктивність, доступність |
+| **Backend** | API, логіка, дані, надійність |
+| **Fullstack** | Обидві частини, TypeScript наскрізь |
+| **DevOps / SRE / платформа** | Конвеєри, інфраструктура |
+| **AppSec** | Захист, тестування на проникнення |
+| **QA / SDET** | Якість, автоматизація |
+| **Інженер ШІ-застосунків** | RAG, агенти, оцінювання |
+| **Дизайн-системи / UX-інженер** | Компоненти, доступність |
+
+**T-подібний профіль:** широка база + глибока експертиза
+
+---
+
+## Вимоги до розробника
+
+### Технічний мінімум
+
+JavaScript/TypeScript · HTML/CSS · Git і PR · HTTP/REST · SQL · основи безпеки · тестування · CI/CD і Docker · читання чужого коду
+
+### Навички роботи з ШІ
+
+Постановка завдань · контекст · критична оцінка · ризики
+
+### Універсальні
+
+Письмова комунікація · командна робота · навчання впродовж життя · англійська
+
+---
+
+## Як увійти в професію
+
+- **Портфоліо** — якість, а не кількість: 3–4 завершені проєкти
+- Кожен проєкт: README, розгорнута версія, типи, тести, CI, безпека
+- **Відкритий код:** документація, `good first issue`
+- Резюме на одну сторінку; на співбесіді — пояснюйте *чому*
+- Стажування, хакатони, мітапи, контакти
+
+### Навчання
+
+Фундамент · проєкти · першоджерела (MDN, специфікації) · не гнатися за кожною новинкою · ділитися знаннями · берегти себе
+
+---
+
+## Ключові висновки
+
+### Безпека
+
+- Закладайте з першого дня; OWASP Top 10:2025 — мінімальна карта
+- Захист у глибину; ланцюг постачання; пароль — лише один фактор
+
+### Майбутнє
+
+- **ШІ** змінює процес, але не скасовує інженерії — перевірки дозволяють делегувати
+- Платформа розвивається: Wasm, WebGPU, edge, Temporal
+- Доступність і безпека — вимоги, а не бонус
+
+---
+
+## Підсумок курсу
+
+> **Будуйте.** Доведіть проєкт до кінця, розгорніть, поставте моніторинг.
+>
+> **Перевіряйте.** Типи, тести, лінтер, сканери, рецензія.
+>
+> **Вчіться завжди.** Технології застаріють — уміння вчитися ні.
+
+**Успіхів у професії!**

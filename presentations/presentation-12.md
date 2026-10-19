@@ -1,731 +1,969 @@
-# Управління глобальним станом
+# Тестування React-компонентів
+
+---
 
 ## План лекції
 
-1. Вступ до управління станом
-2. Context API для глобального стану
-3. useReducer паттерни
-4. Альтернативи: Zustand
-5. Persisting стану
-6. Найкращі практики
+- Види тестів, піраміда тестування
+- React Testing Library: основи
+- Запити та `userEvent`
+- Модульні тести компонентів і форм
+- Мокування API: `vi.mock` та MSW
+- Інтеграційні тести
+- E2E-тестування з Playwright
+- TDD, покриття, CI
 
+---
 
-## Проблема стану
+## Навіщо тестувати?
 
-### Зростання складності
+- 🐛 Раннє виявлення помилок
+- 🔄 Упевненість при рефакторингу
+- 📖 Тести — жива документація поведінки
+- 🚀 Швидший розвиток у довгостроковій перспективі
+- 👥 Безпечніша командна робота
 
-```mermaid
-graph TB
-    A[Локальний стан] --> B[Prop drilling]
-    B --> C[Проблеми синхронізації]
-    C --> D[Складність підтримки]
-    D --> E[Потреба в глобальному стані]
-```
+**Особливо важливо для:** форм, запитів до сервера, оплати, автентифікації
 
-**Коли виникають проблеми:**
-- Багато компонентів потребують доступу до даних
-- Глибока вкладеність компонентів
-- Синхронізація стану між віддаленими частинами UI
+---
 
+## Види тестів
 
-## Prop Drilling
+| Рівень | Що перевіряє | Інструменти | Швидкість |
+|---|---|---|---|
+| Модульні | Компонент або функція в ізоляції | Vitest + RTL | Дуже швидкі |
+| Інтеграційні | Кілька компонентів, підмінена мережа | Vitest + RTL + MSW | Швидкі |
+| E2E | Повний сценарій у браузері | Playwright | Повільні |
 
-### Проблема передачі props
+---
 
-```javascript
-function App() {
-    const [user, setUser] = useState(null);
-
-    return (
-        <Layout user={user}>
-            <Sidebar user={user}>
-                <Navigation user={user}>
-                    <UserMenu user={user} />
-                </Navigation>
-            </Sidebar>
-        </Layout>
-    );
-}
-```
-
-❌ **Проблеми:**
-- Props через багато рівнів
-- Проміжні компоненти не використовують дані
-- Важко підтримувати
-
-
-## Локальний vs Глобальний
-
-### Коли використовувати
-
-**Локальний стан (useState):**
-- 📝 Стан форм
-- 🎭 UI стан (відкриті модалки, вкладки)
-- 🎨 Анімації та ефекти
-- 🔍 Тимчасовий стан
-
-**Глобальний стан:**
-- 👤 Дані користувача
-- ⚙️ Налаштування застосунку
-- 🎨 Тема інтерфейсу
-- 🛒 Кошик покупок
-- 📬 Сповіщення
-
-
-## Еволюція управління станом
-
-### Історичний контекст
+## Піраміда тестування
 
 ```mermaid
-graph LR
-    A[2013: setState] --> B[2015: Redux]
-    B --> C[2019: Context + Hooks]
-    C --> D[2020: Zustand, Jotai]
-    D --> E[2024: Сучасні рішення]
+flowchart TB
+    E["E2E<br/>кілька критичних сценаріїв<br/>повільні, найреалістичніші"]
+    I["Інтеграційні<br/>основний обсяг упевненості"]
+    U["Модульні<br/>багато, швидкі, дешеві"]
+    E ~~~ I ~~~ U
 ```
 
-**Тренд:** Від складних до простих рішень
+- Пропорції залежать від застосунку («трофей тестування» — більше інтеграційних)
+- Для застосунку з формами й запитами інтеграційні тести важать найбільше
 
+---
 
-## Context API: основи
+## React Testing Library: філософія
 
-### Створення контексту
+**Ключовий принцип:**
+> Чим більше тест схожий на дії користувача, тим більше впевненості він дає
 
-```javascript
-import { createContext, useContext, useState } from 'react';
+**Тестуйте те, що бачить користувач, а не деталі реалізації**
 
-// Створення контексту
-const ThemeContext = createContext(null);
-
-// Provider компонент
-export function ThemeProvider({ children }) {
-    const [theme, setTheme] = useState('light');
-
-    const toggleTheme = () => {
-        setTheme(prev => prev === 'light' ? 'dark' : 'light');
-    };
-
-    return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            {children}
-        </ThemeContext.Provider>
-    );
-}
-
-// Custom hook
-export function useTheme() {
-    return useContext(ThemeContext);
-}
-```
-
-
-## Використання Context
-
-### Споживання даних
-
-```javascript
-// Обгортка застосунку
-function App() {
-    return (
-        <ThemeProvider>
-            <Layout>
-                <Header />
-                <Main />
-            </Layout>
-        </ThemeProvider>
-    );
-}
-
-// Компонент-споживач
-function Header() {
-    const { theme, toggleTheme } = useTheme();
-
-    return (
-        <header className={`header-${theme}`}>
-            <button onClick={toggleTheme}>
-                Тема: {theme}
-            </button>
-        </header>
-    );
-}
-```
-
-✅ **Переваги:** Немає prop drilling!
-
-
-## Множинні контексти
-
-### Розділення за відповідальністю
-
-```javascript
-// Окремі контексти для різних даних
-<UserProvider>
-    <ThemeProvider>
-        <NotificationProvider>
-            <App />
-        </NotificationProvider>
-    </ThemeProvider>
-</UserProvider>
-
-// Композиція провайдерів
-function ComposeProviders({ providers, children }) {
-    return providers.reduceRight(
-        (child, Provider) => <Provider>{child}</Provider>,
-        children
-    );
-}
-
-// Використання
-<ComposeProviders providers={[UserProvider, ThemeProvider]}>
-    <App />
-</ComposeProviders>
-```
-
-
-## Context: проблема продуктивності
-
-### Зайві рендери
-
-```javascript
-// ❌ ПРОБЛЕМА: всі споживачі перерендеряться
-function AppWithProblem() {
-    const [user, setUser] = useState(null);
-    const [settings, setSettings] = useState({});
-
-    // Новий об'єкт при кожному рендері!
-    const value = { user, setUser, settings, setSettings };
-
-    return (
-        <AppContext.Provider value={value}>
-            {children}
-        </AppContext.Provider>
-    );
-}
-```
-
-**Наслідок:** Всі компоненти перерендеряться
-
-
-## Оптимізація Context
-
-### useMemo для value
-
-```javascript
-// ✅ РІШЕННЯ 1: useMemo
-function AppOptimized() {
-    const [user, setUser] = useState(null);
-    const [settings, setSettings] = useState({});
-
-    const value = useMemo(
-        () => ({ user, setUser, settings, setSettings }),
-        [user, settings]
-    );
-
-    return (
-        <AppContext.Provider value={value}>
-            {children}
-        </AppContext.Provider>
-    );
-}
-```
-
-**Результат:** Рендер тільки при зміні user або settings
-
-
-## Розділення Context
-
-### State та Dispatch окремо
-
-```javascript
-// ✅ РІШЕННЯ 2: Окремі контексти
-const UserStateContext = createContext(null);
-const UserDispatchContext = createContext(null);
-
-function UserProvider({ children }) {
-    const [user, setUser] = useState(null);
-
-    return (
-        <UserStateContext.Provider value={user}>
-            <UserDispatchContext.Provider value={setUser}>
-                {children}
-            </UserDispatchContext.Provider>
-        </UserStateContext.Provider>
-    );
-}
-
-// Компоненти підписуються тільки на потрібне
-function UserDisplay() {
-    const user = useContext(UserStateContext);
-    // Рендериться тільки при зміні user
-}
-```
-
-
-## useReducer: коли використовувати
-
-### useState vs useReducer
-
-| useState | useReducer |
-|----------|-----------|
-| Простий стан | Складний стан |
-| Один спосіб оновлення | Багато способів оновлення |
-| Незалежні значення | Пов'язані значення |
-| Просте тестування | Складне тестування логіки |
-
-**Використовуйте useReducer коли:**
-- Складна структура стану
-- Багато типів оновлень
-- Наступний стан залежить від попереднього
-
-
-## useReducer: приклад
-
-### Todo менеджер
-
-```javascript
-const initialState = { todos: [], filter: 'all' };
-
-function todoReducer(state, action) {
-    switch (action.type) {
-        case 'ADD_TODO':
-            return {
-                ...state,
-                todos: [...state.todos, action.payload]
-            };
-        case 'TOGGLE_TODO':
-            return {
-                ...state,
-                todos: state.todos.map(todo =>
-                    todo.id === action.payload
-                        ? { ...todo, completed: !todo.completed }
-                        : todo
-                )
-            };
-        case 'SET_FILTER':
-            return { ...state, filter: action.payload };
-        default:
-            return state;
-    }
-}
-```
-
-
-## useReducer: використання
-
-```javascript
-function TodoApp() {
-    const [state, dispatch] = useReducer(todoReducer, initialState);
-
-    const addTodo = (text) => {
-        dispatch({
-            type: 'ADD_TODO',
-            payload: { id: Date.now(), text, completed: false }
-        });
-    };
-
-    const toggleTodo = (id) => {
-        dispatch({ type: 'TOGGLE_TODO', payload: id });
-    };
-
-    return (
-        <div>
-            <TodoList todos={state.todos} onToggle={toggleTodo} />
-            <TodoFilters
-                filter={state.filter}
-                onChange={(f) => dispatch({ type: 'SET_FILTER', payload: f })}
-            />
-        </div>
-    );
-}
-```
-
-
-## Context + useReducer
-
-### Потужна комбінація
-
-```javascript
-const CartContext = createContext(null);
-
-function cartReducer(state, action) {
-    switch (action.type) {
-        case 'ADD_ITEM':
-            return { ...state, items: [...state.items, action.payload] };
-        case 'REMOVE_ITEM':
-            return {
-                ...state,
-                items: state.items.filter(i => i.id !== action.payload)
-            };
-        default:
-            return state;
-    }
-}
-
-export function CartProvider({ children }) {
-    const [state, dispatch] = useReducer(cartReducer, { items: [] });
-
-    return (
-        <CartContext.Provider value={{ state, dispatch }}>
-            {children}
-        </CartContext.Provider>
-    );
-}
-```
-
-
-## Zustand: альтернатива
-
-### Чому Zustand?
+- ✅ RTL: пошук за ролями, мітками, текстом
+- ❌ Enzyme: доступ до стану й методів (не підтримує сучасні React)
 
 **Переваги:**
-- ⚡ Швидкий та легкий (1KB)
-- 🎯 Простий API без boilerplate
-- 🚀 Селектори запобігають зайвим рендерам
-- 🔧 Немає Context Provider
-- 💾 Вбудована підтримка middleware
+- Тести стійкі до рефакторингу
+- Кращі практики доступності
+- Схожість на реальну поведінку користувача
+
+---
+
+## Налаштування середовища
 
 ```bash
-npm install zustand
+npm install --save-dev vitest jsdom \
+    @testing-library/react @testing-library/dom \
+    @testing-library/jest-dom @testing-library/user-event
 ```
 
+```javascript
+// vite.config.js
+import { defineConfig } from 'vitest/config';
 
-## Zustand: створення store
+export default defineConfig({
+    plugins: [react()],
+    test: {
+        globals: true,
+        environment: 'jsdom',
+        setupFiles: './src/test/setup.js'
+    }
+});
+```
+
+⚠️ `@testing-library/dom` ставиться окремо (peer-залежність RTL 16)
+
+---
+
+## Файл налаштування
 
 ```javascript
-import { create } from 'zustand';
+// src/test/setup.js
+import '@testing-library/jest-dom/vitest';
+```
 
-// Створення store
-const useCounterStore = create((set) => ({
-    count: 0,
-    increment: () => set((state) => ({
-        count: state.count + 1
-    })),
-    decrement: () => set((state) => ({
-        count: state.count - 1
-    })),
-    reset: () => set({ count: 0 })
-}));
+**Один рядок:** matchers підключено; при `globals: true` DOM очищується автоматично
 
-// Використання
-function Counter() {
-    const count = useCounterStore((state) => state.count);
-    const increment = useCounterStore((state) => state.increment);
+**Matchers jest-dom:**
+- `toBeInTheDocument()`
+- `toHaveValue()`, `toBeChecked()`
+- `toBeDisabled()`, `toBeInvalid()`
+- `toHaveTextContent()`
+
+```json
+"scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+}
+```
+
+---
+
+## Перший тест
+
+```jsx
+function Button({ onClick, children, disabled = false }) {
+    return <button onClick={onClick} disabled={disabled}>{children}</button>;
+}
+```
+
+```javascript
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+it('викликає onClick при натисканні', async () => {
+    const handleClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(<Button onClick={handleClick}>Натисни</Button>);
+    await user.click(screen.getByRole('button'));
+
+    expect(handleClick).toHaveBeenCalledTimes(1);
+});
+
+it('не реагує, коли кнопку вимкнено', async () => {
+    const handleClick = vi.fn();
+    const user = userEvent.setup();
+
+    render(<Button onClick={handleClick} disabled>Натисни</Button>);
+    await user.click(screen.getByRole('button'));
+
+    expect(handleClick).not.toHaveBeenCalled();
+});
+```
+
+**Arrange – Act – Assert.** Класи Tailwind не перевіряємо (лекція 11)
+
+---
+
+## Запити: пріоритет
+
+| № | Запит | Коли |
+|---|---|---|
+| 1 | `getByRole` | Кнопки, поля, заголовки — найкраще для доступності |
+| 2 | `getByLabelText` | Поля форм |
+| 3 | `getByPlaceholderText` | Немає мітки |
+| 4 | `getByText` | Неінтерактивний текст |
+| 5 | `getByAltText`, `getByTitle` | Зображення |
+| 6 | `getByTestId` | Остання надія |
+
+```javascript
+screen.getByRole('button', { name: /надіслати/i });
+screen.getByLabelText(/email/i);
+```
+
+---
+
+## Варіанти запитів
+
+| Сімейство | Не знайдено | Коли |
+|---|---|---|
+| `getBy…` | Помилка | Елемент має бути зараз |
+| `queryBy…` | `null` | Перевірка відсутності |
+| `findBy…` | Чекає, потім помилка | Елемент з'явиться пізніше |
+
+```javascript
+const button = screen.getByRole('button');
+
+expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+const heading = await screen.findByRole('heading', { name: /профіль/i });
+
+const items = screen.getAllByRole('listitem');
+expect(items).toHaveLength(3);
+```
+
+---
+
+## userEvent
+
+**`fireEvent`** — одна низькорівнева подія; **`userEvent`** — послідовність реальних подій
+
+```javascript
+import userEvent from '@testing-library/user-event';
+
+it('взаємодія користувача', async () => {
+    const user = userEvent.setup();   // ДО render
+    render(<LoginForm onSubmit={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.click(screen.getByRole('button', { name: /увійти/i }));
+
+    await user.dblClick(element);
+    await user.hover(element);
+    await user.keyboard('{Enter}');
+    await user.selectOptions(select, 'UA');
+    await user.clear(input);
+});
+```
+
+**Усі методи асинхронні — не забувайте `await`**
+
+---
+
+## Тестування простих компонентів
+
+```jsx
+function UserCard({ user }) {
+    if (!user) return <div>Користувача не знайдено</div>;
 
     return (
         <div>
-            <h2>{count}</h2>
-            <button onClick={increment}>+</button>
+            <img src={user.avatar} alt={`Аватар користувача ${user.name}`} />
+            <h2>{user.name}</h2>
+            <span>{user.isActive ? 'Активний' : 'Неактивний'}</span>
         </div>
     );
 }
 ```
 
-
-## Zustand: складний приклад
-
-### Todo store
-
 ```javascript
-const useTodoStore = create((set, get) => ({
-    todos: [],
-    filter: 'all',
+it('показує статус неактивного користувача', () => {
+    render(<UserCard user={{ ...mockUser, isActive: false }} />);
 
-    addTodo: (text) => set((state) => ({
-        todos: [...state.todos, {
-            id: Date.now(),
-            text,
-            completed: false
-        }]
-    })),
+    expect(screen.getByText('Неактивний')).toBeInTheDocument();
+});
 
-    toggleTodo: (id) => set((state) => ({
-        todos: state.todos.map(todo =>
-            todo.id === id
-                ? { ...todo, completed: !todo.completed }
-                : todo
-        )
-    })),
+it('показує повідомлення, коли користувача немає', () => {
+    render(<UserCard user={null} />);
 
-    getFilteredTodos: () => {
-        const { todos, filter } = get();
-        if (filter === 'completed') return todos.filter(t => t.completed);
-        if (filter === 'active') return todos.filter(t => !t.completed);
-        return todos;
-    }
-}));
+    expect(screen.getByText('Користувача не знайдено')).toBeInTheDocument();
+});
 ```
 
+---
 
-## Zustand: селектори
+## Тестування форм
 
-### Оптимізація підписок
-
-```javascript
-function TodoList() {
-    // ❌ НЕОПТИМАЛЬНО: підписка на весь store
-    const store = useTodoStore();
-
-    // ✅ ОПТИМАЛЬНО: підписка тільки на todos
-    const todos = useTodoStore((state) => state.todos);
-    const toggleTodo = useTodoStore((state) => state.toggleTodo);
-
+```jsx
+function LoginForm({ onSubmit }) {
+    // ... стан email, password, errors
     return (
-        <ul>
-            {todos.map(todo => (
-                <TodoItem
-                    key={todo.id}
-                    todo={todo}
-                    onToggle={toggleTodo}
-                />
-            ))}
-        </ul>
+        <form onSubmit={handleSubmit} noValidate>
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" aria-invalid={!!errors.email} />
+            {errors.email && <span role="alert">{errors.email}</span>}
+
+            <label htmlFor="password">Пароль</label>
+            <input id="password" type="password" />
+
+            <button type="submit">Увійти</button>
+        </form>
     );
 }
 ```
 
-**Переваги:** Рендер тільки при зміні підписаних даних
+---
 
-
-## Zustand: middleware
-
-### Persist та DevTools
+## Тестування форм: введення й відправлення
 
 ```javascript
-import { persist, devtools } from 'zustand/middleware';
+it('відправляє правильні дані', async () => {
+    const handleSubmit = vi.fn();
+    const user = userEvent.setup();
 
-// localStorage збереження
-const useUserStore = create(
-    persist(
-        (set) => ({
-            user: null,
-            preferences: { theme: 'light' },
-            setUser: (user) => set({ user }),
-            updatePreferences: (prefs) => set((state) => ({
-                preferences: { ...state.preferences, ...prefs }
-            }))
-        }),
-        {
-            name: 'user-storage',
-            partialize: (state) => ({
-                preferences: state.preferences
-            })
-        }
-    )
-);
+    render(<LoginForm onSubmit={handleSubmit} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/пароль/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /увійти/i }));
+
+    expect(handleSubmit).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123'
+    });
+});
+
+it('не відправляє невалідні дані', async () => {
+    const handleSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(<LoginForm onSubmit={handleSubmit} />);
+
+    await user.click(screen.getByRole('button', { name: /увійти/i }));
+
+    expect(handleSubmit).not.toHaveBeenCalled();
+});
 ```
 
+---
 
-## Zustand: async дії
+## Тестування валідації
 
 ```javascript
-const useDataStore = create((set, get) => ({
-    data: null,
-    loading: false,
-    error: null,
+it('показує помилку при некоректному email', async () => {
+    const user = userEvent.setup();
+    render(<LoginForm onSubmit={vi.fn()} />);
 
-    fetchData: async (id) => {
-        set({ loading: true, error: null });
+    await user.type(screen.getByLabelText(/email/i), 'invalid-email');
+    await user.click(screen.getByRole('button', { name: /увійти/i }));
 
-        try {
-            const response = await fetch(`/api/data/${id}`);
-            const data = await response.json();
-            set({ data, loading: false });
-        } catch (error) {
-            set({ error: error.message, loading: false });
+    expect(screen.getByText(/некоректний email/i)).toBeInTheDocument();
+});
+
+it('позначає поле як недійсне для допоміжних технологій', async () => {
+    const user = userEvent.setup();
+    render(<LoginForm onSubmit={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /увійти/i }));
+
+    expect(screen.getByLabelText(/email/i)).toBeInvalid();
+    expect(screen.getAllByRole('alert')).toHaveLength(2);
+});
+```
+
+---
+
+## Стійкість до рефакторингу
+
+**Форма на `useState` → форма на React Hook Form + Zod**
+
+```jsx
+const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(loginSchema)
+});
+```
+
+**Тести не змінюються**, якщо ті самі тексти повідомлень і доступна розмітка
+
+Тест знає лише те, що бачить користувач — а не як компонент влаштований усередині
+
+---
+
+## Мокування: vi.fn()
+
+```javascript
+const mockFunction = vi.fn();
+
+mockFunction('arg1', 'arg2');
+
+expect(mockFunction).toHaveBeenCalled();
+expect(mockFunction).toHaveBeenCalledTimes(1);
+expect(mockFunction).toHaveBeenCalledWith('arg1', 'arg2');
+
+mockFunction.mockReturnValue(42);
+mockFunction.mockResolvedValue({ data: 'success' });
+mockFunction.mockRejectedValue(new Error('Failed'));
+mockFunction.mockImplementation((x, y) => x + y);
+```
+
+**Підміна — лише зовнішніх залежностей:** мережа, час, браузерні API
+
+---
+
+## Мокування модулів
+
+```javascript
+import * as api from './api';
+
+vi.mock('./api');
+
+describe('UserProfile', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it('відображає дані користувача', async () => {
+        vi.mocked(api.fetchUser).mockResolvedValue({
+            id: 1,
+            name: 'Іван Петренко'
+        });
+
+        render(<UserProfile userId={1} />);
+
+        expect(await screen.findByText('Іван Петренко')).toBeInTheDocument();
+        expect(api.fetchUser).toHaveBeenCalledWith(1);
+    });
+});
+```
+
+⚠️ Тест прив'язаний до того, **як** компонент звертається до сервера
+
+---
+
+## MSW: підміна мережі
+
+```mermaid
+flowchart LR
+    C[Компонент] --> H["HTTP-клієнт<br/>(fetch / Axios)"]
+    H -->|запит| M{MSW}
+    M -->|описана відповідь| H
+```
+
+**Переваги:**
+- Мокування на рівні мережі
+- Не залежить від `fetch` чи Axios
+- Той самий код — для тестів і розробки
+- Реалістичніше тестування
+
+```bash
+npm install --save-dev msw
+```
+
+---
+
+## MSW: обробники
+
+```javascript
+// mocks/handlers.js
+import { http, HttpResponse } from 'msw';
+
+const API = 'http://localhost:3000/api';
+
+export const handlers = [
+    http.get(`${API}/users/:userId`, ({ params }) => {
+        return HttpResponse.json({
+            id: Number(params.userId),
+            name: 'Іван Петренко'
+        });
+    }),
+
+    http.post(`${API}/users`, async ({ request }) => {
+        const data = await request.json();
+        return HttpResponse.json({ id: 1, ...data }, { status: 201 });
+    })
+];
+```
+
+⚠️ У Node `fetch` не приймає відносні адреси — у тестах адреса API повна
+
+---
+
+## MSW: налаштування
+
+```javascript
+// mocks/server.js
+import { setupServer } from 'msw/node';
+import { handlers } from './handlers';
+
+export const server = setupServer(...handlers);
+```
+
+```javascript
+// src/test/setup.js
+import '@testing-library/jest-dom/vitest';
+import { beforeAll, afterEach, afterAll } from 'vitest';
+import { server } from '../mocks/server';
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
+```
+
+**Запит без обробника завершить тест помилкою**
+
+---
+
+## Тестування асинхронних компонентів
+
+```javascript
+it('показує завантаження, потім дані', async () => {
+    render(<UserProfile userId={1} />);
+
+    expect(screen.getByText(/завантаження/i)).toBeInTheDocument();
+
+    expect(await screen.findByText('Іван Петренко')).toBeInTheDocument();
+
+    expect(screen.queryByText(/завантаження/i)).not.toBeInTheDocument();
+});
+
+it('показує помилку, коли сервер відповідає 500', async () => {
+    server.use(
+        http.get(`${API}/users/:userId`, () => {
+            return new HttpResponse(null, { status: 500 });
+        })
+    );
+
+    render(<UserProfile userId={1} />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/помилка/i);
+});
+```
+
+---
+
+## findBy та waitFor
+
+```javascript
+// Чекаємо появи елемента — findBy
+expect(await screen.findByText('Нове ім\'я')).toBeInTheDocument();
+
+// Чекаємо на інші зміни — waitFor
+import { waitFor } from '@testing-library/react';
+
+await waitFor(() => {
+    expect(api.updateUser).toHaveBeenCalledWith(1, { name: 'Нове ім\'я' });
+});
+```
+
+- `findBy…` = `getBy…` + `waitFor`: коротше й виразніше
+- `waitFor` — для перевірок, що не зводяться до появи елемента
+- Не загортайте в `waitFor` кілька дій
+
+---
+
+## TanStack Query та маршрутизація
+
+```jsx
+// src/test/renderWithProviders.jsx
+export function renderWithProviders(ui, { route = '/' } = {}) {
+    const queryClient = new QueryClient({
+        defaultOptions: {
+            queries: { retry: false },
+            mutations: { retry: false }
         }
+    });
+
+    return {
+        user: userEvent.setup(),
+        ...render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={[route]}>
+                    {ui}
+                </MemoryRouter>
+            </QueryClientProvider>
+        )
+    };
+}
+```
+
+- **Новий `QueryClient` для кожного тесту** — кеш не «протікає»
+- **`retry: false`** — тест із помилкою не чекає повторних спроб
+
+---
+
+## Фальшиві таймери
+
+```javascript
+it('зберігає чернетку через секунду після останньої зміни', async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    render(<AutoSaveForm />);
+    await user.type(screen.getByPlaceholderText('Заголовок'), 'Привіт');
+
+    expect(localStorage.getItem('formDraft')).toBeNull();
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(JSON.parse(localStorage.getItem('formDraft')).title).toBe('Привіт');
+});
+```
+
+Не чекаємо реально — «перемотуємо» годинник. Після тесту: `vi.useRealTimers()`
+
+---
+
+## Інтеграційні тести
+
+**Кілька компонентів — як єдиний сценарій користувача**
+
+```javascript
+it('повний цикл: створення, виконання, видалення', async () => {
+    const user = userEvent.setup();
+    render(<TodoList />);
+
+    // CREATE
+    await user.type(screen.getByLabelText(/нове завдання/i), 'Купити молоко');
+    await user.click(screen.getByRole('button', { name: /додати/i }));
+    expect(screen.getByText('Купити молоко')).toBeInTheDocument();
+
+    // UPDATE: перевіряємо стан, а не CSS-клас
+    const checkbox = screen.getByRole('checkbox');
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    // DELETE
+    await user.click(screen.getByRole('button', { name: /видалити/i }));
+    expect(screen.queryByText('Купити молоко')).not.toBeInTheDocument();
+});
+```
+
+---
+
+## Доступність у тестах
+
+- Запити за ролями й мітками вже перевіряють доступність непрямо
+- Немає `aria-label` → довелося б брати `getByTestId` → сигнал проблеми
+- Автоматичний пошук порушень — рушій **axe** (`vitest-axe`)
+- Не замінює ручної перевірки, але ловить очевидні помилки
+
+---
+
+## E2E: Playwright
+
+**Навіщо:** справжній браузер, справжній застосунок — те, чого не бачать jsdom та MSW
+
+**Переваги Playwright:**
+- Chromium, Firefox, WebKit
+- Автоматичне очікування
+- Локатори за ролями й мітками
+- Паралельне виконання, «слід» для налагодження
+
+| | Playwright | Cypress |
+|---|---|---|
+| Модель | Керує браузером ззовні | Усередині браузера |
+| Паралельність | Вбудована | Окремо / платно |
+| Локатори | Ролі, мітки | Переважно CSS |
+
+```bash
+npm init playwright@latest
+```
+
+---
+
+## Playwright: конфігурація
+
+```javascript
+// playwright.config.js
+export default defineConfig({
+    testDir: './e2e',
+    retries: process.env.CI ? 2 : 0,
+    use: {
+        baseURL: 'http://localhost:5173',
+        trace: 'on-first-retry'
     },
-
-    updateData: async (id, updates) => {
-        const previousData = get().data;
-
-        // Optimistic update
-        set({ data: { ...previousData, ...updates } });
-
-        try {
-            await fetch(`/api/data/${id}`, {
-                method: 'PUT',
-                body: JSON.stringify(updates)
-            });
-        } catch {
-            set({ data: previousData }); // Rollback
+    projects: [
+        { name: 'setup', testMatch: /.*\.setup\.js/ },
+        {
+            name: 'chromium',
+            use: {
+                ...devices['Desktop Chrome'],
+                storageState: 'playwright/.auth/user.json'
+            },
+            dependencies: ['setup']
         }
+    ],
+    webServer: {
+        command: 'npm run dev',
+        url: 'http://localhost:5173',
+        reuseExistingServer: !process.env.CI
     }
-}));
+});
 ```
 
+**`storageState`:** вхід — один раз, сесія — для всіх тестів
 
-## localStorage: збереження стану
+---
 
-### Custom hook
+## Playwright: перший тест
 
 ```javascript
-function useLocalStorage(key, initialValue) {
-    const [value, setValue] = useState(() => {
-        try {
-            const saved = localStorage.getItem(key);
-            return saved ? JSON.parse(saved) : initialValue;
-        } catch {
-            return initialValue;
-        }
+import { test, expect } from '@playwright/test';
+
+test('користувач може увійти', async ({ page }) => {
+    await page.goto('/login');
+
+    await page.getByLabel('Email').fill('test@example.com');
+    await page.getByLabel('Пароль').fill('password123');
+    await page.getByRole('button', { name: 'Увійти' }).click();
+
+    await expect(page).toHaveURL('/dashboard');
+    await expect(page.getByText('Вітаємо')).toBeVisible();
+});
+```
+
+- Локатори за роллю й міткою надійніші за CSS-селектори
+- `expect` сам чекає виконання умови — явні паузи не потрібні
+
+---
+
+## Playwright: складні сценарії
+
+```javascript
+test('повний цикл роботи із завданнями', async ({ page }) => {
+    await page.goto('/todos');
+    const input = page.getByPlaceholder('Додати завдання');
+
+    await input.fill('Купити продукти');
+    await page.getByRole('button', { name: 'Додати' }).click();
+    await expect(page.getByText('Купити продукти')).toBeVisible();
+
+    await input.fill('Прибрати квартиру');
+    await input.press('Enter');
+
+    const checkbox = page.getByRole('checkbox', { name: /купити продукти/i });
+    await checkbox.check();
+    await expect(checkbox).toBeChecked();
+
+    await page.getByRole('button', { name: /видалити "прибрати квартиру"/i }).click();
+    await expect(page.getByText('Прибрати квартиру')).not.toBeVisible();
+});
+```
+
+**Тести незалежні:** кожен створює свої дані (унікальний email — `Date.now()`)
+
+---
+
+## Playwright: API-тестування
+
+```javascript
+test('автентифікація через API', async ({ request }) => {
+    const response = await request.post(
+        'http://localhost:3000/api/auth/login',
+        { data: { email: 'test@example.com', password: 'password123' } }
+    );
+
+    expect(response.ok()).toBeTruthy();
+
+    const body = await response.json();
+    expect(body).toHaveProperty('accessToken');
+});
+```
+
+**Налагодження:**
+- `npx playwright test --ui`
+- `npx playwright codegen`
+- `npx playwright show-report`
+
+---
+
+## Test-Driven Development (TDD)
+
+```mermaid
+flowchart LR
+    A["RED<br/>Написати тест"] --> B["GREEN<br/>Мінімальний код"]
+    B --> C["REFACTOR<br/>Покращити код"]
+    C --> A
+```
+
+**Переваги:**
+- Кращий дизайн: спершу — як компонентом користуватимуться
+- Повніше покриття
+- Тести як документація
+- Упевненість під час рефакторингу
+
+**Найкорисніший:** складна логіка, виправлення помилок (тест, що відтворює помилку)
+
+---
+
+## TDD приклад: тести (RED)
+
+```javascript
+describe('Counter', () => {
+    it('починається з 0', () => {
+        render(<Counter />);
+        expect(screen.getByText('0')).toBeInTheDocument();
     });
 
-    useEffect(() => {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (error) {
-            console.error('Error saving to localStorage:', error);
-        }
-    }, [key, value]);
+    it('збільшується при кліку', async () => {
+        const user = userEvent.setup();
+        render(<Counter />);
 
-    return [value, setValue];
-}
-
-// Використання
-function Settings() {
-    const [theme, setTheme] = useLocalStorage('theme', 'light');
-}
-```
-
-
-## Синхронізація між вкладками
-
-### storage event
-
-```javascript
-function useSyncedState(key, initialValue) {
-    const [value, setValue] = useState(() => {
-        const saved = localStorage.getItem(key);
-        return saved ? JSON.parse(saved) : initialValue;
+        await user.click(screen.getByRole('button', { name: /збільшити/i }));
+        expect(screen.getByText('1')).toBeInTheDocument();
     });
 
-    useEffect(() => {
-        localStorage.setItem(key, JSON.stringify(value));
-    }, [key, value]);
+    it('зменшується при кліку', async () => {
+        const user = userEvent.setup();
+        render(<Counter />);
 
-    // Синхронізація між вкладками
-    useEffect(() => {
-        const handleStorage = (e) => {
-            if (e.key === key && e.newValue) {
-                setValue(JSON.parse(e.newValue));
-            }
-        };
+        await user.click(screen.getByRole('button', { name: /зменшити/i }));
+        expect(screen.getByText('-1')).toBeInTheDocument();
+    });
+});
+```
 
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
-    }, [key]);
+---
 
-    return [value, setValue];
+## TDD приклад: реалізація
+
+```jsx
+// GREEN: мінімальна реалізація
+function Counter() {
+    const [count, setCount] = useState(0);
+
+    return (
+        <div>
+            <p>{count}</p>
+            <button onClick={() => setCount(count + 1)}>Збільшити</button>
+            <button onClick={() => setCount(count - 1)}>Зменшити</button>
+            <button onClick={() => setCount(0)}>Скинути</button>
+        </div>
+    );
+}
+
+// REFACTOR: початкове значення, функціональні оновлення
+function Counter({ initialValue = 0 }) {
+    const [count, setCount] = useState(initialValue);
+
+    const increment = () => setCount(prev => prev + 1);
+    const decrement = () => setCount(prev => prev - 1);
+    const reset = () => setCount(initialValue);
+
+    return (/* ... */);
 }
 ```
 
+**Тести з кроку RED проходять без змін**
 
-## IndexedDB для великих даних
+---
 
-### Коли використовувати
+## Покриття тестами
 
-**localStorage обмеження:**
-- 📦 Максимум 5-10MB
-- 🐌 Синхронні операції
-- 📝 Тільки рядки
+```bash
+npm install --save-dev @vitest/coverage-v8
+npm run test:coverage
+```
 
-**IndexedDB переваги:**
-- 💾 Сотні MB даних
-- ⚡ Асинхронні операції
-- 🗂️ Структуровані дані
-- 🔍 Індекси для швидкого пошуку
+```javascript
+test: {
+    coverage: {
+        provider: 'v8',
+        include: ['src/**/*.{js,jsx}'],
+        exclude: ['src/test/**', 'src/mocks/**'],
+        reporter: ['text', 'html']
+    }
+}
+```
 
-**Використовуйте для:**
-- Офлайн застосунків
-- Кешування великих даних
-- Складних структур даних
+| Метрика | Що вимірює |
+|---|---|
+| Statements | Інструкції |
+| Branches | Гілки умов |
+| Functions | Функції |
+| Lines | Рядки |
 
+**⚠️ Високе покриття ≠ якісні тести.** Покриття — карта білих плям, а не мета
 
-## Порівняння рішень
+---
 
-### Context vs Zustand vs Redux
+## Що тестувати?
 
-| | Context API | Zustand | Redux Toolkit |
-|---|-------------|---------|---------------|
-| **Складність** | Низька | Дуже низька | Середня |
-| **Boilerplate** | Середній | Мінімальний | Середній |
-| **Продуктивність** | Середня | Висока | Висока |
-| **DevTools** | ❌ | ✅ | ✅ |
-| **Middleware** | ❌ | ✅ | ✅ |
-| **Розмір** | 0KB | 1KB | 12KB |
+**✅ Тестуйте:**
+- Критичний функціонал (оплата, реєстрація, вхід)
+- Складну бізнес-логіку
+- Краєві випадки (порожні списки, `null`)
+- Обробку помилок і стани завантаження
+- Доступність
 
+**❌ Не тестуйте:**
+- Деталі реалізації, класи Tailwind
+- Код сторонніх бібліотек
+- Тривіальні речі (константи)
 
-## Коли використовувати
-
-### Вибір рішення
-
-**Context API:**
-- ✅ Малі та середні застосунки
-- ✅ Простий глобальний стан
-- ✅ Немає додаткових залежностей
-
-**Zustand:**
-- ✅ Середні та великі застосунки
-- ✅ Потрібна висока продуктивність
-- ✅ Потрібні селектори
-
-**Redux Toolkit:**
-- ✅ Дуже великі застосунки
-- ✅ Складна логіка стану
-- ✅ Потрібна time-travel debugging
-
+---
 
 ## Найкращі практики
 
-### Організація стану
+**Організація:**
+- Файл тесту поряд із компонентом
+- `describe` для групування, зрозумілі назви
+- Arrange–Act–Assert
 
-1. ✅ Починайте з локального стану
-2. ✅ Переходьте до глобального при потребі
-3. ✅ Розділяйте стан за доменами
-4. ✅ Нормалізуйте структуру даних
-5. ✅ Використовуйте селектори
-6. ✅ Мемоїзуйте Context value
+**Написання:**
+- Поведінка, а не реалізація
+- `getByRole`, `getByLabelText`; `getByTestId` — у крайньому разі
+- Незалежні тести
 
+**Мокування:**
+- Лише зовнішні залежності
+- MSW для HTTP
+- Не підміняйте все підряд
 
-## Найкращі практики
+---
 
-### Продуктивність
+## Налагодження тестів
 
-1. ⚡ Розділяйте Context за відповідальністю
-2. ⚡ Використовуйте useMemo для value
-3. ⚡ Підписуйтесь тільки на потрібні дані
-4. ⚡ Уникайте зайвих обчислень
-5. ⚡ Профілюйте перед оптимізацією
-
-
-## Найкращі практики
-
-### Архітектура
-
-1. 🏗️ Створюйте кастомні hooks для доступу
-2. 🏗️ Виносьте логіку в окремі функції
-3. 🏗️ Використовуйте TypeScript для типобезпеки
-4. 🏗️ Документуйте структуру стану
-5. 🏗️ Тестуйте логіку окремо від компонентів
-
-
-## Типові помилки
-
-### Чого уникати
-
-❌ Робити весь стан глобальним
 ```javascript
-// Погано: все в Context
-<AppContext.Provider value={everythingInApp}>
+// Вивести DOM
+screen.debug();
+
+// Вивести окремий елемент
+screen.debug(screen.getByRole('button'));
+
+// Підказка для пошуку елемента
+screen.logTestingPlaygroundURL();
 ```
 
-❌ Не мемоїзувати Context value
-```javascript
-// Погано: новий об'єкт щоразу
-<Context.Provider value={{ user, settings }}>
+- Помилка запиту `getByRole` містить перелік доступних ролей
+- `npx vitest --ui` (пакет `@vitest/ui`)
+- Розширення Vitest для VS Code
+- Playwright: trace viewer, `--debug`
+
+---
+
+## Тести в CI
+
+```yaml
+name: Тести
+
+on: [push, pull_request]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npx playwright test
 ```
 
-❌ Складна вкладеність об'єктів
-```javascript
-// Погано: глибока вкладеність
-state.user.profile.settings.theme.colors.primary
-```
+Дві паралельні задачі; Node.js 18 уже не підтримується
+
+---
+
+## Питання для самоперевірки
+
+1. Чим відрізняються модульні, інтеграційні й E2E-тести?
+2. У чому основний принцип React Testing Library?
+3. Який пріоритет запитів і чому?
+4. Чим відрізняються `getBy`, `queryBy`, `findBy`?
+5. Чому `userEvent` кращий за `fireEvent`?
+6. `vi.mock` чи MSW: у чому різниця?
+7. Навіщо новий `QueryClient` для кожного тесту?
+8. Чому E2E лише для критичних сценаріїв? Що дає `storageState`?
+9. Що таке цикл Red–Green–Refactor?
+10. Чому високе покриття не гарантує якості?
+
+---
+
+## Корисні ресурси
+
+**Документація:**
+- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+- [Vitest](https://vitest.dev/)
+- [Playwright](https://playwright.dev/)
+- [MSW](https://mswjs.io/)
+- [jest-dom](https://github.com/testing-library/jest-dom)
+
+**Практика:**
+- [Testing Playground](https://testing-playground.com/)
+- [Блог Кента К. Доддса](https://kentcdodds.com/blog)
+- [Типові помилки з React Testing Library](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
+
+**Інструменти:**
+- [Storybook](https://storybook.js.org/) — компоненти в ізоляції та візуальні тести
+- [Chromatic](https://www.chromatic.com/) — візуальна регресія

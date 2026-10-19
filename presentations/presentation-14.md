@@ -1,833 +1,1121 @@
-# HTTP клієнт та інтеграція з backend
+# Архітектурні патерни та інструменти сучасної розробки
+
+## Про що лекція
+
+### Питання: як розвивати проєкт роками і в команді?
+
+**Архітектурні патерни** — правила гри: де логіка, у який бік залежності
+
+**Інструменти** — автоматично змушують ці правила виконувати
+
+### План
+
+1. Архітектура: MVC/MVP/MVVM, шари, чиста архітектура, DI, репозиторій і сервіс, помилки, логування
+2. Інструменти: Git, ESLint + Prettier, Husky, Vite, Docker, VS Code
 
 ---
 
-## План лекції
+## Що таке архітектурний патерн?
 
-- Axios: потужний HTTP клієнт
-- Interceptors для запитів та відповідей
-- Обробка помилок API
-- Loading стани та UX
-- Кешування запитів
-- React Query для data fetching
-- Оптимістичні оновлення
+### Визначення
+
+**Архітектурний патерн** — перевірене рішення для організації коду: структура системи, компоненти та їх взаємодії
+
+### Ключові питання
+
+- Як організувати код для масштабованості?
+- Як розділити відповідальність?
+- Як забезпечити тестованість?
+- Як зменшити зв'язаність між модулями?
 
 ---
 
-## Взаємодія Frontend ↔ Backend
+## Чому архітектура важлива?
+
+### Без продуманої архітектури
+
+**Технічний борг** — швидкі рішення накопичуються
+
+**Проблеми масштабування** — нову функцію не додати без переписування
+
+**Труднощі підтримки** — більше часу на розуміння коду, ніж на написання
+
+### З правильною архітектурою
+
+- Чітке розділення відповідальності
+- Легке тестування
+- Паралельна розробка
+- Гнучкість при зміні вимог
+
+⚠️ Архітектура — засіб, а не мета. Починайте просто
+
+---
+
+## Еволюція архітектурних підходів
+
+```mermaid
+timeline
+    title Еволюція веб-архітектури
+    1990-ті : Монолітні скрипти
+           : HTML + логіка + дані в одному файлі
+    2000-ні : Патерн MVC
+           : Розділення на Model-View-Controller
+    2010-ті : SPA та компоненти
+           : React, Angular, Vue
+           : Flux, Redux
+    2020-ті : Прагматизм
+           : Серверні компоненти та гібридне відтворення
+           : Типобезпека та досвід розробника
+```
+
+---
+
+## MVC — Model-View-Controller
 
 ```mermaid
 graph LR
-    A[React App] -->|HTTP Request| B[API Server]
-    B -->|JSON Response| A
-    A -->|State Update| C[UI Update]
+    V[View] -->|Користувач<br/>взаємодіє| C[Controller]
+    C -->|Оновлює| M[Model]
+    M -->|Сповіщає<br/>про зміни| V
+    C -->|Оновлює| V
+
+    style M fill:#e1f5e1
+    style V fill:#e1e5f5
+    style C fill:#f5e1e1
 ```
 
-**Основні виклики:**
-- Асинхронність операцій
-- Обробка помилок
-- Управління станами завантаження
-- Кешування даних
-- Оптимізація запитів
+**Model** — дані та бізнес-логіка
+
+**View** — відображення
+
+**Controller** — координація взаємодії
 
 ---
 
-## Fetch API vs Axios
+## Компоненти MVC
 
-**Fetch API (нативний):**
-```javascript
-const response = await fetch('/api/users');
-const data = await response.json();
-if (!response.ok) {
-    throw new Error('Error');
+**Model:** структури даних, валідація, бізнес-правила, зберігання
+
+**View:** візуалізація, форми, форматування
+
+**Controller:** обробка подій, перевірка входу, оркестрація операцій
+
+⚠️ «Товсті контролери» — логіку виносимо в сервіси
+
+```typescript
+export const getUser: RequestHandler<{ id: string }> = async (req, res) => {
+    const user = await userService.findById(Number(req.params.id));
+    if (!user) { res.status(404).json({ error: "Не знайдено" }); return; }
+    res.json(user);
+};
+```
+
+---
+
+## MVP — Model-View-Presenter
+
+```mermaid
+graph LR
+    V[View<br/>Пасивне] <-->|Двостороння<br/>комунікація| P[Presenter]
+    P <-->|Оновлює<br/>та отримує| M[Model]
+
+    style V fill:#e1e5f5
+    style P fill:#f5e1e1
+    style M fill:#e1f5e1
+```
+
+- **View** — пасивне, без логіки
+- **Presenter** — уся логіка презентації
+- Легке тестування, проста заміна View
+
+---
+
+## MVVM — Model-View-ViewModel
+
+```mermaid
+graph LR
+    V[View<br/>Декларативне] <-->|Data Binding<br/>Автоматична синхронізація| VM[ViewModel]
+    VM <-->|Отримує<br/>оновлює| M[Model]
+
+    style V fill:#e1e5f5
+    style VM fill:#f5e1e1
+    style M fill:#e1f5e1
+```
+
+**ViewModel** — стан у готовому вигляді
+
+**Data Binding** — автоматична синхронізація
+
+**Vue, Angular**; у React роль ViewModel відіграє власний хук
+
+---
+
+## Хук як ViewModel
+
+```tsx
+function useCounter(initial = 0) {
+    const [count, setCount] = useState(initial);
+    return {
+        count,
+        isEven: count % 2 === 0,
+        increment: () => setCount((c) => c + 1),
+        reset: () => setCount(initial),
+    };
 }
 ```
 
-**Axios (бібліотека):**
-```javascript
-const { data } = await axios.get('/api/users');
-// Автоматична обробка JSON
-// Вбудована обробка помилок
-```
-
-**Переваги Axios:**
-- Автоматична трансформація JSON
-- Interceptors
-- Timeout підтримка
-- Відміна запитів
-- Захист від CSRF
+Стан і дії — окремо від розмітки
 
 ---
 
-## Налаштування Axios
+## Порівняння MVC, MVP, MVVM
 
-```javascript
-import axios from 'axios';
+| Аспект | MVC | MVP | MVVM |
+|--------|-----|-----|------|
+| **Представлення** | Активне | Пасивне | Декларативне |
+| **Зв'язування** | Ручне | Через презентер | Автоматичне |
+| **Тестованість** | Середня | Висока | Висока |
+| **Складність** | Низька | Середня | Висока |
+| **Де зустрічається** | Серверні фреймворки | Складні UI | Реактивні фреймворки, хуки React |
 
-const api = axios.create({
-    baseURL: 'https://api.example.com',
-    timeout: 10000,
-    headers: {
-        'Content-Type': 'application/json'
+---
+
+## Шарова архітектура
+
+```mermaid
+graph TD
+    R[Маршрути та контролери<br/>HTTP: запит → відповідь] --> S[Сервіси<br/>бізнес-правила, сценарії]
+    S --> P[Репозиторії<br/>доступ до даних]
+    P --> D[(База даних)]
+    S --> X[Зовнішні сервіси<br/>пошта, оплата]
+```
+
+- **Контролер** розуміє HTTP
+- **Сервіс** — бізнес-правила, не знає про HTTP
+- **Репозиторій** ховає SQL/ORM
+
+---
+
+## Структура каталогів
+
+```text
+src/
+├── config/        # змінні середовища
+├── routes/        # маршрути
+├── controllers/   # обробники HTTP
+├── services/      # бізнес-логіка
+├── repositories/  # доступ до даних
+├── errors/        # доменні помилки
+├── middleware/    # проміжні обробники
+└── types/
+```
+
+Альтернатива: групування **за функціональністю** (`users/`, `orders/`)
+
+---
+
+## Clean Architecture
+
+```mermaid
+graph TB
+    subgraph "Зовнішній шар"
+        UI[UI / фреймворки]
+        DB[Бази даних]
+        API[Зовнішні API]
+    end
+
+    subgraph "Адаптери"
+        CTRL[Контролери]
+        GATE[Репозиторії]
+    end
+
+    subgraph "Бізнес-логіка"
+        UC[Варіанти використання]
+    end
+
+    subgraph "Ядро"
+        ENT[Сутності]
+    end
+
+    UI --> CTRL
+    DB --> GATE
+    API --> GATE
+    CTRL --> UC
+    GATE --> UC
+    UC --> ENT
+```
+
+**Залежності спрямовані лише всередину**
+
+---
+
+## Принципи Clean Architecture
+
+### Правило залежностей
+
+Внутрішні шари **не знають** про зовнішні
+
+### Незалежність
+
+**Від фреймворків** — фреймворк це інструмент
+
+**Від інтерфейсу** — легка заміна UI
+
+**Від бази даних** — СУБД можна змінити
+
+**Від зовнішніх сервісів**
+
+### Результат: тестованість і довговічність
+
+---
+
+## Шари Clean Architecture
+
+**Entities** — критичні бізнес-правила підприємства
+
+**Use Cases** — сценарії застосунку: «оформити замовлення»
+
+**Interface Adapters** — контролери, презентери, репозиторії
+
+**Frameworks & Drivers** — БД, UI, веб-фреймворк
+
+💡 Для невеликих проєктів: шари + інтерфейси для залежностей, що підмінюються
+
+---
+
+## Впровадження залежностей (DI)
+
+### Об'єкт не створює залежності, а отримує їх ззовні
+
+```typescript
+// ❌ Жорстка залежність
+class UserService {
+    private database = new PostgresDatabase();
+}
+
+// ✅ Залежність передається
+class UserService {
+    private users: UserRepository;
+    private mailer: EmailSender;
+    constructor(users: UserRepository, mailer: EmailSender) {
+        this.users = users;
+        this.mailer = mailer;
     }
+}
+```
+
+---
+
+## Способи впровадження
+
+**Через конструктор** — найпопулярніший; залежності обов'язкові
+
+**Через властивості** — для необов'язкових
+
+**Через параметри методу** — коли потрібно в одному виклику
+
+**Контейнер DI** — NestJS, InversifyJS, tsyringe (для малих проєктів зайвий)
+
+### «Корінь композиції»
+
+Усі залежності збираються в **одному місці** на старті
+
+---
+
+## Корінь композиції
+
+```typescript
+// src/container.ts
+const userRepository = new PrismaUserRepository(prisma);
+const mailer = new SmtpEmailSender();
+const userService = new UserService(userRepository, mailer);
+
+export const userController = createUserController(userService);
+```
+
+Решта коду про вибір реалізацій нічого не знає
+
+---
+
+## Переваги DI: тестованість
+
+```typescript
+it("не дозволяє зареєструвати користувача з наявною поштою", async () => {
+    const users: UserRepository = {
+        findByEmail: async () => ({ id: 1, email: "a@b.ua" } as User),
+        create: async () => { throw new Error("не мало викликатися"); },
+    };
+    const service = new UserService(users, { send: async () => {} });
+
+    await expect(service.register({ email: "a@b.ua" } as CreateUserData))
+        .rejects.toThrow("вже існує");
+});
+```
+
+**Модульність, конфігурованість, повторне використання**
+
+---
+
+## Патерн «Репозиторій»
+
+```mermaid
+graph LR
+    BL[Бізнес-логіка] --> R[Інтерфейс<br/>Repository]
+    R --> A1[PostgreSQL<br/>репозиторій]
+    R --> A2[MongoDB<br/>репозиторій]
+    R --> A3[Репозиторій<br/>у пам'яті]
+
+    style R fill:#f5e1e1
+```
+
+- Приховує деталі зберігання
+- Легко замінити джерело даних
+- Спрощує тестування
+
+⚠️ Не обгортайте ORM автоматично — лише коли потрібні підміна чи ізоляція
+
+---
+
+## Репозиторій: реалізації
+
+```typescript
+export class PrismaUserRepository implements UserRepository {
+    private prisma: PrismaClient;
+    constructor(prisma: PrismaClient) { this.prisma = prisma; }
+
+    findByEmail(email: string) {
+        return this.prisma.user.findUnique({ where: { email } });
+    }
+}
+
+export class InMemoryUserRepository implements UserRepository {
+    private items: User[] = [];
+    async findByEmail(email: string) {
+        return this.items.find((u) => u.email === email) ?? null;
+    }
+}
+```
+
+---
+
+## Патерн «Сервіс»
+
+### Призначення
+
+Координація операцій між репозиторіями, бізнес-правила
+
+### Коли використовувати
+
+- Операція зачіпає кілька репозиторіїв
+- Складні правила кількох сутностей
+- Зовнішні сервіси (пошта, оплата)
+- Транзакційні операції
+- Валідація з різних джерел
+
+---
+
+## Сервіс: приклад
+
+```typescript
+class OrderService {
+    constructor(orders: OrderRepository, products: ProductRepository,
+                payment: PaymentGateway) { /* ... */ }
+
+    async checkout(userId: number, items: CartItem[]): Promise<Order> {
+        // 1. перевірити наявність
+        // 2. порахувати суму на сервері
+        // 3. списати кошти
+        // 4. створити замовлення
+    }
+}
+```
+
+⚠️ Усі кроки — в **одній транзакції** (або з компенсаціями)
+
+---
+
+## Репозиторій чи сервіс?
+
+| | Репозиторій | Сервіс |
+|---|---|---|
+| **Відповідає за** | Доступ до даних сутності | Бізнес-правила, координацію |
+| **Операції** | CRUD, запити | Сценарії |
+| **Не містить** | Бізнес-логіки | Знань про SQL чи HTTP |
+| **Використовує** | ORM / драйвер | Репозиторії, зовнішні сервіси |
+
+---
+
+## Типи помилок
+
+**Операційні** — очікувані: не знайдено, невалідні дані, база тимчасово недоступна → обробляємо коректно
+
+**Програмні** — баги → виправляємо; клієнту деталей не показуємо
+
+### Власні класи помилок
+
+```typescript
+export class AppError extends Error {
+    constructor(message: string, readonly statusCode: number, readonly code: string) {
+        super(message);
+    }
+}
+export class NotFoundError extends AppError { /* 404 */ }
+export class ValidationError extends AppError { /* 400 */ }
+```
+
+`cause` (ES2022) зберігає початкову причину
+
+---
+
+## Централізована обробка (Express 5)
+
+```typescript
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
+    if (err instanceof AppError) {
+        logger.warn({ err, requestId: req.id }, "Операційна помилка");
+        res.status(err.statusCode).json({ error: { code: err.code, message: err.message } });
+        return;
+    }
+    logger.error({ err, requestId: req.id }, "Необроблена помилка");
+    res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Внутрішня помилка сервера" } });
+};
+```
+
+- Express 5: відхилені проміси потрапляють сюди **автоматично**
+- Клієнт не бачить стеків
+
+---
+
+## Межі помилок у React
+
+```tsx
+<ErrorBoundary FallbackComponent={ErrorFallback}
+               onError={(error, info) => reportError(error, info.componentStack)}>
+    <MainContent />
+</ErrorBoundary>
+```
+
+- Плавна деградація: один віджет не руйнує застосунок
+- Бібліотека `react-error-boundary`
+- Не перехоплюють помилки подій і асинхронного коду
+- React 19: `onCaughtError`, `onUncaughtError` у `createRoot`
+- Next.js: `error.tsx`, `global-error.tsx`
+
+---
+
+## Рівні логування
+
+| Рівень | Призначення |
+|--------|-------------|
+| **fatal / error** | Помилки, що вимагають уваги |
+| **warn** | Потенційні проблеми |
+| **info** | Нормальні події |
+| **debug** | Деталі для розробки |
+| **trace** | Дуже докладна інформація |
+
+Виробництво: `info` і вище
+
+---
+
+## Структуроване логування: pino
+
+```typescript
+export const logger = pino({
+    level: env.NODE_ENV === "production" ? "info" : "debug",
+    redact: ["req.headers.authorization", "req.headers.cookie", "*.password", "*.token"],
 });
 
-// Використання
-const response = await api.get('/users');
-const user = await api.post('/users', userData);
-const updated = await api.put('/users/1', newData);
-await api.delete('/users/1');
+logger.info({ userId: 42, action: "user.created" }, "Користувача створено");
 ```
+
+⚠️ **У журнали не потрапляють** паролі, токени, номери карток, персональні дані
 
 ---
 
-## CRUD операції з Axios
+## Контекст запиту
 
-```javascript
-// CREATE
-async function createUser(userData) {
-    const response = await api.post('/users', userData);
-    return response.data;
-}
+```typescript
+const storage = new AsyncLocalStorage<{ requestId: string }>();
 
-// READ
-async function getUser(userId) {
-    const response = await api.get(`/users/${userId}`);
-    return response.data;
-}
-
-// UPDATE
-async function updateUser(userId, data) {
-    const response = await api.put(`/users/${userId}`, data);
-    return response.data;
-}
-
-// DELETE
-async function deleteUser(userId) {
-    await api.delete(`/users/${userId}`);
-}
+export const requestContext: RequestHandler = (req, res, next) => {
+    const requestId = req.header("x-request-id") ?? randomUUID();
+    res.setHeader("x-request-id", requestId);
+    storage.run({ requestId }, next);
+};
 ```
+
+- Один `requestId` на запит — «нитка» у журналі
+- Розподілені системи: **OpenTelemetry** (лекція 15)
+- Моніторинг: Sentry, Grafana, Datadog
 
 ---
 
-## Interceptors: концепція
+## Найкращі практики архітектури
 
-**Request Interceptor** - обробка перед відправкою:
-- Додавання токенів авторизації
-- Логування запитів
-- Модифікація headers
+- Обирайте за **вимогами**, а не за модою; модульний моноліт — нормально
+- Документуйте рішення (ADR)
+- Автоматизуйте перевірку архітектури лінтером
+- Тестуйте на всіх рівнях
+- SOLID — орієнтир, не догма
+- Еволюціонуйте; забезпечте розуміння в команді
 
-**Response Interceptor** - обробка після отримання:
-- Централізована обробка помилок
-- Логування відповідей
-- Трансформація даних
+> Найкращий код — той, який легко читати, розуміти та змінювати
+
+---
+
+## Частина II. Інструменти розробки
+
+### Категорії
+
+- Контроль версій — **Git**
+- Якість коду — **ESLint, Prettier, TypeScript**
+- Автоматизація — **Husky, lint-staged, CI**
+- Збирання — **Vite**
+- Контейнеризація — **Docker**
+
+### Принципи
+
+Автоматизація рутини · раннє виявлення проблем · єдині стандарти · швидкий зворотний зв'язок
+
+---
+
+## Багаторівневий захист якості
 
 ```mermaid
 graph LR
-    A[Request] -->|Request Interceptor| B[Server]
-    B -->|Response Interceptor| C[App]
+    A[Редактор<br/>ESLint, Prettier, TS] --> B[Хук перед комітом<br/>Husky + lint-staged]
+    B --> C[Хук commit-msg<br/>commitlint]
+    C --> D[Pull Request]
+    D --> E[CI: типи, лінт,<br/>тести, збирання]
+    E --> F[Розгортання]
 ```
 
 ---
 
-## Request Interceptor
+## Git: основи
 
-```javascript
-api.interceptors.request.use(
-    (config) => {
-        // Додавання токена до кожного запиту
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-
-        // Логування
-        console.log('Запит:', config.method, config.url);
-
-        // Додавання timestamp
-        config.metadata = { startTime: new Date() };
-
-        return config;
-    },
-    (error) => {
-        console.error('Помилка запиту:', error);
-        return Promise.reject(error);
-    }
-);
-```
-
----
-
-## Response Interceptor
-
-```javascript
-api.interceptors.response.use(
-    (response) => {
-        // Обчислення часу запиту
-        const duration = new Date() - response.config.metadata.startTime;
-
-        console.log(
-            'Відповідь:',
-            response.config.url,
-            `${duration}ms`
-        );
-
-        return response;
-    },
-    (error) => {
-        // Централізована обробка помилок
-        if (error.response?.status === 401) {
-            // Перенаправлення на логін
-            window.location.href = '/login';
-        }
-
-        return Promise.reject(error);
-    }
-);
-```
-
----
-
-## Автоматичне оновлення токенів
-
-```javascript
-let isRefreshing = false;
-let failedQueue = [];
-
-api.interceptors.response.use(
-    response => response,
-    async error => {
-        const originalRequest = error.config;
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            if (isRefreshing) {
-                // Додати в чергу
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject });
-                });
-            }
-
-            originalRequest._retry = true;
-            isRefreshing = true;
-
-            // Оновити токен
-            const newToken = await refreshToken();
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-
-            return api(originalRequest);
-        }
-
-        return Promise.reject(error);
-    }
-);
-```
-
----
-
-## Типізація помилок
-
-```javascript
-class APIError extends Error {
-    constructor(message, status, data) {
-        super(message);
-        this.name = 'APIError';
-        this.status = status;
-        this.data = data;
-    }
-}
-
-class NetworkError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = 'NetworkError';
-    }
-}
-
-class ValidationError extends APIError {
-    constructor(message, errors) {
-        super(message, 422, errors);
-        this.name = 'ValidationError';
-        this.errors = errors;
-    }
-}
-```
-
----
-
-## Централізована обробка помилок
-
-```javascript
-api.interceptors.response.use(
-    response => response,
-    error => {
-        if (error.response) {
-            const { status, data } = error.response;
-
-            switch (status) {
-                case 400:
-                    throw new APIError('Bad Request', 400, data);
-                case 401:
-                    throw new APIError('Unauthorized', 401, data);
-                case 404:
-                    throw new APIError('Not Found', 404, data);
-                case 422:
-                    throw new ValidationError('Validation failed', data.errors);
-                case 500:
-                    throw new APIError('Server Error', 500, data);
-                default:
-                    throw new APIError('Unknown Error', status, data);
-            }
-        } else if (error.request) {
-            throw new NetworkError('No response from server');
-        }
-        throw new Error(error.message);
-    }
-);
-```
-
----
-
-## Loading стани в компонентах
-
-```javascript
-function UserList() {
-    const [users, setUsers] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const fetchUsers = async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
-
-            const response = await api.get('/users');
-            setUsers(response.data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    if (isLoading) return <Spinner />;
-    if (error) return <ErrorMessage error={error} />;
-
-    return <UserListView users={users} />;
-}
-```
-
----
-
-## Skeleton Screens
-
-**Замість спіннера - skeleton:**
-
-```javascript
-function SkeletonCard() {
-    return (
-        <div className="skeleton-card">
-            <div className="skeleton skeleton-avatar" />
-            <div className="skeleton skeleton-title" />
-            <div className="skeleton skeleton-text" />
-        </div>
-    );
-}
-
-function UserList() {
-    const [users, setUsers] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    return (
-        <div>
-            {isLoading ? (
-                <>
-                    <SkeletonCard />
-                    <SkeletonCard />
-                    <SkeletonCard />
-                </>
-            ) : (
-                users.map(user => <UserCard key={user.id} user={user} />)
-            )}
-        </div>
-    );
-}
-```
-
----
-
-## Простий кеш в пам'яті
-
-```javascript
-class APICache {
-    constructor(ttl = 300000) { // 5 хвилин
-        this.cache = new Map();
-        this.ttl = ttl;
-    }
-
-    get(key) {
-        const cached = this.cache.get(key);
-        if (!cached) return null;
-
-        if (Date.now() - cached.timestamp > this.ttl) {
-            this.cache.delete(key);
-            return null;
-        }
-
-        return cached.data;
-    }
-
-    set(key, data) {
-        this.cache.set(key, {
-            data,
-            timestamp: Date.now()
-        });
-    }
-}
-```
-
----
-
-## Використання кешу
-
-```javascript
-const apiCache = new APICache();
-
-async function cachedGet(url, params = {}) {
-    const cacheKey = `${url}?${JSON.stringify(params)}`;
-
-    // Перевірка кешу
-    const cached = apiCache.get(cacheKey);
-    if (cached) {
-        console.log('Використання кешу');
-        return cached;
-    }
-
-    // Запит до API
-    const response = await api.get(url, { params });
-    const data = response.data;
-
-    // Збереження в кеш
-    apiCache.set(cacheKey, data);
-
-    return data;
-}
-
-// Використання
-const users = await cachedGet('/users');
-```
-
----
-
-## React Query: революція в data fetching
-
-**Проблеми традиційного підходу:**
-- Ручне управління loading/error станами
-- Дублювання логіки кешування
-- Складна синхронізація даних
-- Відсутність фонових оновлень
-
-**Рішення - React Query:**
-- Декларативний data fetching
-- Автоматичне кешування
-- Фонові оновлення
-- Оптимістичні оновлення
+- **Розподілена** система: повна копія історії в кожного
+- Репозиторій · коміт · гілка · індекс · віддалений репозиторій
 
 ```bash
-npm install @tanstack/react-query
+git config --global init.defaultBranch main
+git status
+git add -p
+git commit -m "feat: додати форму входу"
+git log --oneline --graph
+git pull --rebase
+```
+
+Основна гілка — **`main`**
+
+---
+
+## Conventional Commits
+
+```text
+<тип>(<область>): <короткий опис>
+
+[тіло: чому змінено]
+
+[підвал: BREAKING CHANGE, #123]
+```
+
+Типи: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`
+
+- Один коміт — одна логічна зміна
+- Автоматичний журнал змін і версії
+
+---
+
+## Гілки: switch, restore, merge, rebase
+
+```bash
+git switch -c feature/user-profile   # (замість checkout)
+git restore src/App.tsx              # скасувати зміни у файлі
+git merge feature/user-profile
+git rebase main
+```
+
+- **merge** зберігає історію, **rebase** робить її лінійною
+- ⚠️ Не перебазовуйте коміти, на яких можуть базуватися інші
+
+---
+
+## Стратегії роботи з гілками
+
+```mermaid
+gitGraph
+    commit id: "v1.0"
+    branch feature/login
+    checkout feature/login
+    commit id: "форма входу"
+    commit id: "валідація"
+    checkout main
+    merge feature/login id: "PR #12"
+    branch fix/header
+    checkout fix/header
+    commit id: "виправлення"
+    checkout main
+    merge fix/header id: "PR #13"
+    commit id: "v1.1" tag: "v1.1"
 ```
 
 ---
 
-## React Query: базове використання
+## Git Flow, GitHub Flow, trunk-based
+
+| Модель | Гілки живуть | Для чого | Складність |
+|--------|--------------|----------|-----------|
+| Git Flow | Дні–тижні | Планові релізи, кілька версій | Висока |
+| GitHub Flow | Години–дні | Більшість вебзастосунків | Низька |
+| Trunk-based | Години | Команди з сильною автоматизацією | Низька, потребує дисципліни |
+
+Навчальні проєкти → **GitHub Flow**
+
+Незавершене ховаємо за **перемикачами функцій**
+
+---
+
+## Конфлікти та просунуті техніки
+
+```text
+<<<<<<< HEAD
+const title = "Профіль користувача";
+=======
+const title = "Мій профіль";
+>>>>>>> feature/user-profile
+```
+
+```bash
+git merge --abort          # скасувати
+git rebase -i HEAD~3       # почистити історію
+git stash push -m "чернетка"
+git reflog                 # відновити «втрачене»
+git revert abc1234         # безпечне скасування
+git bisect start           # пошук коміту з помилкою
+```
+
+Профілактика: короткі гілки, часті оновлення з `main`
+
+---
+
+## Pull Request і рецензія
+
+### Гарний PR
+
+- **Малий**; зрозумілий опис (шаблон у репозиторії)
+- Проходить автоматичні перевірки до рецензії
+
+### Рецензія
+
+- Архітектура, безпека, читабельність, тести
+- Стиль — справа автоматики
+- **Захист `main`**: перевірки + схвалення
+- ШІ-рецензент — підказка; відповідальність — на людині
+
+`gh pr create`, `gh pr checks`
+
+---
+
+## ESLint і Prettier: різні завдання
+
+**ESLint** — статичний аналіз: чи правильний код?
+
+**Prettier** — форматування: як код виглядає?
+
+Prettier відповідає за стиль, ESLint — за якість
+
+---
+
+## ESLint 10: плоска конфігурація
+
+- Лише **flat config** — `eslint.config.js`
+- `.eslintrc.*` та `.eslintignore` **вилучені**
+- ESLint 9 — підтримка завершилась у серпні 2026
+- Прапорець `--ext` вилучено
+
+```bash
+npm install --save-dev eslint @eslint/js typescript-eslint globals
+```
+
+---
+
+## eslint.config.js
 
 ```javascript
-import { useQuery } from '@tanstack/react-query';
+import js from "@eslint/js";
+import globals from "globals";
+import tseslint from "typescript-eslint";
+import { defineConfig, globalIgnores } from "eslint/config";
 
-function UserList() {
-    const {
-        data: users,
-        isLoading,
-        isError,
-        error,
-        refetch
-    } = useQuery({
-        queryKey: ['users'],
-        queryFn: async () => {
-            const response = await api.get('/users');
-            return response.data;
+export default defineConfig(
+    globalIgnores(["dist", "coverage", "src/generated"]),
+    js.configs.recommended,
+    tseslint.configs.recommended,
+    {
+        languageOptions: { globals: { ...globals.node } },
+        rules: {
+            "no-console": ["warn", { allow: ["warn", "error"] }],
+            eqeqeq: ["error", "always"],
+            "@typescript-eslint/consistent-type-imports": "error",
         },
-        staleTime: 300000, // 5 хвилин
-        cacheTime: 600000  // 10 хвилин
-    });
-
-    if (isLoading) return <div>Завантаження...</div>;
-    if (isError) return <div>Помилка: {error.message}</div>;
-
-    return <UserListView users={users} onRefresh={refetch} />;
-}
-```
-
----
-
-## React Query: Mutations
-
-```javascript
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-function CreateUser() {
-    const queryClient = useQueryClient();
-
-    const mutation = useMutation({
-        mutationFn: (userData) => api.post('/users', userData),
-
-        onSuccess: (newUser) => {
-            // Оновлення кешу
-            queryClient.setQueryData(['users'], (old) =>
-                [...old, newUser.data]
-            );
-
-            toast.success('Користувача створено');
-        },
-
-        onError: (error) => {
-            toast.error('Помилка створення');
-        }
-    });
-
-    return (
-        <button onClick={() => mutation.mutate({ name: 'Іван' })}>
-            Створити
-        </button>
-    );
-}
-```
-
----
-
-## Оптимістичні оновлення
-
-**Концепція:** оновлювати UI миттєво, відкочувати при помилці
-
-```javascript
-const updateMutation = useMutation({
-    mutationFn: updateUser,
-
-    onMutate: async (newData) => {
-        // Скасування поточних запитів
-        await queryClient.cancelQueries(['users']);
-
-        // Збереження попереднього стану
-        const previous = queryClient.getQueryData(['users']);
-
-        // Оптимістичне оновлення
-        queryClient.setQueryData(['users'], (old) =>
-            old.map(user =>
-                user.id === newData.id ? { ...user, ...newData } : user
-            )
-        );
-
-        return { previous };
     },
+);
+```
 
-    onError: (err, variables, context) => {
-        // Відкат при помилці
-        queryClient.setQueryData(['users'], context.previous);
-    }
+---
+
+## Лінтинг з урахуванням типів
+
+```javascript
+tseslint.configs.recommendedTypeChecked,
+{
+    languageOptions: {
+        parserOptions: {
+            projectService: true,
+            tsconfigRootDir: import.meta.dirname,
+        },
+    },
+},
+```
+
+Ловить `no-floating-promises`, небезпечне `any`
+
+⚠️ typescript-eslint працює з **TypeScript 6.x**
+
+---
+
+## Корисні правила
+
+| Правило | Що ловить |
+|---------|-----------|
+| `@typescript-eslint/no-unused-vars` | Невикористані змінні |
+| `eqeqeq` | `==` замість `===` |
+| `prefer-const` | `let` без перепризначення |
+| `no-floating-promises` | Забутий `await` |
+| `no-explicit-any` | Явний `any` |
+| `react-hooks/rules-of-hooks` | Хуки в умовах |
+| `react-hooks/exhaustive-deps` | Неповні залежності `useEffect` |
+
+---
+
+## Prettier та їх спільна робота
+
+```json
+{ "semi": true, "singleQuote": false, "trailingComma": "all", "printWidth": 100 }
+```
+
+```bash
+npx prettier --write .
+npx prettier --check .   # для CI
+```
+
+`eslint-config-prettier` — **останнім** у конфігурації
+
+❌ Не запускайте Prettier всередині ESLint
+
+Швидкі альтернативи: **Biome**, **Oxlint**
+
+---
+
+## Інтеграція з VS Code
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" },
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
+```
+
+- `.vscode/` — у репозиторії (спільна поведінка команди)
+- `extensions.json` — рекомендовані розширення
+- Корисні: ESLint, Prettier, Error Lens, GitLens, Docker
+
+---
+
+## Git hooks і Husky 9
+
+**Хуки Git** — скрипти на події: `pre-commit`, `commit-msg`, `pre-push`
+
+Проблема: `.git/hooks` не потрапляє в репозиторій → **Husky**
+
+```bash
+npm install --save-dev husky
+npx husky init     # додає "prepare": "husky"
+```
+
+```bash
+# .husky/pre-commit
+npx lint-staged
+```
+
+У Husky 9 **не потрібні** `#!/usr/bin/env sh` та `husky.sh`
+
+---
+
+## lint-staged
+
+```json
+{
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,md,css,yml}": ["prettier --write"]
+  }
+}
+```
+
+- Перевіряє лише **файли в індексі**
+- Порядок: спочатку ESLint, потім Prettier
+- `tsc --noEmit` — окремий рядок у хуку (проєкт цілком)
+
+```bash
+npx lint-staged
+npm run typecheck
+```
+
+---
+
+## commitlint
+
+```javascript
+// commitlint.config.js
+export default {
+    extends: ["@commitlint/config-conventional"],
+    rules: { "subject-case": [0], "header-max-length": [2, "always", 100] },
+};
+```
+
+```bash
+# .husky/commit-msg
+npx --no -- commitlint --edit $1
+```
+
+✗ `виправив баг` → `type may not be empty`
+
+✓ `fix(auth): виправити перевірку токена`
+
+---
+
+## Хуки — не заміна CI
+
+- Хуки можна обійти: `git commit --no-verify`
+- Вони — зручність, а не бар'єр безпеки
+- **Надійний бар'єр** — CI на сервері: ті самі перевірки + блокування злиття (лекція 15)
+
+---
+
+## Навіщо потрібен збирач
+
+```mermaid
+graph LR
+    S[Вихідний код<br/>TS, JSX, CSS, зображення] --> B[Збирач<br/>Vite]
+    B --> T[Перетворення<br/>типи видаляються]
+    T --> M[Об'єднання та<br/>видалення невикористаного]
+    M --> O[Мінімізація<br/>і хешування імен]
+    O --> D[dist/<br/>готовий до розгортання]
+```
+
+Dev: ES-модулі напряму · миттєвий старт · HMR
+
+---
+
+## Vite 8 і Rolldown
+
+- Один збирач замість двох (esbuild + Rollup): **Rolldown** (Rust) + Oxc
+- Виробнича збірка швидша в рази
+- Однакова поведінка dev і production
+- `rollupOptions` → **`rolldownOptions`**
+
+```bash
+npm create vite@latest my-app -- --template react-ts
+npm run dev | build | preview
+```
+
+---
+
+## Конфігурація Vite
+
+```typescript
+export default defineConfig({
+    plugins: [react()],
+    server: {
+        port: 5173,
+        proxy: { "/api": "http://localhost:3000" },
+    },
+    build: { sourcemap: true },
 });
 ```
 
+⚠️ До клієнта потрапляють лише змінні `VITE_*` — вони **видимі всім**. Секретів там бути не може
+
 ---
 
-## Паралельне vs Послідовне завантаження
+## Аналіз розміру збірки
 
-**Паралельне (ефективно):**
-```javascript
-function Dashboard() {
-    const { data: users } = useQuery(['users'], fetchUsers);
-    const { data: posts } = useQuery(['posts'], fetchPosts);
-    const { data: stats } = useQuery(['stats'], fetchStats);
+```bash
+ANALYZE=true npm run build   # dist/stats.html
+```
 
-    // Всі запити виконуються одночасно
-    return <DashboardView {...{ users, posts, stats }} />;
+Шукаємо:
+
+- найбільші блоки
+- дублікати бібліотек
+- рідко потрібний код в основному файлі
+
+Способи зменшення: легші бібліотеки, імпорт лише потрібного, розділення коду (лекція 15)
+
+---
+
+## Docker для локальної розробки
+
+**Контейнер** — застосунок разом з оточенням в ізольованому відтворюваному пакеті
+
+```mermaid
+graph TB
+    subgraph "Віртуальні машини"
+        A1[Застосунок] --> G1[Гостьова ОС]
+        A2[Застосунок] --> G2[Гостьова ОС]
+        G1 --> H[Гіпервізор]
+        G2 --> H
+    end
+    subgraph "Контейнери"
+        C1[Застосунок] --> R[Рушій контейнерів]
+        C2[Застосунок] --> R
+    end
+```
+
+Образ · контейнер · Dockerfile · реєстр · том
+
+---
+
+## Dockerfile для розробки
+
+```dockerfile
+FROM node:24-alpine
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+```
+
+- Рідко змінюване — **перед** часто змінюваним (кеш шарів)
+- `.dockerignore`: `node_modules`, `.git`, `.env`
+
+---
+
+## Docker Compose
+
+```yaml
+# compose.yaml  (без поля version)
+services:
+  api:
+    build: { context: ., dockerfile: Dockerfile.dev }
+    ports: ["3000:3000"]
+    environment:
+      DATABASE_URL: postgres://app:app@db:5432/app
+    depends_on:
+      db: { condition: service_healthy }
+    develop:
+      watch:
+        - { action: sync, path: ./src, target: /app/src }
+  db:
+    image: postgres:18-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+```
+
+---
+
+## Команди Compose
+
+```bash
+docker compose up -d --build
+docker compose watch
+docker compose logs -f api
+docker compose exec api sh
+docker compose down        # зупинити
+docker compose down -v     # + видалити дані!
+```
+
+💡 Практика: **БД у контейнері**, серверна й клієнтська частини — локально
+
+---
+
+## VS Code: продуктивність
+
+- **Розширення:** ESLint, Prettier, Error Lens, GitLens, Docker
+- **Спільні налаштування:** `settings.json`, `extensions.json`, `launch.json`
+- **Налагодження** Node.js з точками зупину в `.ts`
+- **Фрагменти (snippets)** для шаблонного коду
+- **Гарячі клавіші:** `Ctrl+D`, `F2`, `Ctrl+.`, `F12`, `Ctrl+Shift+P`
+
+---
+
+## Скрипти — єдина «мова» команди
+
+```json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "prepare": "husky"
+  }
 }
 ```
 
-**Послідовне (неефективно):**
-```javascript
-// ❌ Погано
-const users = await fetchUsers();    // ~1 сек
-const posts = await fetchPosts();    // ~1 сек
-const stats = await fetchStats();    // ~1 сек
-// Загалом: ~3 секунди
+`npm run check` = те, що робить CI
+
+---
+
+## CI: перший погляд
+
+```yaml
+name: CI
+on: { pull_request: , push: { branches: [main] } }
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
 ```
 
----
-
-## Залежні запити
-
-```javascript
-function UserProfile({ userId }) {
-    // Спочатку користувач
-    const { data: user } = useQuery({
-        queryKey: ['user', userId],
-        queryFn: () => fetchUser(userId)
-    });
-
-    // Потім пости (залежить від user)
-    const { data: posts } = useQuery({
-        queryKey: ['posts', userId],
-        queryFn: () => fetchUserPosts(userId),
-        enabled: !!user  // Виконується тільки якщо user є
-    });
-
-    if (!user) return <Loading />;
-
-    return (
-        <div>
-            <UserInfo user={user} />
-            {posts && <PostList posts={posts} />}
-        </div>
-    );
-}
-```
+`npm ci`, найменші права, повний CI — у лекції 15
 
 ---
 
-## Інвалідація кешу
+## Баланс якості й швидкості
 
-```javascript
-function UserManager() {
-    const queryClient = useQueryClient();
-
-    const deleteMutation = useMutation({
-        mutationFn: deleteUser,
-
-        onSuccess: () => {
-            // Інвалідувати кеш користувачів
-            queryClient.invalidateQueries(['users']);
-
-            // Або видалити конкретний запит
-            queryClient.removeQueries(['user', userId]);
-
-            // Або оновити вручну
-            queryClient.setQueryData(['users'], (old) =>
-                old.filter(u => u.id !== userId)
-            );
-        }
-    });
-
-    return <button onClick={() => deleteMutation.mutate(userId)}>
-        Видалити
-    </button>;
-}
-```
+- Перевірки перед комітом — **за секунди**
+- Правила узгоджені командою
+- Нові правила: спочатку `warn`, потім `error`
+- Не привчайте всіх до `--no-verify`
+- Зафіксуйте домовленості: `CONTRIBUTING.md`, `.editorconfig`, шаблон PR, `AGENTS.md`
 
 ---
 
-## Prefetching даних
+## Ключові висновки
 
-```javascript
-function UserList() {
-    const queryClient = useQueryClient();
-
-    const { data: users } = useQuery(['users'], fetchUsers);
-
-    const handleMouseEnter = (userId) => {
-        // Попереднє завантаження даних користувача
-        queryClient.prefetchQuery({
-            queryKey: ['user', userId],
-            queryFn: () => fetchUser(userId),
-            staleTime: 60000
-        });
-    };
-
-    return (
-        <div>
-            {users.map(user => (
-                <UserCard
-                    key={user.id}
-                    user={user}
-                    onMouseEnter={() => handleMouseEnter(user.id)}
-                />
-            ))}
-        </div>
-    );
-}
-```
-
----
-
-## Pagination з React Query
-
-```javascript
-function PaginatedUsers() {
-    const [page, setPage] = useState(1);
-
-    const { data, isLoading } = useQuery({
-        queryKey: ['users', page],
-        queryFn: () => fetchUsers(page),
-        keepPreviousData: true  // Показувати попередні дані при завантаженні
-    });
-
-    return (
-        <div>
-            {isLoading && <Spinner />}
-
-            <UserList users={data?.users} />
-
-            <Pagination
-                currentPage={page}
-                totalPages={data?.totalPages}
-                onPageChange={setPage}
-            />
-        </div>
-    );
-}
-```
-
----
-
-## Infinite Scroll
-
-```javascript
-function InfiniteUserList() {
-    const {
-        data,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage
-    } = useInfiniteQuery({
-        queryKey: ['users'],
-        queryFn: ({ pageParam = 1 }) => fetchUsers(pageParam),
-        getNextPageParam: (lastPage) => lastPage.nextPage
-    });
-
-    return (
-        <div>
-            {data?.pages.map(page =>
-                page.users.map(user => <UserCard key={user.id} user={user} />)
-            )}
-
-            {hasNextPage && (
-                <button onClick={fetchNextPage} disabled={isFetchingNextPage}>
-                    {isFetchingNextPage ? 'Завантаження...' : 'Більше'}
-                </button>
-            )}
-        </div>
-    );
-}
-```
-
----
-
-## Найкращі практики
-
-**HTTP клієнт:**
-- Використовуйте Axios для складних додатків
-- Централізуйте конфігурацію API
-- Застосовуйте interceptors для аутентифікації
-
-**Обробка помилок:**
-- Створюйте типізовані класи помилок
-- Надавайте зрозумілі повідомлення
-- Логуйте помилки для моніторингу
-
-**UX:**
-- Skeleton screens замість спіннерів
-- Оптимістичні оновлення
-- Показуйте прогрес довгих операцій
-
----
-
-## Найкращі практики (продовження)
-
-**React Query:**
-- Використовуйте для всього серверного стану
-- Налаштовуйте staleTime та cacheTime
-- Prefetch для покращення UX
-- Використовуйте оптимістичні оновлення
-
-**Продуктивність:**
-- Кешуйте запити де можливо
-- Паралельне завантаження незалежних даних
-- Використовуйте pagination/infinite scroll
-
-**Безпека:**
-- HTTPS для всіх запитів
-- Не зберігайте токени в localStorage без шифрування
-- Правильно обробляйте refresh tokens
-
----
-
-## Приклад: повна інтеграція
-
-```javascript
-// api.js
-export const api = axios.create({
-    baseURL: process.env.VITE_API_URL,
-    timeout: 10000
-});
-
-// hooks/useUsers.js
-export function useUsers() {
-    return useQuery({
-        queryKey: ['users'],
-        queryFn: async () => {
-            const { data } = await api.get('/users');
-            return data;
-        }
-    });
-}
-
-// components/UserList.jsx
-function UserList() {
-    const { data: users, isLoading } = useUsers();
-
-    if (isLoading) return <SkeletonList />;
-    return <List items={users} />;
-}
-```
-
----
-
-## Моніторинг та дебаг
-
-**React Query Devtools:**
-```javascript
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-
-function App() {
-    return (
-        <QueryClientProvider client={queryClient}>
-            <YourApp />
-            <ReactQueryDevtools initialIsOpen={false} />
-        </QueryClientProvider>
-    );
-}
-```
-
-**Логування запитів:**
-```javascript
-api.interceptors.request.use(config => {
-    console.log(`[API] ${config.method.toUpperCase()} ${config.url}`);
-    return config;
-});
-```
-
----
-
-## Корисні ресурси
-
-**Документація:**
-- [Axios](https://axios-http.com/docs/intro)
-- [React Query](https://tanstack.com/query/latest)
-- [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
-
-**Інструменти:**
-- [React Query Devtools](https://tanstack.com/query/latest/docs/react/devtools)
-- [MSW](https://mswjs.io/) - мокування API
-- [Postman](https://www.postman.com/) - тестування API
-
-**Альтернативи:**
-- [SWR](https://swr.vercel.app/) - від Vercel
-- [RTK Query](https://redux-toolkit.js.org/rtk-query/overview) - від Redux
+- Архітектура визначає **правила гри**; інструменти змушують їх виконувати
+- MVC/MVP/MVVM → шари → правило залежностей Clean Architecture
+- DI + репозиторій + сервіс = тестованість
+- Операційні й програмні помилки; централізована обробка; структуровані журнали
+- Git (GitHub Flow, Conventional Commits) → ESLint 10 + Prettier → Husky 9 → Vite 8 → Docker Compose
+- **Починайте просто. Автоматизуйте дисципліну.**
+- Далі: продуктивність і DevOps (лекція 15)

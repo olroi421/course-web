@@ -1,1057 +1,1763 @@
-# Лекція 15. Tailwind CSS та сучасна стилізація
+# Лекція 15. Продуктивність, оптимізація та DevOps
 
-## Вступ до utility-first підходу
+## Вступ: від «працює» до «працює швидко і надійно»
 
-Tailwind CSS представляє радикально інший підхід до стилізації вебзастосунків порівняно з традиційними методами. Замість написання власних CSS класів та стилів, розробники використовують набір готових utility класів безпосередньо в HTML або JSX розмітці.
+Попередні лекції навчили нас створювати вебзастосунок: проєктувати серверну частину, зберігати дані, будувати інтерфейс на React, додавати типи та організовувати код за архітектурними патернами. Але застосунок, який коректно працює на комп'ютері розробника, ще не є **продуктом**. Продукт має бути швидким для реального користувача на повільному телефоні, а також надійно доставленим до цього користувача й стабільним у роботі.
 
-Ця філософія може здатися незвичною на перший погляд, особливо для розробників, які звикли до традиційних CSS методологій як BEM або SMACSS. Проте utility-first підхід вирішує багато фундаментальних проблем традиційного CSS, роблячи процес розробки швидшим, більш передбачуваним та легшим у підтримці.
+Лекція складається з двох частин, які розглядають цю проблему з двох боків.
 
-Традиційний CSS часто призводить до накопичення незатребуваних стилів, складності з найменуванням класів та проблем з масштабуванням. Tailwind CSS усуває ці проблеми через обмежений набір заздалегідь визначених класів, які покривають більшість потреб сучасної веброзробки.
+**Перша частина — продуктивність.** Ми навчимося вимірювати швидкість застосунку за метриками Core Web Vitals, зменшувати обсяг коду, що завантажується (аналіз збірки, розділення коду, відкладене завантаження), кешувати ресурси на всіх рівнях, оптимізувати відтворення сторінки, налаштовувати моніторинг і забезпечувати видимість для пошукових систем. Окремо розглянемо прогресивні вебзастосунки (PWA).
 
-## Utility-first підхід: філософія та переваги
+**Друга частина — DevOps.** Ми розглянемо, як автоматизувати шлях коду від коміту до користувача: безперервну інтеграцію та доставку (CI/CD), виробничі образи Docker, керування середовищами й секретами, безпечні міграції баз даних, резервне копіювання, моніторинг та сповіщення.
 
-### Порівняння з традиційним CSS
+Лекція продовжує попередню. Інструменти якості з лекції 14 (лінтер, перевірка типів, тести, Husky) тут запустяться вже на сервері в конвеєрі, а Vite, який ми представили як збирач, стане головним інструментом оптимізації. З лекцією 16 її пов'язує безпека: більшість рішень у DevOps (керування секретами, мінімальні привілеї, оновлення залежностей) є одночасно і заходами безпеки.
 
-```css
-/* Традиційний підхід: написання власних класів */
-.card {
-    max-width: 400px;
-    margin: 0 auto;
-    padding: 1.5rem;
-    background-color: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
+---
 
-.card-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-    color: #1a202c;
-}
+## Чому продуктивність має значення
 
-.card-content {
-    font-size: 1rem;
-    line-height: 1.5;
-    color: #4a5568;
-}
+### Вплив на користувачів і бізнес
 
-.button-primary {
-    padding: 0.75rem 1.5rem;
-    background-color: #3b82f6;
-    color: white;
-    border-radius: 0.375rem;
-    font-weight: 600;
-    transition: background-color 0.2s;
-}
+Швидкість — це не «приємний бонус», а базова властивість якості. Дослідження індустрії послідовно показують один і той самий зв'язок: чим довше завантажується сторінка, тим більше користувачів її залишають, і тим нижча конверсія. Для інтернет-магазину затримка у кілька сотень мілісекунд відображається в грошах; для сервісу, яким користуються щодня, — у відчутті «важкості» й роздратуванні; для всіх — у позиціях у пошуку, оскільки Google використовує показники Core Web Vitals як один із сигналів ранжування.
 
-.button-primary:hover {
-    background-color: #2563eb;
-}
+Важливо пам'ятати про аудиторію. Ваш комп'ютер для розробки — швидкий, з потужним процесором і оптичним інтернетом. Типовий користувач — це середній за можливостями Android-телефон у мобільній мережі, нерідко нестабільній. Саме для нього треба оптимізувати, і саме тому тестувати продуктивність слід із **обмеженням швидкості мережі та процесора** (інструменти розробника Chrome дозволяють це імітувати).
+
+### Метрики продуктивності: Core Web Vitals
+
+Щоб покращувати швидкість, її потрібно виміряти. Google визначив набір з трьох метрик, які відображають реальний досвід користувача і називаються **Core Web Vitals** (основні показники вебу).
+
+| Метрика | Що вимірює | Добре | Потребує покращення | Погано |
+|---------|-----------|-------|---------------------|--------|
+| **LCP** (Largest Contentful Paint) | Швидкість завантаження: коли з'явився найбільший видимий елемент (зображення, заголовок) | ≤ 2,5 с | 2,5–4 с | > 4 с |
+| **INP** (Interaction to Next Paint) | Чутливість: затримка між діями користувача (клік, натискання клавіші) і наступним оновленням екрана | ≤ 200 мс | 200–500 мс | > 500 мс |
+| **CLS** (Cumulative Layout Shift) | Візуальна стабільність: наскільки елементи «стрибають» під час завантаження | ≤ 0,1 | 0,1–0,25 | > 0,25 |
+
+Значення оцінюються за **75-м процентилем** реальних відвідувань: щоб сторінка вважалася «хорошою», щонайменше 75% користувачів мають отримувати досвід у «зеленій» зоні.
+
+> **Важлива зміна.** Метрика **INP замінила FID** (First Input Delay) як основний показник чутливості у березні 2024 року. FID вимірював лише затримку *першої* взаємодії, а INP враховує *всі* взаємодії протягом візиту й повідомляє про найгіршу з них (майже). Якщо ви зустрічаєте FID у старих підручниках чи бібліотеках (`onFID`), це застарілий матеріал.
+
+Окрім основних показників, корисні допоміжні метрики:
+
+- **TTFB** (Time to First Byte) — час до першого байта відповіді сервера; показує якість серверної частини, мережі й кешування;
+- **FCP** (First Contentful Paint) — коли з'явилося перше змістовне зображення;
+- **TBT** (Total Blocking Time) — лабораторна метрика, сума тривалостей «довгих завдань», яка корелює з INP.
+
+### Лабораторні та польові дані
+
+Існує два принципово різні способи вимірювання, і їх треба поєднувати.
+
+**Лабораторні дані** (lab data) збираються в контрольованому середовищі: Lighthouse, WebPageTest, вкладка «Performance» в інструментах розробника. Вони відтворювані й добре підходять для налагодження та перевірки в CI, але не відображають різноманіття реальних пристроїв.
+
+**Польові дані** (field data, real user monitoring, RUM) збираються від реальних користувачів: звіт Chrome UX Report (CrUX), бібліотека `web-vitals` у вашому коді. Вони показують справжню картину, але не пояснюють причин.
+
+Робочий процес такий: польові дані показують, **що** погано; лабораторні допомагають зрозуміти, **чому**, і перевірити виправлення.
+
+```mermaid
+graph LR
+    A[Польові дані<br/>web-vitals, CrUX] -->|Виявити проблему| B[Лабораторний аналіз<br/>Lighthouse, DevTools]
+    B -->|Знайти причину| C[Виправлення]
+    C -->|Перевірити в CI| D[Lighthouse CI,<br/>бюджети розміру]
+    D -->|Розгорнути| A
 ```
 
-```jsx
-// Традиційне використання
-<div className="card">
-    <h2 className="card-title">Заголовок картки</h2>
-    <p className="card-content">Це текст всередині картки.</p>
-    <button className="button-primary">Натисни мене</button>
-</div>
+## Оптимізація розміру збірки
+
+### Проблема великих збірок
+
+JavaScript — найдорожчий ресурс вебсторінки. Кожен кілобайт зображення лише завантажується й показується, а кожен кілобайт JavaScript потрібно **завантажити, розібрати, скомпілювати й виконати** на процесорі користувача. Тому великий пакет скриптів вдаряє по LCP (відтворення чекає на код) та по INP (головний потік зайнятий).
+
+Типовий сценарій «розпухання»: застосунок почав із 150 КБ, а через рік важить мегабайти, бо в нього непомітно потрапили важкі бібліотеки, дублікати залежностей та код сторінок, які користувач відкриває рідко. Ліки — **вимірювання** і дисципліна.
+
+### Аналіз розміру збірки
+
+Перший крок — побачити, з чого складається збірка. Вище в лекції 14 ми підключили візуалізатор до Vite; тепер розглянемо, як ним користуватися.
+
+```bash
+npm run build
+# Vite виводить розміри кожного файла (з gzip) прямо в термінал
+
+ANALYZE=true npm run build   # відкриває інтерактивну карту dist/stats.html
 ```
 
-```jsx
-// Tailwind підхід: utility класи
-<div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
-    <h2 className="text-2xl font-bold mb-4 text-gray-900">
-        Заголовок картки
-    </h2>
-    <p className="text-base leading-relaxed text-gray-600">
-        Це текст всередині картки.
-    </p>
-    <button className="px-6 py-3 bg-blue-500 text-white rounded-md font-semibold hover:bg-blue-600 transition-colors">
-        Натисни мене
-    </button>
-</div>
-```
+У звіті шукайте:
 
-### Переваги utility-first підходу
+- найбільші блоки: зазвичай це графічні бібліотеки, редактори, дата-бібліотеки;
+- **дублікати** — одна бібліотека у двох версіях (частково лікується командою `npm dedupe`);
+- пакунки, які використовуються рідко, але потрапили в основний файл.
 
-**Швидкість розробки:** розробники не витрачають час на придумування назв класів та переключення між HTML і CSS файлами. Всі стилі застосовуються безпосередньо в розмітці.
-
-**Передбачуваність:** кожен utility клас робить рівно одну річ, що робить поведінку стилів абсолютно передбачуваною. Немає каскадних ефектів або несподіваних перевизначень стилів.
-
-**Відсутність мертвого коду:** при видаленні компонента автоматично видаляються всі його стилі. Немає накопичення незатребуваного CSS коду в проєкті.
-
-**Дизайн-система з коробки:** Tailwind надає узгоджену систему значень для кольорів, відступів, шрифтів та інших властивостей, що забезпечує візуальну консистентність всього додатку.
-
-**Мобільна розробка:** responsive модифікатори дозволяють легко створювати адаптивні дизайни без написання медіа-запитів.
-
-```jsx
-// Responsive дизайн з Tailwind
-<div className="
-    w-full           /* На мобільних - 100% ширина */
-    md:w-1/2         /* На планшетах - 50% ширина */
-    lg:w-1/3         /* На десктопах - 33% ширина */
-    p-4              /* Padding 16px на всіх пристроях */
-    md:p-6           /* Padding 24px на планшетах і більше */
-    lg:p-8           /* Padding 32px на десктопах */
-">
-    Адаптивний контент
-</div>
-```
-
-## Базові концепції та система дизайну
-
-### Система spacing
-
-Tailwind використовує передбачувану шкалу відступів, де кожна одиниця відповідає 0.25rem або 4px за замовчуванням.
-
-```jsx
-// Margin та Padding
-<div className="m-4">Margin з усіх сторін (16px)</div>
-<div className="mx-4">Margin horizontal (16px)</div>
-<div className="my-4">Margin vertical (16px)</div>
-<div className="mt-4">Margin top (16px)</div>
-<div className="mr-4">Margin right (16px)</div>
-<div className="mb-4">Margin bottom (16px)</div>
-<div className="ml-4">Margin left (16px)</div>
-
-// Padding працює аналогічно
-<div className="p-6">Padding з усіх сторін (24px)</div>
-<div className="px-6 py-4">Padding horizontal 24px, vertical 16px</div>
-
-// Негативні margins
-<div className="-mt-4">Негативний margin top</div>
-
-// Space between елементами
-<div className="space-y-4">
-    <div>Елемент 1</div>
-    <div>Елемент 2</div>
-    <div>Елемент 3</div>
-</div>
-```
-
-### Система кольорів
-
-Tailwind надає багату палітру кольорів з градаціями від 50 до 900.
-
-```jsx
-// Кольори тексту
-<p className="text-gray-900">Темно-сірий текст</p>
-<p className="text-blue-500">Синій текст</p>
-<p className="text-red-600">Червоний текст</p>
-
-// Кольори фону
-<div className="bg-white">Білий фон</div>
-<div className="bg-gray-100">Світло-сірий фон</div>
-<div className="bg-blue-500">Синій фон</div>
-
-// Кольори рамки
-<div className="border border-gray-300">Сіра рамка</div>
-<div className="border-2 border-blue-500">Товста синя рамка</div>
-
-// Opacity
-<div className="bg-blue-500 bg-opacity-50">Напівпрозорий синій фон</div>
-<p className="text-gray-900 text-opacity-75">Напівпрозорий текст</p>
-```
-
-### Типографіка
-
-```jsx
-// Розміри шрифту
-<h1 className="text-4xl">Великий заголовок (36px)</h1>
-<h2 className="text-3xl">Середній заголовок (30px)</h2>
-<p className="text-base">Звичайний текст (16px)</p>
-<small className="text-sm">Малий текст (14px)</small>
-
-// Вага шрифту
-<p className="font-light">Легкий шрифт (300)</p>
-<p className="font-normal">Звичайний шрифт (400)</p>
-<p className="font-semibold">Напівжирний шрифт (600)</p>
-<p className="font-bold">Жирний шрифт (700)</p>
-
-// Міжрядковий інтервал
-<p className="leading-tight">Щільний інтервал</p>
-<p className="leading-normal">Звичайний інтервал</p>
-<p className="leading-relaxed">Розслаблений інтервал</p>
-
-// Вирівнювання тексту
-<p className="text-left">Вирівнювання ліворуч</p>
-<p className="text-center">По центру</p>
-<p className="text-right">Праворуч</p>
-<p className="text-justify">По ширині</p>
-
-// Декорація тексту
-<p className="underline">Підкреслений текст</p>
-<p className="line-through">Закреслений текст</p>
-<p className="uppercase">Великі літери</p>
-<p className="lowercase">малі літери</p>
-<p className="capitalize">Капіталізація</p>
-```
-
-### Flexbox та Grid
-
-```jsx
-// Flexbox layout
-<div className="flex items-center justify-between">
-    <div>Лівий елемент</div>
-    <div>Правий елемент</div>
-</div>
-
-// Flex направлення
-<div className="flex flex-col">       {/* Вертикальний */}
-<div className="flex flex-row">       {/* Горизонтальний */}
-<div className="flex flex-col-reverse"> {/* Зворотний вертикальний */}
-
-// Justify content
-<div className="flex justify-start">    {/* На початку */}
-<div className="flex justify-center">   {/* По центру */}
-<div className="flex justify-end">      {/* В кінці */}
-<div className="flex justify-between">  {/* З проміжками */}
-<div className="flex justify-around">   {/* Рівномірно */}
-
-// Align items
-<div className="flex items-start">     {/* Вгорі */}
-<div className="flex items-center">    {/* По центру */}
-<div className="flex items-end">       {/* Внизу */}
-<div className="flex items-stretch">   {/* Розтягнуто */}
-
-// Flex grow/shrink
-<div className="flex-1">Розтягується</div>
-<div className="flex-none">Фіксований розмір</div>
-
-// Gap between items
-<div className="flex gap-4">           {/* Проміжок 16px */}
-<div className="flex gap-x-4 gap-y-2"> {/* Різні проміжки */}
-
-// Grid layout
-<div className="grid grid-cols-3 gap-4">
-    <div>Колонка 1</div>
-    <div>Колонка 2</div>
-    <div>Колонка 3</div>
-</div>
-
-// Responsive grid
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-    {/* На мобільних - 1 колонка, планшетах - 2, десктопах - 3 */}
-</div>
-
-// Grid span
-<div className="grid grid-cols-4">
-    <div className="col-span-2">Займає 2 колонки</div>
-    <div>Колонка 3</div>
-    <div>Колонка 4</div>
-</div>
-```
-
-## Responsive дизайн з Tailwind
-
-### Breakpoints система
-
-Tailwind використовує mobile-first підхід до responsive дизайну. Стилі без префіксу застосовуються на всіх пристроях, а з префіксом – починаючи з вказаного breakpoint.
-
-```jsx
-// Breakpoints:
-// sm: 640px
-// md: 768px
-// lg: 1024px
-// xl: 1280px
-// 2xl: 1536px
-
-// Приклад responsive компонента
-<div className="
-    w-full          /* Мобільні: 100% ширина */
-    sm:w-auto       /* ≥640px: автоматична ширина */
-    md:w-1/2        /* ≥768px: 50% ширина */
-    lg:w-1/3        /* ≥1024px: 33% ширина */
-    xl:w-1/4        /* ≥1280px: 25% ширина */
-    
-    p-4             /* Всюди: padding 16px */
-    md:p-6          /* ≥768px: padding 24px */
-    lg:p-8          /* ≥1024px: padding 32px */
-    
-    text-sm         /* Мобільні: малий текст */
-    md:text-base    /* ≥768px: звичайний текст */
-    lg:text-lg      /* ≥1024px: великий текст */
-">
-    Responsive контент
-</div>
-```
-
-### Практичний приклад: адаптивна навігація
-
-```jsx
-function ResponsiveNavigation() {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-    return (
-        <nav className="bg-white shadow-lg">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16">
-                    {/* Logo */}
-                    <div className="flex items-center">
-                        <img
-                            src="/logo.svg"
-                            alt="Logo"
-                            className="h-8 w-auto"
-                        />
-                    </div>
-
-                    {/* Desktop menu */}
-                    <div className="hidden md:flex md:items-center md:space-x-4">
-                        <a href="/" className="px-3 py-2 text-gray-700 hover:text-blue-600">
-                            Головна
-                        </a>
-                        <a href="/about" className="px-3 py-2 text-gray-700 hover:text-blue-600">
-                            Про нас
-                        </a>
-                        <a href="/contact" className="px-3 py-2 text-gray-700 hover:text-blue-600">
-                            Контакти
-                        </a>
-                        <button className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                            Увійти
-                        </button>
-                    </div>
-
-                    {/* Mobile menu button */}
-                    <div className="flex items-center md:hidden">
-                        <button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="p-2 rounded-md text-gray-700 hover:bg-gray-100"
-                        >
-                            <svg
-                                className="h-6 w-6"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                {isMenuOpen ? (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                ) : (
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                )}
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Mobile menu */}
-            {isMenuOpen && (
-                <div className="md:hidden">
-                    <div className="px-2 pt-2 pb-3 space-y-1">
-                        <a href="/" className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
-                            Головна
-                        </a>
-                        <a href="/about" className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
-                            Про нас
-                        </a>
-                        <a href="/contact" className="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
-                            Контакти
-                        </a>
-                        <button className="w-full text-left px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
-                            Увійти
-                        </button>
-                    </div>
-                </div>
-            )}
-        </nav>
-    );
-}
-```
-
-### Адаптивна сітка
-
-```jsx
-function ResponsiveGrid() {
-    const items = Array.from({ length: 12 }, (_, i) => i + 1);
-
-    return (
-        <div className="container mx-auto px-4 py-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {items.map(item => (
-                    <div
-                        key={item}
-                        className="
-                            bg-white rounded-lg shadow-md p-6
-                            hover:shadow-xl transition-shadow
-                            transform hover:-translate-y-1
-                        "
-                    >
-                        <h3 className="text-xl font-bold mb-2">
-                            Картка {item}
-                        </h3>
-                        <p className="text-gray-600">
-                            Опис картки з адаптивним дизайном
-                        </p>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-```
-
-## Кастомізація та extending
-
-### Налаштування конфігурації
+Щоб розмір не «повзав» непомітно, встановлюють **бюджет продуктивності**: максимально допустимий розмір основного пакета, який перевіряється в CI. Проста реалізація без додаткових інструментів:
 
 ```javascript
-// tailwind.config.js
-module.exports = {
-    content: [
-        './src/**/*.{js,jsx,ts,tsx}',
-    ],
-    theme: {
-        extend: {
-            // Додавання кастомних кольорів
-            colors: {
-                primary: {
-                    50: '#f0f9ff',
-                    100: '#e0f2fe',
-                    500: '#0ea5e9',
-                    900: '#0c4a6e',
-                },
-                secondary: {
-                    500: '#8b5cf6',
-                },
-            },
-            // Кастомні spacing значення
-            spacing: {
-                '128': '32rem',
-                '144': '36rem',
-            },
-            // Кастомні шрифти
-            fontFamily: {
-                sans: ['Inter', 'sans-serif'],
-                heading: ['Poppins', 'sans-serif'],
-            },
-            // Кастомні breakpoints
-            screens: {
-                'xs': '475px',
-                '3xl': '1920px',
-            },
-            // Кастомні box shadows
-            boxShadow: {
-                'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            },
-            // Кастомні border radius
-            borderRadius: {
-                '4xl': '2rem',
-            },
-            // Animations
-            animation: {
-                'fade-in': 'fadeIn 0.5s ease-in-out',
-                'slide-up': 'slideUp 0.3s ease-out',
-            },
-            keyframes: {
-                fadeIn: {
-                    '0%': { opacity: '0' },
-                    '100%': { opacity: '1' },
-                },
-                slideUp: {
-                    '0%': { transform: 'translateY(20px)', opacity: '0' },
-                    '100%': { transform: 'translateY(0)', opacity: '1' },
+// scripts/check-bundle-size.mjs
+import { readdirSync, statSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const LIMIT_KB = 200; // бюджет для кожного JS-файла основного пакета, gzip
+const dir = "dist/assets";
+let failed = false;
+
+for (const file of readdirSync(dir).filter((f) => f.endsWith(".js"))) {
+    const size = gzipSync(readFileSync(join(dir, file))).length / 1024;
+    console.log(`${file}: ${size.toFixed(1)} КБ (gzip)`);
+    if (size > LIMIT_KB) {
+        console.error(`❌ ${file} перевищує бюджет ${LIMIT_KB} КБ`);
+        failed = true;
+    }
+}
+
+process.exit(failed ? 1 : 0);
+```
+
+Додавши `node scripts/check-bundle-size.mjs` у CI після збирання, ви отримаєте автоматичне попередження, коли чийсь пул-реквест «роздув» збірку.
+
+### Tree shaking: видалення невикористаного коду
+
+**Tree shaking** («струшування дерева») — видалення збирачем експортів, які ніде не використовуються. Він працює лише з **ES-модулями** (статичні `import`/`export`), бо їх можна проаналізувати без виконання коду. Пакети в старому форматі CommonJS (`require`) струсити не вдається.
+
+```javascript
+// utils.js
+export function used() { /* ... */ }
+export function unused() { /* ... */ }   // не потрапить у збірку
+
+// app.js
+import { used } from "./utils.js";
+```
+
+Щоб tree shaking працював ефективно:
+
+- імпортуйте **конкретні** функції, а не весь пакет: `import { debounce } from "lodash-es"` (а не `import _ from "lodash"`);
+- віддавайте перевагу бібліотекам, що постачаються у вигляді ES-модулів (у `package.json` є поле `"module"` або `"exports"`);
+- для власних бібліотек вказуйте у `package.json` поле `"sideEffects": false`, якщо модулі не мають побічних ефектів при імпорті — тоді збирач сміливо видалятиме все невикористане;
+- уникайте «бочкових» файлів (`index.ts`, що реекспортує сотні модулів), якщо збирач не вміє їх ефективно обробляти.
+
+### Динамічні імпорти
+
+Статичний `import` завжди потрапляє в основний пакет. **Динамічний імпорт** `import("./module")` повертає проміс і змушує збирач виділити модуль в **окремий файл (chunk)**, який завантажується лише тоді, коли виконається цей рядок.
+
+```typescript
+// Важкий модуль завантажується тільки за потреби
+async function exportToPdf(data: ReportData) {
+    const { generatePdf } = await import("./pdf-generator");
+    return generatePdf(data);
+}
+
+button.addEventListener("click", () => exportToPdf(report));
+```
+
+Це базовий механізм, на якому побудовано розділення коду для маршрутів і компонентів (наступний розділ).
+
+### Оптимізація залежностей
+
+Кожна залежність — це код, який ви не контролюєте, і додаткова поверхня атаки (лекція 16). Перш ніж додавати пакунок, поставте собі три запитання: чи справді він потрібен, чи не вирішує задачу сучасний вбудований API, чи не існує легшої альтернативи?
+
+| Було | Стало | Чому |
+|------|-------|------|
+| `moment` (понад 60 КБ) | `date-fns`, `dayjs` або `Intl.DateTimeFormat` / Temporal | Менший розмір, tree shaking |
+| `lodash` | `lodash-es` або власні однорядкові функції / `structuredClone`, `Object.groupBy` | Підтримка tree shaking, вбудовані аналоги |
+| `axios` | вбудований `fetch` | Не потрібен у багатьох випадках |
+| `uuid` | `crypto.randomUUID()` | Вбудовано в браузери та Node.js |
+| Іконки цілим пакетом | Імпорт окремих іконок | Лише використане потрапляє в збірку |
+
+Для оцінювання розміру до встановлення зручний сервіс bundlephobia.com, а для виявлення невикористаних залежностей — інструмент `knip`.
+
+### Стратегії розбиття на частини (chunks) у Vite 8
+
+Збирач автоматично розбиває код за динамічними імпортами, але ви можете керувати цим вручну: виокремити стабільні сторонні бібліотеки (React, маршрутизатор) в окремий файл. Мета — **довготривале кешування**: код вашого застосунку змінюється при кожному розгортанні, а React — раз на кілька місяців, тож браузер не має щоразу завантажувати його знову.
+
+У Vite 8 виробничу збірку виконує Rolldown, і колишній параметр `build.rollupOptions.output.manualChunks` у формі об'єкта більше не підтримується. Натомість використовується налаштування груп розбиття:
+
+```typescript
+// vite.config.ts (Vite 8)
+import { defineConfig } from "vite";
+
+export default defineConfig({
+    build: {
+        rolldownOptions: {
+            output: {
+                codeSplitting: {
+                    groups: [
+                        {
+                            name: "react-vendor",
+                            test: /node_modules[\\/](react|react-dom|react-router)[\\/]/,
+                            priority: 20,
+                        },
+                        {
+                            name: "vendor",
+                            test: /node_modules/,
+                            priority: 10,
+                        },
+                    ],
                 },
             },
         },
     },
-    plugins: [],
-};
+});
 ```
 
-### Використання кастомних значень
+> **Зверніть увагу.** Параметри Rolldown розвиваються швидко. Перед використанням звіряйтеся з поточною документацією Vite та Rolldown (розділ про розбиття коду), а після зміни завжди перевіряйте результат візуалізатором: неправильна група може створити великий «vendor»-файл, який завантажується повністю при першому ж візиті, що гірше, ніж автоматичне розбиття.
 
-```jsx
-// Використання кастомізованих значень
-function CustomStyledComponent() {
+Загальна порада: не розбивайте занадто дрібно. Десятки маленьких файлів збільшують накладні витрати на запити, хоча HTTP/2 і HTTP/3 роблять це дешевшим, ніж раніше.
+
+## Розділення коду та відкладене завантаження
+
+### Розділення за маршрутами
+
+Найефективніше й найпростіше розділення — **за сторінками**. Користувачеві, який відкрив головну, не потрібен код панелі адміністратора. React надає для цього `lazy` та `Suspense`.
+
+Принципово важливе правило: функцію `lazy` викликають **на верхньому рівні модуля**, а не всередині компонента. Якщо створити `lazy(...)` у тілі компонента, при кожному відтворенні утворюється новий компонент, а React скидає його стан і завантажує код наново.
+
+```tsx
+// src/routes.tsx
+import { lazy, Suspense } from "react";
+import { createBrowserRouter, RouterProvider } from "react-router";
+
+// ✅ На верхньому рівні модуля
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Profile = lazy(() => import("./pages/Profile"));
+
+function PageLoader() {
+    return <div role="status" aria-live="polite">Завантаження…</div>;
+}
+
+const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <Layout />,
+        children: [
+            { index: true, element: <Home /> }, // головна — у основному пакеті
+            {
+                path: "dashboard",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <Dashboard />
+                    </Suspense>
+                ),
+            },
+            {
+                path: "settings",
+                element: (
+                    <Suspense fallback={<PageLoader />}>
+                        <Settings />
+                    </Suspense>
+                ),
+            },
+        ],
+    },
+]);
+
+export function App() {
+    return <RouterProvider router={router} />;
+}
+```
+
+У React Router 7 (лекція 09) існує ще зручніший спосіб — властивість `lazy` самого маршруту, яка завантажує компонент разом з завантажувачем даних і діями:
+
+```tsx
+const router = createBrowserRouter([
+    {
+        path: "/dashboard",
+        lazy: async () => {
+            const { Dashboard, loader } = await import("./pages/Dashboard");
+            return { Component: Dashboard, loader };
+        },
+    },
+]);
+```
+
+Коли ви використовуєте фреймворк (Next.js, React Router у режимі фреймворка), розділення за маршрутами виконується **автоматично**: кожна сторінка — окремий файл.
+
+### Розділення за компонентами
+
+Інколи варто відкладати не цілу сторінку, а окремий важкий компонент: графік, текстовий редактор, карту, модальне вікно, яке відкривається рідко.
+
+```tsx
+import { lazy, Suspense, useState } from "react";
+
+const HeavyChart = lazy(() => import("./HeavyChart"));
+
+export function Analytics() {
+    const [showChart, setShowChart] = useState(false);
+
     return (
-        <div className="max-w-7xl mx-auto px-4 py-128">
-            <div className="
-                bg-primary-50 
-                text-primary-900
-                font-heading
-                shadow-card hover:shadow-card-hover
-                rounded-4xl
-                p-6
-                animate-fade-in
-            ">
-                <h1 className="text-3xl xs:text-4xl lg:text-5xl 3xl:text-6xl">
-                    Кастомізований компонент
-                </h1>
-                <p className="text-secondary-500 mt-4">
-                    Використання власних значень з конфігурації
-                </p>
-            </div>
-        </div>
+        <section>
+            <button onClick={() => setShowChart(true)}>Показати графік</button>
+            {showChart && (
+                <Suspense fallback={<div className="chart-skeleton" style={{ height: 320 }} />}>
+                    <HeavyChart />
+                </Suspense>
+            )}
+        </section>
     );
 }
 ```
 
-### Створення власних utility класів
+Зверніть увагу, що заглушка `fallback` має **зарезервувати місце** (висоту), інакше після появи графіка сторінка «стрибне», і погіршиться показник CLS. Хороша ознака кандидата на розділення: компонент великий (десятки кілобайтів бібліотеки), не потрібен при першому відтворенні й користувач може його взагалі не відкрити.
 
-```css
-/* src/index.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+### Попереднє завантаження та випереджальне отримання
 
-@layer utilities {
-    .text-shadow {
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    .gradient-text {
-        background: linear-gradient(to right, #3b82f6, #8b5cf6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-    
-    .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-    }
-}
+Відкладене завантаження створює затримку: користувач клікнув, а код ще треба завантажити. Її можна приховати, **заздалегідь підвантажуючи** код тоді, коли існує висока ймовірність, що він знадобиться.
 
-@layer components {
-    .btn-primary {
-        @apply px-6 py-3 bg-blue-500 text-white rounded-md font-semibold;
-        @apply hover:bg-blue-600 active:bg-blue-700;
-        @apply transition-colors duration-200;
-        @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
-    }
-    
-    .card {
-        @apply bg-white rounded-lg shadow-md p-6;
-        @apply hover:shadow-xl transition-shadow duration-300;
-    }
-    
-    .input-field {
-        @apply w-full px-4 py-2 border border-gray-300 rounded-md;
-        @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
-        @apply placeholder-gray-400;
-    }
-}
-```
+```tsx
+const loadDashboard = () => import("./pages/Dashboard");
+const Dashboard = lazy(loadDashboard);
 
-## Компонентний підхід з Tailwind
-
-### Створення багаторазових компонентів
-
-```jsx
-// Button компонент з варіантами
-function Button({ 
-    children, 
-    variant = 'primary', 
-    size = 'md',
-    fullWidth = false,
-    disabled = false,
-    onClick 
-}) {
-    const baseStyles = 'font-semibold rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
-    
-    const variants = {
-        primary: 'bg-blue-500 text-white hover:bg-blue-600 focus:ring-blue-500',
-        secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
-        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500',
-        success: 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-500',
-        outline: 'border-2 border-blue-500 text-blue-500 hover:bg-blue-50 focus:ring-blue-500',
-    };
-    
-    const sizes = {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-6 py-3 text-base',
-        lg: 'px-8 py-4 text-lg',
-    };
-    
-    const className = `
-        ${baseStyles}
-        ${variants[variant]}
-        ${sizes[size]}
-        ${fullWidth ? 'w-full' : ''}
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-    `.trim();
-    
+function NavLinkWithPreload() {
     return (
-        <button
-            className={className}
-            disabled={disabled}
-            onClick={onClick}
+        <Link
+            to="/dashboard"
+            onMouseEnter={loadDashboard}   // курсор наведено — починаємо завантаження
+            onFocus={loadDashboard}        // те саме для навігації клавіатурою
         >
-            {children}
-        </button>
-    );
-}
-
-// Використання
-function Example() {
-    return (
-        <div className="space-y-4">
-            <Button variant="primary" size="md">
-                Первинна кнопка
-            </Button>
-            <Button variant="secondary" size="lg">
-                Вторинна кнопка
-            </Button>
-            <Button variant="danger" fullWidth>
-                Кнопка на всю ширину
-            </Button>
-            <Button variant="outline" disabled>
-                Вимкнена кнопка
-            </Button>
-        </div>
+            Панель
+        </Link>
     );
 }
 ```
 
-### Card компонент
+Браузер має для цього власні підказки у розмітці:
 
-```jsx
-function Card({ 
-    title, 
-    description, 
-    image,
-    footer,
-    hoverable = true,
-    className = '' 
-}) {
+```html
+<!-- Завантажити ресурс якнайшвидше (потрібен на цій сторінці) -->
+<link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin />
+
+<!-- Завантажити модуль і підготувати його (потрібен на цій сторінці) -->
+<link rel="modulepreload" href="/assets/vendor.js" />
+
+<!-- Завантажити ресурс у вільний час (знадобиться на наступній сторінці) -->
+<link rel="prefetch" href="/assets/dashboard.js" />
+
+<!-- Встановити з'єднання із зовнішнім сервером заздалегідь -->
+<link rel="preconnect" href="https://api.example.com" />
+```
+
+Vite автоматично додає `modulepreload` для залежностей початкового пакета.
+
+#### Speculation Rules API: перегляд сторінок наперед
+
+Сучасне доповнення до `prefetch` — **Speculation Rules API** у браузерах на основі Chromium. Воно дозволяє декларативно сказати браузеру, які сторінки варто завантажити (prefetch) або навіть повністю підготувати у фоні (prerender), щоб перехід здавався миттєвим. Особливо корисне для багатосторінкових сайтів і сторінок із серверним відтворенням.
+
+```html
+<script type="speculationrules">
+{
+  "prerender": [
+    { "where": { "href_matches": "/products/*" }, "eagerness": "moderate" }
+  ],
+  "prefetch": [
+    { "urls": ["/cart", "/checkout"] }
+  ]
+}
+</script>
+```
+
+Параметр `eagerness: "moderate"` означає, що попереднє відтворення стартує, коли користувач наводить курсор на посилання. Підтримка залежить від браузера, але це покращення «поступове»: у браузерах без підтримки правила просто ігноруються. Використовуйте обережно, бо кожен передпрогрів витрачає трафік і ресурси сервера.
+
+### Обробка помилок відкладеного завантаження
+
+Завантаження окремого файла — це мережевий запит, який може не вдатися (нестабільний інтернет), а ще гірше — після нового розгортання старі файли з хешами в іменах зникають із сервера, і вкладка, відкрита до оновлення, не знайде потрібного chunk. Тому відкладене завантаження потрібно поєднувати з межею помилок (лекція 14):
+
+```tsx
+import { ErrorBoundary } from "react-error-boundary";
+
+function LazyErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
     return (
-        <div className={`
-            bg-white rounded-lg shadow-md overflow-hidden
-            ${hoverable ? 'hover:shadow-xl transition-shadow duration-300' : ''}
-            ${className}
-        `}>
-            {image && (
-                <div className="h-48 overflow-hidden">
-                    <img
-                        src={image}
-                        alt={title}
-                        className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-300"
-                    />
-                </div>
-            )}
-            
-            <div className="p-6">
-                {title && (
-                    <h3 className="text-xl font-bold mb-2 text-gray-900">
-                        {title}
-                    </h3>
-                )}
-                
-                {description && (
-                    <p className="text-gray-600 leading-relaxed">
-                        {description}
-                    </p>
-                )}
-            </div>
-            
-            {footer && (
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    {footer}
-                </div>
-            )}
+        <div role="alert">
+            <p>Не вдалося завантажити сторінку. Перевірте з'єднання.</p>
+            <button onClick={resetErrorBoundary}>Спробувати знову</button>
+            <button onClick={() => window.location.reload()}>Оновити сторінку</button>
         </div>
     );
 }
 
-// Використання
-function CardExample() {
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card
-                title="Заголовок картки"
-                description="Опис картки з важливою інформацією для користувача"
-                image="/card-image.jpg"
-                footer={
-                    <Button variant="primary" fullWidth>
-                        Дізнатися більше
-                    </Button>
-                }
-            />
-        </div>
-    );
+<ErrorBoundary FallbackComponent={LazyErrorFallback}>
+    <Suspense fallback={<PageLoader />}>
+        <Dashboard />
+    </Suspense>
+</ErrorBoundary>
+```
+
+Для автоматичних повторних спроб імпорт обгортають функцією з повторами. Ключовий момент: повторювати треба **сам виклик `import()`** (а не лише `lazy`), і робити це з затримкою:
+
+```typescript
+// src/lib/retry-import.ts
+export async function retryImport<T>(
+    importer: () => Promise<T>,
+    retries = 3,
+    delayMs = 500,
+): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await importer();
+        } catch (error) {
+            lastError = error;
+            await new Promise((resolve) => setTimeout(resolve, delayMs * 2 ** attempt));
+        }
+    }
+    throw lastError;
 }
+
+const Dashboard = lazy(() => retryImport(() => import("./pages/Dashboard")));
 ```
 
-### Input компонент з валідацією
+Окремий сценарій — **нове розгортання, поки вкладка відкрита**. Vite генерує подію `vite:preloadError`, коли не вдається завантажити динамічний модуль; типова реакція — перезавантажити сторінку, щоб отримати свіжий `index.html`:
 
-```jsx
-function Input({
-    label,
-    type = 'text',
-    placeholder,
-    value,
-    onChange,
-    error,
-    helperText,
-    required = false,
-    disabled = false,
-    icon,
-    ...props
-}) {
-    return (
-        <div className="w-full">
-            {label && (
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {label}
-                    {required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-            )}
-            
-            <div className="relative">
-                {icon && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        {icon}
-                    </div>
-                )}
-                
-                <input
-                    type={type}
-                    value={value}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    className={`
-                        w-full px-4 py-2 rounded-md
-                        ${icon ? 'pl-10' : ''}
-                        ${error
-                            ? 'border-2 border-red-500 focus:ring-red-500'
-                            : 'border border-gray-300 focus:ring-blue-500'
-                        }
-                        focus:outline-none focus:ring-2 focus:border-transparent
-                        disabled:bg-gray-100 disabled:cursor-not-allowed
-                        placeholder-gray-400
-                        transition-colors duration-200
-                    `}
-                    {...props}
-                />
-            </div>
-            
-            {error && (
-                <p className="mt-1 text-sm text-red-600 flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    {error}
-                </p>
-            )}
-            
-            {helperText && !error && (
-                <p className="mt-1 text-sm text-gray-500">
-                    {helperText}
-                </p>
-            )}
-        </div>
-    );
-}
+```typescript
+window.addEventListener("vite:preloadError", () => {
+    window.location.reload();
+});
 ```
 
-## Dark/Light теми
+## Стратегії кешування
 
-### Налаштування темної теми
+Найшвидший запит — той, що взагалі не виконується. Кешування працює на кількох рівнях: браузер, мережа доставки (CDN), сервер, застосунок. Розглянемо їх від найближчого до користувача.
 
-```javascript
-// tailwind.config.js
-module.exports = {
-    darkMode: 'class', // або 'media' для автоматичної теми
-    // ... інша конфігурація
-};
+```mermaid
+graph LR
+    U[Користувач] --> B[Кеш браузера<br/>HTTP-кеш, Service Worker]
+    B --> C[CDN<br/>edge-кеш]
+    C --> S[Сервер<br/>кеш застосунку: Redis]
+    S --> D[(База даних)]
 ```
 
-### Реалізація перемикання теми
+### Кешування в браузері: заголовки HTTP
 
-```jsx
-import { createContext, useContext, useState, useEffect } from 'react';
+Поведінкою кешу керує заголовок `Cache-Control`. Золоте правило для застосунків, зібраних сучасним збирачем: **файли з хешем в імені кешуються «назавжди», а HTML — ні**.
 
-const ThemeContext = createContext();
+Збирач додає до імені файла хеш його вмісту (`index-3f9a2c.js`). Змінився код — змінився хеш — змінилося ім'я — браузер завантажує новий файл. Тому старий файл можна безпечно кешувати на рік. А от `index.html` посилається на ці файли за іменами, тож він повинен завжди перевірятися на сервері, щоб користувачі дізнавалися про нові версії.
 
-export function ThemeProvider({ children }) {
-    const [theme, setTheme] = useState(() => {
-        return localStorage.getItem('theme') || 'light';
+| Ресурс | Заголовок | Пояснення |
+|--------|-----------|-----------|
+| `/assets/*.js`, `*.css` (з хешем) | `public, max-age=31536000, immutable` | Не змінюється, кешуємо рік |
+| `index.html` | `no-cache` | Кешувати можна, але **щоразу перевіряти** актуальність (ETag) |
+| Зображення, шрифти з хешем | `public, max-age=31536000, immutable` | Те саме |
+| API-відповіді з персональними даними | `private, no-store` | Не зберігати в спільних кешах |
+| Публічні дані API | `public, max-age=60, stale-while-revalidate=300` | Коротко кешувати, оновлювати у фоні |
+
+Типова помилка — відправляти HTML із `no-store`: він означає «не зберігай взагалі», тож перевірка за ETag не працює, і кожне відвідування завантажує сторінку повністю. Правильне значення — `no-cache` (зберігай, але перевіряй).
+
+Налаштування в Express:
+
+```typescript
+import express from "express";
+
+const app = express();
+
+app.use(
+    express.static("dist", {
+        etag: true,
+        setHeaders(res, filePath) {
+            if (filePath.endsWith(".html")) {
+                res.setHeader("Cache-Control", "no-cache");
+            } else if (/[\\/]assets[\\/]/.test(filePath)) {
+                res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            }
+        },
+    }),
+);
+```
+
+На практиці статичні файли віддає не Express, а CDN або статичний хостинг, і заголовки налаштовуються там (файл `_headers`, конфігурація хостингу), але логіка залишається тією самою.
+
+Директива `stale-while-revalidate` особливо корисна: браузер негайно віддає застарілу копію, а в цей час тихо завантажує свіжу — користувач бачить швидку відповідь, а наступного разу отримає оновлену.
+
+### Service Worker та кешування для офлайн-режиму
+
+**Service Worker** — це скрипт, що працює в окремому потоці між застосунком і мережею і може перехоплювати запити. Він дозволяє реалізувати довільні стратегії кешування та роботу без з'єднання. Основні стратегії:
+
+| Стратегія | Як працює | Для чого |
+|-----------|-----------|----------|
+| **Cache First** | Спочатку кеш, мережа — якщо немає в кеші | Статичні ресурси з хешами, шрифти |
+| **Network First** | Спочатку мережа, кеш — при помилці | Дані, що часто змінюються (стрічка новин) |
+| **Stale While Revalidate** | Віддати з кешу негайно й оновити у фоні | Аватари, некритичні дані |
+| **Network Only / Cache Only** | Лише мережа / лише кеш | Платежі / повністю офлайн-ресурси |
+
+Писати Service Worker вручну — складно й легко припуститися помилок з оновленням кешу. Стандартний підхід — бібліотека **Workbox**, яку для Vite підключає плагін `vite-plugin-pwa`. Практичну конфігурацію ми розглянемо в розділі про PWA нижче.
+
+### Кеш даних у застосунку: TanStack Query
+
+Ще один рівень кешу — пам'ять самого застосунку. Бібліотека **TanStack Query** (раніше React Query), яку ви застосовуєте в лабораторних роботах, керує кешем серверних даних: дедуплікує однакові запити, кешує результати, оновлює застарілі дані у фоні.
+
+```tsx
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+function UserProfile({ userId }: { userId: number }) {
+    const { data, isPending, error } = useQuery({
+        queryKey: ["user", userId],
+        queryFn: () => api.getUser(userId),
+        staleTime: 5 * 60 * 1000,   // 5 хв дані вважаються свіжими: повторних запитів немає
+        gcTime: 30 * 60 * 1000,     // 30 хв невикористані дані лишаються в кеші
     });
 
-    useEffect(() => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-        localStorage.setItem('theme', theme);
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme(prev => prev === 'light' ? 'dark' : 'light');
-    };
-
-    return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            {children}
-        </ThemeContext.Provider>
-    );
+    if (isPending) return <Skeleton />;
+    if (error) return <ErrorMessage error={error} />;
+    return <Profile user={data} />;
 }
 
-export function useTheme() {
-    return useContext(ThemeContext);
-}
-
-// Компонент перемикача теми
-function ThemeToggle() {
-    const { theme, toggleTheme } = useTheme();
-
+// Попереднє завантаження при наведенні
+function UserLink({ userId }: { userId: number }) {
+    const queryClient = useQueryClient();
     return (
-        <button
-            onClick={toggleTheme}
-            className="
-                p-2 rounded-lg
-                bg-gray-200 dark:bg-gray-700
-                text-gray-800 dark:text-gray-200
-                hover:bg-gray-300 dark:hover:bg-gray-600
-                transition-colors duration-200
-            "
+        <a
+            href={`/users/${userId}`}
+            onMouseEnter={() =>
+                queryClient.prefetchQuery({
+                    queryKey: ["user", userId],
+                    queryFn: () => api.getUser(userId),
+                })
+            }
         >
-            {theme === 'light' ? '🌙' : '☀️'}
-        </button>
+            Профіль
+        </a>
     );
 }
 ```
 
-### Стилізація з підтримкою теми
+Зверніть увагу на назви в п'ятій версії бібліотеки: час життя невикористаних даних називається `gcTime` (раніше `cacheTime`), а стан першого завантаження — `isPending` (раніше `isLoading`). Такі «перейменування» — типова причина, чому код зі старих статей не працює.
 
-```jsx
-function ThemedCard() {
-    return (
-        <div className="
-            bg-white dark:bg-gray-800
-            text-gray-900 dark:text-gray-100
-            border border-gray-200 dark:border-gray-700
-            rounded-lg shadow-md
-            p-6
-            transition-colors duration-200
-        ">
-            <h2 className="
-                text-2xl font-bold mb-4
-                text-gray-900 dark:text-white
-            ">
-                Картка з підтримкою теми
-            </h2>
-            
-            <p className="
-                text-gray-600 dark:text-gray-300
-                leading-relaxed
-            ">
-                Цей текст автоматично адаптується до обраної теми
-            </p>
-            
-            <button className="
-                mt-4 px-6 py-2
-                bg-blue-500 dark:bg-blue-600
-                hover:bg-blue-600 dark:hover:bg-blue-700
-                text-white
-                rounded-md
-                transition-colors duration-200
-            ">
-                Кнопка
-            </button>
-        </div>
-    );
+### Мемоізація обчислень у React
+
+Окрема тема — уникнення зайвих обчислень і повторних відтворень компонентів. Раніше розробники вручну обгортали значення й функції в `useMemo`, `useCallback` та компоненти в `React.memo`. Сьогодні основну роботу виконує **React Compiler 1.0** — інструмент збирання, який автоматично мемоізує компоненти та хуки. У нових проєктах Vite і Next.js його можна ввімкнути плагіном Babel (в Next.js 16 — параметр конфігурації).
+
+```typescript
+// vite.config.ts
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+    plugins: [
+        react({
+            babel: { plugins: [["babel-plugin-react-compiler", {}]] },
+        }),
+    ],
+});
+```
+
+Висновок для практики: **пишіть компоненти просто й ідіоматично, а не мемоізуйте «про всяк випадок»**. Ручні `useMemo`/`useCallback` залишаються для виняткових випадків (наприклад, дорогі обчислення, стабільне посилання для залежностей зовнішньої бібліотеки), і профілювання має підтвердити, що вони потрібні.
+
+### Сховища браузера: localStorage та IndexedDB
+
+Для даних, які мають пережити перезавантаження сторінки, застосунок використовує сховища браузера.
+
+| Сховище | Обсяг | Операції | Для чого |
+|---------|-------|----------|----------|
+| `localStorage` | ~5 МБ | Синхронні (блокують головний потік) | Прості налаштування: тема, мова |
+| `sessionStorage` | ~5 МБ | Синхронні | Дані однієї вкладки |
+| **IndexedDB** | Сотні МБ і більше | Асинхронні | Великі структуровані дані, офлайн-кеші, файли |
+| Cache API | Залежить від браузера | Асинхронні | Відповіді HTTP (використовує Service Worker) |
+
+Правила безпечного користування: `localStorage` **не зберігає секретів** (токени автентифікації, персональні дані), оскільки його вміст доступний будь-якому скрипту сторінки, зокрема тому, що потрапив туди через XSS (лекція 16); значення зберігають лише як рядки, тому об'єкти серіалізують у JSON і перевіряють при читанні; доступ до сховища обгортають у `try/catch`, бо в приватному режимі або при заповненні квоти воно кидає виняток. Для IndexedDB зручна невелика бібліотека `idb`, що обгортає її громіздкий API промісами.
+
+```typescript
+function readStorage<T>(key: string, fallback: T): T {
+    try {
+        const raw = localStorage.getItem(key);
+        return raw === null ? fallback : (JSON.parse(raw) as T);
+    } catch {
+        return fallback; // сховище недоступне або дані пошкоджено
+    }
+}
+
+function writeStorage(key: string, value: unknown): void {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // квота вичерпана або приватний режим — не ламаємо застосунок
+    }
 }
 ```
 
-## Headless UI компоненти
+## Оптимізація відтворення та взаємодії
 
-### Інтеграція Headless UI
+Зменшення розміру коду покращує завантаження. Але користувач оцінює й **чутливість** застосунку під час роботи. Саме її вимірює INP, тому розглянемо найчастіші причини поганих показників і способи їх усунення.
 
-Headless UI надає повністю доступні, несстилізовані компоненти UI, які ідеально поєднуються з Tailwind CSS.
+### Довгі завдання та головний потік
 
-```bash
-npm install @headlessui/react
+JavaScript виконується в одному потоці, який також відповідає за обробку подій і малювання. Якщо якесь завдання триває понад 50 мс (так зване **довге завдання**, long task), браузер не може реагувати на кліки й оновлювати екран — користувач відчуває «зависання». Ліки — не блокувати головний потік.
+
+**Розбиття роботи на частини.** Довгу операцію розбивають на кроки й між ними «повертають керування» браузеру. Для цього сучасні браузери мають `scheduler.yield()`:
+
+```typescript
+async function processLargeList(items: Item[]) {
+    for (let i = 0; i < items.length; i++) {
+        processItem(items[i]!);
+
+        // Кожні 50 елементів віддаємо керування, щоб браузер обробив події та оновив екран
+        if (i % 50 === 0) {
+            if ("scheduler" in globalThis && "yield" in scheduler) {
+                await scheduler.yield();
+            } else {
+                await new Promise((resolve) => setTimeout(resolve, 0)); // запасний варіант
+            }
+        }
+    }
+}
 ```
 
-### Dialog компонент
+**Пріоритети оновлень у React.** Хуки `useTransition` та `useDeferredValue` позначають оновлення як неважливі, і React може перервати їх, якщо надійде термінова подія (наприклад, введення тексту):
 
-```jsx
-import { Dialog, Transition } from '@headlessui/react';
-import { Fragment, useState } from 'react';
+```tsx
+import { useDeferredValue, useState } from "react";
 
-function Modal() {
-    const [isOpen, setIsOpen] = useState(false);
+function Search({ items }: { items: Item[] }) {
+    const [query, setQuery] = useState("");
+    // Поле вводу реагує миттєво, а важкий фільтр відстає й може перериватися
+    const deferredQuery = useDeferredValue(query);
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(true)}
-                className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-                Відкрити модальне вікно
-            </button>
-
-            <Transition appear show={isOpen} as={Fragment}>
-                <Dialog
-                    as="div"
-                    className="relative z-10"
-                    onClose={() => setIsOpen(false)}
-                >
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                    >
-                        <div className="fixed inset-0 bg-black bg-opacity-25" />
-                    </Transition.Child>
-
-                    <div className="fixed inset-0 overflow-y-auto">
-                        <div className="flex min-h-full items-center justify-center p-4">
-                            <Transition.Child
-                                as={Fragment}
-                                enter="ease-out duration-300"
-                                enterFrom="opacity-0 scale-95"
-                                enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
-                                leaveFrom="opacity-100 scale-100"
-                                leaveTo="opacity-0 scale-95"
-                            >
-                                <Dialog.Panel className="
-                                    w-full max-w-md transform overflow-hidden
-                                    rounded-2xl bg-white p-6 shadow-xl
-                                    transition-all
-                                ">
-                                    <Dialog.Title className="text-lg font-medium leading-6 text-gray-900">
-                                        Заголовок модального вікна
-                                    </Dialog.Title>
-                                    
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-500">
-                                            Контент модального вікна з важливою інформацією
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-4 flex gap-2">
-                                        <button
-                                            type="button"
-                                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                                            onClick={() => setIsOpen(false)}
-                                        >
-                                            Підтвердити
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="px-4 py-2 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300"
-                                            onClick={() => setIsOpen(false)}
-                                        >
-                                            Скасувати
-                                        </button>
-                                    </div>
-                                </Dialog.Panel>
-                            </Transition.Child>
-                        </div>
-                    </div>
-                </Dialog>
-            </Transition>
+            <input value={query} onChange={(e) => setQuery(e.target.value)} />
+            <ResultsList items={items} query={deferredQuery} />
         </>
     );
 }
 ```
 
-### Dropdown Menu
+**Web Workers.** Справді важкі обчислення (обробка зображень, розбір великих файлів, криптографія) виносять в окремий потік — Web Worker, де вони не блокують інтерфейс. Для зручного обміну повідомленнями є бібліотека Comlink.
 
-```jsx
-import { Menu, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
+### Віртуалізація довгих списків
 
-function Dropdown() {
+Відтворення списку з десяти тисяч рядків створює десять тисяч DOM-елементів, що повільно саме по собі і робить прокручування «важким». **Віртуалізація** відтворює лише рядки, які видно у вікні перегляду (плюс невеликий запас), а решту підміняє порожнім простором. У бібліотеці `react-window` версії 2 інтерфейс такий:
+
+```tsx
+import { List, type RowComponentProps } from "react-window";
+
+type RowProps = { items: Product[] };
+
+function Row({ index, items, style }: RowComponentProps<RowProps>) {
+    const product = items[index]!;
     return (
-        <Menu as="div" className="relative inline-block text-left">
-            <Menu.Button className="
-                inline-flex justify-center items-center
-                px-4 py-2 bg-white border border-gray-300
-                rounded-md shadow-sm
-                hover:bg-gray-50
-                focus:outline-none focus:ring-2 focus:ring-blue-500
-            ">
-                Опції
-                <svg className="w-5 h-5 ml-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-            </Menu.Button>
+        <div style={style} className="row">
+            {product.name} — {product.price} грн
+        </div>
+    );
+}
 
-            <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
-            >
-                <Menu.Items className="
-                    absolute right-0 mt-2 w-56
-                    origin-top-right bg-white
-                    divide-y divide-gray-100
-                    rounded-md shadow-lg ring-1 ring-black ring-opacity-5
-                    focus:outline-none
-                ">
-                    <div className="px-1 py-1">
-                        <Menu.Item>
-                            {({ active }) => (
-                                <button className={`
-                                    ${active ? 'bg-blue-500 text-white' : 'text-gray-900'}
-                                    group flex rounded-md items-center w-full px-2 py-2 text-sm
-                                `}>
-                                    Редагувати
-                                </button>
-                            )}
-                        </Menu.Item>
-                        <Menu.Item>
-                            {({ active }) => (
-                                <button className={`
-                                    ${active ? 'bg-blue-500 text-white' : 'text-gray-900'}
-                                    group flex rounded-md items-center w-full px-2 py-2 text-sm
-                                `}>
-                                    Дублювати
-                                </button>
-                            )}
-                        </Menu.Item>
-                    </div>
-                    <div className="px-1 py-1">
-                        <Menu.Item>
-                            {({ active }) => (
-                                <button className={`
-                                    ${active ? 'bg-red-500 text-white' : 'text-gray-900'}
-                                    group flex rounded-md items-center w-full px-2 py-2 text-sm
-                                `}>
-                                    Видалити
-                                </button>
-                            )}
-                        </Menu.Item>
-                    </div>
-                </Menu.Items>
-            </Transition>
-        </Menu>
+export function ProductList({ products }: { products: Product[] }) {
+    return (
+        <List
+            rowComponent={Row}
+            rowCount={products.length}
+            rowHeight={48}
+            rowProps={{ items: products }}
+            style={{ height: 480 }}
+        />
     );
 }
 ```
 
+(Версія 1 мала компонент `FixedSizeList` та інший спосіб передавання даних — у старих прикладах ви його побачите.) Для рядків змінної висоти та складніших сценаріїв (сітки, «нескінченна» прокрутка) застосовують `@tanstack/react-virtual`. Альтернатива віртуалізації для невеликих списків — CSS-властивість `content-visibility: auto`, яка змушує браузер пропускати відтворення елементів поза екраном.
+
+### Зображення та шрифти
+
+Зображення зазвичай становлять більшу частину ваги сторінки, а LCP-елементом часто є саме картинка, тому оптимізація зображень дає найбільший виграш.
+
+```html
+<img
+  src="/img/hero-800.avif"
+  srcset="/img/hero-400.avif 400w, /img/hero-800.avif 800w, /img/hero-1600.avif 1600w"
+  sizes="(max-width: 600px) 100vw, 800px"
+  width="800" height="450"
+  alt="Студенти працюють над проєктом"
+  fetchpriority="high"
+/>
+
+<!-- Зображення нижче першого екрана завантажуються відкладено -->
+<img src="/img/gallery-1.avif" width="400" height="300" alt="…" loading="lazy" decoding="async" />
+```
+
+Правила: використовуйте сучасні формати (**AVIF**, **WebP**) із запасним варіантом через `<picture>`; віддавайте адаптивні розміри (`srcset`, `sizes`); **завжди вказуйте `width` і `height`** (браузер зарезервує місце, і CLS не зросте); LCP-зображенню додавайте `fetchpriority="high"` і **ніколи** `loading="lazy"`; решті зображень поза першим екраном — `loading="lazy"`.
+
+Шрифти: використовуйте формат **WOFF2**; завантажуйте лише потрібні накреслення й набори символів (підмножини для кирилиці та латиниці); задавайте `font-display: swap`, щоб текст показувався системним шрифтом, поки завантажується основний; критичний шрифт попередньо завантажуйте через `preload` (приклад вище).
+
+```css
+@font-face {
+    font-family: "Inter";
+    src: url("/fonts/inter-var.woff2") format("woff2");
+    font-weight: 100 900;      /* змінний шрифт */
+    font-display: swap;
+}
+```
+
+### Стабільність макета (CLS)
+
+Більшість стрибків макета має три причини: зображення і відео без розмірів, динамічно вставлений вміст (банери, реклама, заглушки) і шрифти, що змінюють розміри тексту. Лікування однакове — **резервувати місце заздалегідь**: вказувати `width`/`height` або CSS-властивість `aspect-ratio`, задавати `min-height` для контейнерів, що заповнюватимуться пізніше, і використовувати скелетони однакового розміру з майбутнім вмістом.
+
+## Моніторинг продуктивності
+
+### Вимірювання Web Vitals у реальних користувачів
+
+Бібліотека **web-vitals** від Google (версія 5) надає простий інтерфейс для збору основних показників. Нагадаємо: функції `onINP`, `onLCP`, `onCLS` (а не застарілий `onFID`) і додатково `onTTFB`, `onFCP`.
+
+```typescript
+// src/lib/vitals.ts
+import { onCLS, onINP, onLCP, onTTFB, type Metric } from "web-vitals";
+
+function send(metric: Metric) {
+    const body = JSON.stringify({
+        name: metric.name,
+        value: metric.value,
+        rating: metric.rating,        // "good" | "needs-improvement" | "poor"
+        id: metric.id,
+        page: location.pathname,
+    });
+
+    // sendBeacon надійно відправляє дані навіть під час закриття сторінки
+    if (!navigator.sendBeacon("/api/vitals", body)) {
+        fetch("/api/vitals", { method: "POST", body, keepalive: true });
+    }
+}
+
+export function reportWebVitals() {
+    onLCP(send);
+    onINP(send);
+    onCLS(send);
+    onTTFB(send);
+}
+```
+
+Для налагодження корисна збірка з атрибуцією (`web-vitals/attribution`): вона повідомляє не лише значення, а й *який саме елемент* став LCP або *яка взаємодія* спричинила поганий INP. На стороні сервера потрібен кінцевий пункт, що збирає дані; можна використовувати й готові сервіси (Vercel Speed Insights, Sentry, Grafana Faro, Google Analytics). Не забувайте про приватність: у метриках не повинно бути персональних даних.
+
+### Власні метрики та Performance API
+
+Стандартних показників недостатньо, щоб відповісти на бізнесові питання: «скільки часу минає від відкриття сторінки до появи результатів пошуку?». Для цього є **User Timing API**:
+
+```typescript
+performance.mark("search-start");
+const results = await searchProducts(query);
+renderResults(results);
+performance.mark("search-end");
+
+const measure = performance.measure("search-duration", "search-start", "search-end");
+console.log(`Пошук зайняв ${measure.duration.toFixed(0)} мс`);
+```
+
+**PerformanceObserver** дозволяє підписатися на події продуктивності: довгі завдання, зсуви макета, завантаження ресурсів.
+
+```typescript
+// Реєструвати довгі завдання (понад 50 мс)
+const observer = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+        console.warn(`Довге завдання: ${entry.duration.toFixed(0)} мс`, entry);
+    }
+});
+observer.observe({ type: "longtask", buffered: true });
+```
+
+Для аналізу ж продуктивності окремих компонентів React використовують **React Profiler** у розширенні React DevTools: він показує, які компоненти відтворювалися, скільки це зайняло і що спричинило відтворення. Профілюйте *перед* оптимізацією — інтуїція про «вузьке місце» часто хибна.
+
+### Lighthouse та перевірки в CI
+
+**Lighthouse** — інструмент аудиту, вбудований у Chrome, який оцінює продуктивність, доступність, найкращі практики та SEO. Для автоматизації є **Lighthouse CI**: його запускають у конвеєрі й перевіряють «бюджети» показників. Зафіксувавши порогові значення, ви отримаєте автоматичний «сигнал», коли чийсь пул-реквест погіршує швидкість.
+
+```json
+{
+  "ci": {
+    "collect": { "startServerCommand": "npm run preview", "url": ["http://localhost:4173/"], "numberOfRuns": 3 },
+    "assert": {
+      "assertions": {
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["warn", { "maxNumericValue": 300 }]
+      }
+    }
+  }
+}
+```
+
+Пам'ятайте про обмеження: лабораторні вимірювання нестабільні (звідси `numberOfRuns: 3`), а INP у лабораторії не визначається (тому використовують TBT як наближення). Остаточним суддею лишаються польові дані.
+
+## Пошукова оптимізація для застосунків на одній сторінці (SEO)
+
+### Проблема SPA
+
+Класичний SPA на React віддає браузеру майже порожній HTML (`<div id="root"></div>`) і малює інтерфейс за допомогою JavaScript. Пошукові системи (насамперед Google) уміють виконувати JavaScript, але це відкладає індексування, споживає їхні ресурси й менш надійно, ніж читання готового HTML. Крім того, роботи соціальних мереж, що формують попередній перегляд посилань, і значна частина ШІ-краулерів JavaScript не виконують зовсім. Тому для публічних сторінок, на які має приходити трафік з пошуку, потрібен HTML, готовий до читання.
+
+### Стратегії відтворення
+
+```mermaid
+graph TD
+    A[Де і коли створюється HTML?] --> B[CSR<br/>у браузері під час роботи]
+    A --> C[SSG<br/>під час збірки]
+    A --> D[SSR<br/>на сервері на кожен запит]
+    A --> E[ISR / частковий пререндер<br/>статика, що оновлюється]
+    B --> B1[Панелі керування за автентифікацією]
+    C --> C1[Документація, блоги, лендинги]
+    D --> D1[Персоналізовані сторінки з SEO]
+    E --> E1[Каталоги, новини]
+```
+
+| Підхід | Коли створюється HTML | Переваги | Недоліки |
+|--------|----------------------|----------|----------|
+| **CSR** (клієнтське відтворення) | У браузері | Простота, дешевий хостинг | Повільний перший показ, слабке SEO |
+| **SSG** (статична генерація) | Під час збірки | Найшвидше, дешево, надійно | Дані застарівають між збірками |
+| **SSR** (серверне відтворення) | На кожен запит | Актуальні дані, SEO | Навантаження на сервер, вищий TTFB |
+| **ISR / PPR** | Статика + оновлення за розкладом або частково | Баланс швидкості та свіжості | Складніша модель кешування |
+
+Практичне правило: сторінки, які мають знайти в пошуку (головна, каталог, статті), — SSG або SSR; сторінки за автентифікацією (особистий кабінет, панелі) — CSR цілком прийнятний. Сучасні фреймворки дозволяють **змішувати підходи в одному застосунку**. Саме тому в індустрії для таких задач найчастіше обирають **Next.js 16** (серверні компоненти React, функція Cache Components для явного керування кешуванням, Turbopack як збирач за замовчуванням) або режим фреймворка React Router.
+
+```tsx
+// app/products/[id]/page.tsx — Next.js, серверний компонент
+import type { Metadata } from "next";
+
+// Метадані створюються на сервері й потрапляють у HTML
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params;
+    const product = await getProduct(id);
+    return {
+        title: `${product.name} — Магазин`,
+        description: product.summary,
+        openGraph: { title: product.name, images: [product.image] },
+    };
+}
+
+export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const product = await getProduct(id); // запит до бази безпосередньо на сервері
+    return <ProductDetails product={product} />;
+}
+```
+
+Зверніть увагу: у Next.js 15 і новіших `params` — це **проміс**, який потрібно очікувати (`await`); код зі старих статей, де `params` читається синхронно, більше не працює.
+
+### Метатеги та структуровані дані
+
+Основні метадані сторінки — заголовок, опис, канонічна адреса та теги Open Graph (попередній перегляд посилань у месенджерах). Починаючи з React 19, теги `<title>`, `<meta>` і `<link>`, використані в будь-якому компоненті, **автоматично переносяться в `<head>`**, тому окрема бібліотека `react-helmet-async` у нових проєктах не потрібна:
+
+```tsx
+function ArticlePage({ article }: { article: Article }) {
+    return (
+        <article>
+            <title>{article.title} — Блог курсу</title>
+            <meta name="description" content={article.summary} />
+            <link rel="canonical" href={`https://example.com/blog/${article.slug}`} />
+            <meta property="og:title" content={article.title} />
+            <meta property="og:image" content={article.cover} />
+            <h1>{article.title}</h1>
+            {/* ... */}
+        </article>
+    );
+}
+```
+
+**Структуровані дані** (формат JSON-LD, словник schema.org) допомагають пошуковим системам зрозуміти вміст сторінки й показувати розширені результати (оцінки, ціни, питання й відповіді).
+
+```tsx
+function ProductJsonLd({ product }: { product: Product }) {
+    const data = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: product.name,
+        image: product.image,
+        offers: { "@type": "Offer", priceCurrency: "UAH", price: product.price, availability: "https://schema.org/InStock" },
+    };
+    // Екрануємо "<", щоб вміст не міг «вирватися» з тега script (захист від XSS)
+    const json = JSON.stringify(data).replace(/</g, "\\u003c");
+    return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+}
+```
+
+Зверніть увагу на екранування `<`: якщо дані містять рядок `</script>`, без екранування він завершить тег і дозволить виконати довільний код. Це один із прикладів того, як навіть «безневинна» SEO-розмітка вимагає уваги до безпеки.
+
+### Карта сайту та robots.txt
+
+Файл `sitemap.xml` перелічує сторінки, які варто індексувати, а `robots.txt` повідомляє роботам, куди заходити не слід. У фреймворках їх генерують із коду; для статичних сайтів це робить плагін або скрипт збирання.
+
+```text
+# public/robots.txt
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://example.com/sitemap.xml
+```
+
+Пам'ятайте, що `robots.txt` — це **ввічливе прохання, а не захист**: він не заважає недобросовісним роботам, і вносити в нього адреси «секретних» розділів не можна (ви лише повідомите про їх існування).
+
+## Прогресивні вебзастосунки (PWA)
+
+### Що таке PWA
+
+**Прогресивний вебзастосунок** — це звичайний сайт, який за допомогою набору стандартних технологій отримує можливості, близькі до нативного застосунку: його можна встановити на головний екран, він працює без з'єднання, швидко запускається й може надсилати сповіщення. Три складники PWA:
+
+1. **HTTPS** — обов'язкова умова (Service Worker працює лише в захищеному контексті);
+2. **Маніфест вебзастосунку** — JSON-файл з назвою, іконками та кольорами;
+3. **Service Worker** — скрипт для кешування й офлайн-роботи.
+
+Переваги: один код для всіх платформ, відсутність магазинів застосунків, миттєві оновлення, менші витрати на розробку. Обмеження: частина можливостей залежить від платформи й браузера (зокрема на iOS вони традиційно вужчі), а глибока інтеграція з пристроєм поступається нативним застосункам. Для більшості контентних і бізнес-застосунків цього більш ніж досить.
+
+### Маніфест
+
+```json
+{
+  "name": "Електронний журнал",
+  "short_name": "Журнал",
+  "description": "Облік успішності студентів",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "lang": "uk",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
+```
+
+Звертаємо увагу на значення `purpose`: «звичайна» та «маскована» (maskable) іконки оголошуються **окремими записами**. Запис `"purpose": "any maskable"` для однієї картинки вважається поганою практикою: маскована іконка має великі відступи під обрізання, і в режимі `any` виглядатиме крихітною. Підключення до сторінки: `<link rel="manifest" href="/manifest.webmanifest" />`.
+
+### Service Worker і офлайн-режим з vite-plugin-pwa
+
+Замість ручного написання Service Worker використовуйте `vite-plugin-pwa` з Workbox: він генерує маніфест, список попередньо кешованих файлів та правила кешування під час виконання.
+
+```bash
+npm install --save-dev vite-plugin-pwa
+```
+
+```typescript
+// vite.config.ts
+import { VitePWA } from "vite-plugin-pwa";
+
+export default defineConfig({
+    plugins: [
+        react(),
+        VitePWA({
+            registerType: "prompt",           // оновлення — за згодою користувача
+            manifest: false,                  // використовуємо власний manifest.webmanifest
+            workbox: {
+                globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],  // попереднє кешування збірки
+                navigateFallback: "/index.html",                      // SPA працює офлайн
+                runtimeCaching: [
+                    {
+                        urlPattern: ({ url }) => url.pathname.startsWith("/api/products"),
+                        handler: "StaleWhileRevalidate",
+                        options: { cacheName: "api-products", expiration: { maxEntries: 50, maxAgeSeconds: 3600 } },
+                    },
+                    {
+                        urlPattern: ({ request }) => request.destination === "image",
+                        handler: "CacheFirst",
+                        options: { cacheName: "images", expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 3600 } },
+                    },
+                ],
+            },
+        }),
+    ],
+});
+```
+
+Кілька застережень. Не кешуйте персональні відповіді API у спільних кешах Service Worker без прив'язки до користувача. Не кешуйте запити POST. Продумайте **оновлення**: якщо Service Worker віддає стару версію застосунку з кешу, користувач може роками сидіти на застарілому коді; тому режим `prompt` показує повідомлення «Доступна нова версія» і кнопку «Оновити».
+
+### Запрошення встановити застосунок
+
+Chromium-браузери генерують подію `beforeinstallprompt`, коли застосунок відповідає критеріям встановлюваності. Її можна перехопити й показати власну кнопку у зручний момент (Safari й Firefox не підтримують цієї події — там встановлення виконується через меню браузера).
+
+```typescript
+let deferredPrompt: (Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }) | null = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();                  // не показувати стандартну підказку
+    deferredPrompt = event as typeof deferredPrompt;
+    showInstallButton();                     // показати власну кнопку
+});
+
+installButton.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;   // "accepted" або "dismissed"
+    deferredPrompt = null;
+    hideInstallButton();
+});
+```
+
+Не нав'язуйте встановлення з першої секунди: показуйте пропозицію, коли користувач уже побачив цінність застосунку.
+
+### Офлайн-функціональність і синхронізація
+
+Справжня офлайн-робота — не лише кеш файлів, а й **дані**. Для застосунків, у яких користувач створює записи без мережі (наприклад, виставляє оцінки), застосовують зберігання черги змін в IndexedDB і відправлення її на сервер після відновлення з'єднання (фонова синхронізація, Background Sync, де вона підтримується, або власна логіка за подією `online`). Вирішуйте конфлікти заздалегідь: що робити, коли той самий запис змінили і офлайн, і на сервері? Простий і зрозумілий варіант — «остання зміна перемагає» з позначкою часу; складніший — об'єднання або запит користувачеві.
+
+```typescript
+window.addEventListener("online", () => void flushPendingChanges());
+
+async function saveGrade(grade: Grade) {
+    if (navigator.onLine) {
+        try {
+            return await api.saveGrade(grade);
+        } catch {
+            /* мережа зникла під час запиту — кладемо в чергу */
+        }
+    }
+    await offlineQueue.add({ type: "saveGrade", payload: grade, createdAt: Date.now() });
+}
+```
+
+### Підсумок першої частини
+
+Продуктивність — це не одноразова оптимізація, а **цикл**: виміряти → знайти причину → виправити → закріпити бюджетом у CI. Найбільший виграш зазвичай дають п'ять речей: менше JavaScript (аналіз, tree shaking, розділення за маршрутами), правильне кешування (хешовані файли — «назавжди», HTML — з перевіркою), оптимізовані зображення й шрифти, незаблокований головний потік (для INP) та відтворення на сервері для публічних сторінок.
+
+---
+
+## Вступ до культури DevOps
+
+### Що таке DevOps і навіщо він потрібен
+
+Історично розробники (Dev) і фахівці з експлуатації (Ops) мали суперечливі цілі: перші прагнули швидко випускати нові функції, другі — зберігати систему стабільною, а отже, обмежувати зміни. Результат — «стіна» між командами, рідкісні та ризиковані випуски («у п'ятницю ввечері розгортаємо новий реліз і молимося») та взаємні звинувачення при збоях.
+
+**DevOps** — це культура та набір практик, які долають цей розрив: команда спільно відповідає і за створення, і за роботу застосунку, а увесь шлях від коду до користувача автоматизований. Принципове твердження, підтверджене багаторічними дослідженнями DORA (DevOps Research and Assessment): **швидкість і стабільність не суперечать одна одній**. Найкращі команди розгортають зміни частіше *і* мають менше збоїв, бо кожна зміна мала, перевірена автоматично й легко скасовується.
+
+Для веброзробника це означає: ви відповідаєте не лише за те, щоб код працював «у мене на комп'ютері», а й за те, як він збирається, перевіряється, розгортається, працює під навантаженням та як ви дізнаєтеся про проблеми.
+
+### Основні принципи
+
+- **Співпраця та спільна відповідальність.** Команда, яка пише код, бере участь і в його експлуатації («you build it, you run it»).
+- **Автоматизація.** Усе, що виконується регулярно (збирання, тести, розгортання, підготовка середовищ), має бути скриптом, а не ручною дією.
+- **Безперервне вдосконалення.** Помилки розглядаються як джерело знань; після інцидентів проводять **розбір без звинувачень** (blameless postmortem): шукають слабкі місця в системі, а не винуватця.
+- **Вимірюваність.** Рішення ґрунтуються на даних: метриках, журналах, показниках поставки.
+- **Інфраструктура як код.** Конфігурація серверів, мереж і сервісів описується файлами в репозиторії (Terraform/OpenTofu, Docker, YAML), тому відтворюється, перевіряється рецензією й має історію змін.
+
+### Показники DORA
+
+Як виміряти, чи добре налагоджений процес поставки? DORA запропонувала невеликий набір метрик. До 2024 року їх було чотири, у звіті 2024 року додано п'яту:
+
+| Показник | Що вимірює | Напрямок |
+|----------|-----------|----------|
+| **Частота розгортань** (deployment frequency) | Як часто зміни потрапляють у виробництво | Швидкість |
+| **Час від коміту до виробництва** (lead time for changes) | Скільки минає від коміту до розгортання | Швидкість |
+| **Частка невдалих змін** (change failure rate) | Яка частка розгортань призводить до збою чи відкату | Стабільність |
+| **Час відновлення після збою** (failed deployment recovery time) | Скільки триває усунення наслідків невдалого розгортання | Стабільність |
+| **Частота повторних доробок** (rework rate) | Як часто розгортання виникають через непередбачені виправлення | Стабільність |
+
+Звіт DORA 2025 року присвячений впливу ШІ-асистентів і підтверджує, що ШІ **підсилює** те, що вже є в організації: де процеси поставки здорові — він пришвидшує, де слабкі — збільшує нестабільність (більше коду генерується швидше, ніж команда встигає його перевіряти). Висновок для нас: чим більше коду пише ШІ, тим важливішими стають автоматичні перевірки, про які йдеться далі.
+
+### Вигоди для вебпроєктів
+
+- **Швидше надходження змін до користувачів** і швидший зворотний зв'язок.
+- **Менше ризику**: маленькі, часті зміни простіше перевірити й відкотити, ніж великий реліз раз на квартал.
+- **Передбачуваність**: однаковий процес для кожного розгортання без «ритуальних знань» однієї людини.
+- **Спокійніше життя команди**: автоматизація знімає рутину та страх розгортань.
+
+## Безперервна інтеграція та доставка (CI/CD)
+
+### Основні поняття
+
+```mermaid
+graph LR
+    A[Коміт у гілку] --> B[Збирання]
+    B --> C[Перевірки:<br/>типи, лінтер, тести]
+    C --> D[Артефакт:<br/>образ Docker]
+    D --> E[Розгортання<br/>staging]
+    E --> F{Підтвердження}
+    F -->|автоматично або вручну| G[Розгортання<br/>production]
+    G --> H[Моніторинг]
+    H -.->|зворотний зв'язок| A
+```
+
+**Безперервна інтеграція** (Continuous Integration, CI) — практика частого (щонайменше раз на день) об'єднання змін в основну гілку з автоматичним збиранням і перевіркою кожної зміни. Мета — виявляти конфлікти й помилки за хвилини, а не за тижні.
+
+**Безперервна доставка** (Continuous Delivery) продовжує цей ланцюжок: кожна зміна, що пройшла перевірки, автоматично *готується* до розгортання, і саме розгортання виконується однією кнопкою. **Безперервне розгортання** (Continuous Deployment) іде ще далі: зміна автоматично потрапляє у виробництво без участі людини. Абревіатуру «CD» використовують для обох; обирають за рівнем довіри до автоматичних перевірок та вимогами бізнесу.
+
+### GitHub Actions
+
+**GitHub Actions** — вбудована у GitHub платформа автоматизації. Робочий процес (workflow) описується YAML-файлом у каталозі `.github/workflows/` і складається з **подій** (`on`), що його запускають, **завдань** (`jobs`), які виконуються на окремих віртуальних машинах (runners), та послідовності **кроків** (`steps`) у кожному завданні.
+
+Перший робочий процес — перевірка кожного пул-реквесту. Він використовує ті самі команди, які розробник запускає локально (`npm run check` з лекції 14), і додатково перевіряє роботу з реальною базою даних:
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Мінімальні права для токена за замовчуванням
+permissions:
+  contents: read
+
+# Скасувати застарілі запуски для тієї самої гілки
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://test:test@localhost:5432/test
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Типи
+        run: npm run typecheck
+      - name: Лінтер і форматування
+        run: npm run lint && npm run format:check
+
+      - name: Міграції тестової бази
+        run: npx prisma migrate deploy
+
+      - name: Тести
+        run: npm test
+
+      - name: Збирання
+        run: npm run build
+
+      - name: Зберегти результат збирання
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+```
+
+Розберемо ключові рішення.
+
+- **`permissions: contents: read`** — принцип найменших привілеїв: токен `GITHUB_TOKEN` за замовчуванням має широкі права, тому їх обмежують явно, а розширюють лише для завдань, яким це потрібно (наприклад, публікація образу).
+- **`concurrency`** — якщо розробник відправив два коміти поспіль, старий запуск скасовується й не витрачає ресурси.
+- **`services`** — допоміжні контейнери (тут PostgreSQL) для інтеграційних тестів; `health-cmd` змушує завдання чекати готовності бази.
+- **`cache: npm`** у `setup-node` кешує завантажені пакети між запусками.
+- **`npm ci`** встановлює залежності *точно* за `package-lock.json` і падає, якщо lock-файл не збігається з `package.json`, що гарантує відтворюваність.
+- **`timeout-minutes`** захищає від завислих завдань, які могли б споживати ресурси годинами.
+- Версії дій (`@v6`, `@v7`) — мажорні теги. Це зручно, але менш безпечно, ніж фіксація хешем коміту (`uses: actions/checkout@<40-символьний хеш>`): тег можуть переписати. В організаціях, чутливих до безпеки, дії фіксують за хешами, а оновлення виконує бот Dependabot. Ми повернемося до цього в лекції 16, говорячи про безпеку ланцюга постачання.
+
+> **Небезпека подій з чужим кодом.** Подія `pull_request_target` запускає робочий процес із правами цільового репозиторію й доступом до секретів, навіть якщо PR надійшов від стороннього форку. Якщо в такому процесі зібрати та виконати код з PR, зловмисник отримає ці секрети. Тому: для перевірки чужих PR використовуйте звичайну подію `pull_request` (секрети там недоступні), а `pull_request_target` — лише для дій, що не виконують код з PR (наприклад, додавання міток).
+
+Матриця дозволяє перевіряти кілька версій Node.js або операційних систем одним описом:
+
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    node: [24, 26]       # поточна LTS та наступна
+runs-on: ubuntu-latest
+steps:
+  - uses: actions/setup-node@v6
+    with:
+      node-version: ${{ matrix.node }}
+```
+
+### Автоматизоване тестування в конвеєрі
+
+Конвеєр цінний рівно настільки, наскільки надійні його тести. Класична модель — **піраміда тестування**: багато швидких модульних тестів, менше інтеграційних, ще менше наскрізних.
+
+```mermaid
+graph TB
+    E[Наскрізні тести E2E<br/>кілька, повільні, дорогі<br/>Playwright]
+    I[Інтеграційні тести<br/>середня кількість<br/>API + база даних]
+    U[Модульні тести<br/>багато, швидкі, дешеві<br/>Vitest]
+    U --> I --> E
+```
+
+- **Модульні тести** перевіряють окремі функції та сервіси без зовнішніх систем (завдяки впровадженню залежностей з лекції 14 це легко). Виконуються за секунди; інструмент — Vitest.
+- **Інтеграційні тести** перевіряють взаємодію частин, наприклад HTTP-маршрут разом із реальною базою даних. Запускаються проти контейнера з базою (сервіс `postgres` вище).
+- **Наскрізні тести** (end-to-end) імітують реальні дії користувача в браузері: відкрити сторінку, увійти, створити запис. Сучасний стандарт — **Playwright**. Їх мало, бо вони повільні й крихкі, але вони перевіряють найкритичніші сценарії.
+
+```typescript
+// e2e/login.spec.ts
+import { test, expect } from "@playwright/test";
+
+test("користувач може увійти та побачити свій профіль", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("Електронна пошта").fill("student@example.com");
+    await page.getByLabel("Пароль").fill("correct-horse-battery-staple");
+    await page.getByRole("button", { name: "Увійти" }).click();
+
+    await expect(page).toHaveURL("/profile");
+    await expect(page.getByRole("heading", { name: "Мій профіль" })).toBeVisible();
+});
+```
+
+Зверніть увагу на селектори за роллю та підписом (`getByRole`, `getByLabel`): вони, по-перше, стійкіші до змін розмітки, а по-друге, підштовхують писати доступні інтерфейси.
+
+Рекомендації щодо тестів у CI: швидкі перевірки запускайте першими (щоб падати швидко); нестабільні тести (flaky) виправляйте або карантинте — інакше команда перестане довіряти конвеєру; покриття коду використовуйте як орієнтир, а не як мету (100% покриття не гарантує відсутність помилок); для Playwright зберігайте відеозаписи та трасування збійних запусків як артефакти.
+
+### Доставка: збирання образу та розгортання
+
+Другий робочий процес відповідає за доставку: збирає образ Docker, публікує його в реєстрі й розгортає. Спочатку збирання й публікація:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # розгортання не переривають на півдорозі
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # право публікувати образ у GitHub Container Registry
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: type=sha,format=long      # тег образу = хеш коміту
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Розгортання на staging
+        run: ./scripts/deploy.sh staging "${{ needs.build.outputs.image }}"
+
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production        # у налаштуваннях середовища можна вимагати ручне підтвердження
+    steps:
+      - name: Розгортання на production
+        run: ./scripts/deploy.sh production "${{ needs.build.outputs.image }}"
+```
+
+> Версії допоміжних дій від Docker (`setup-buildx-action`, `login-action`, `metadata-action`, `build-push-action`) оновлюються регулярно — перед використанням перевірте актуальні мажорні версії на сторінці кожної дії в GitHub Marketplace.
+
+Основні ідеї:
+
+- **Один артефакт — усюди.** Образ збирається *один раз* і того самого образу (з тегом за хешем коміту) розгортають на staging і production; відрізняється лише конфігурація. Так на production потрапляє саме те, що було перевірено.
+- **Середовища GitHub (`environment`)** дозволяють зберігати окремі набори секретів і змінних для staging та production, а для production — вимагати схвалення відповідальної особи.
+- **Теги образів** за хешем коміту дають точну відповідність між образом і кодом та простий відкат: достатньо розгорнути попередній тег. Тег `latest` для production небажаний — він неоднозначний.
+- **Автентифікація в хмарі через OIDC.** Замість зберігання довгоживучих ключів доступу до хмарного провайдера в секретах, сучасний підхід — OpenID Connect: GitHub видає завданню короткоживучий токен, який хмара обмінює на тимчасові права. Це усуває цілий клас витоків (завдання потребує дозволу `id-token: write`).
+
+Скрипт `deploy.sh` залежить від вашої платформи (SSH на сервер із `docker compose pull && docker compose up -d`, виклик API платформи, `kubectl`/Helm). Поширені варіанти хостингу:
+
+| Варіант | Приклади | Складність | Підходить для |
+|---------|----------|-----------|----------------|
+| PaaS (платформа як послуга) | Render, Railway, Fly.io, Heroku | Низька | Навчальні та невеликі проєкти, швидкий старт |
+| Контейнери в хмарі | AWS ECS/Fargate, Google Cloud Run, Azure Container Apps | Середня | Команди, що масштабуються |
+| Віртуальний сервер (VPS) + Docker Compose | Hetzner, DigitalOcean | Середня | Повний контроль, нижча вартість |
+| Kubernetes | Керовані кластери у хмарах | Висока | Великі системи з багатьма сервісами |
+| Серверлес / периферійні обчислення | Cloudflare Workers, Vercel, AWS Lambda | Низька–середня | Змінне навантаження, статичні й напівстатичні застосунки |
+
+Для навчального проєкту достатньо PaaS або одного VPS: Kubernetes створює більше проблем, ніж розв'язує, поки ви не маєте десятків сервісів.
+
+### Стратегії розгортання
+
+Як замінити стару версію новою, не відчутною для користувачів?
+
+| Стратегія | Суть | Переваги | Ризики |
+|-----------|------|----------|--------|
+| **Поступове оновлення** (rolling) | Екземпляри замінюються по одному | Немає простою, мало додаткових ресурсів | Деякий час працюють обидві версії |
+| **Blue-green** | Поруч із поточним середовищем («синім») розгортають нове («зелене»), потім перемикають трафік | Миттєвий відкат перемиканням назад | Потрібні подвійні ресурси |
+| **Canary** («канарка») | Нова версія спочатку отримує невелику частку трафіку (1–5%) | Ризик обмежено малою групою | Потрібні метрики й автоматика аналізу |
+| **Перемикачі функцій** (feature flags) | Код розгортається вимкненим і вмикається окремо від розгортання | Відокремлює розгортання від випуску | Накопичення «мертвих» прапорців |
+
+Ключова вимога до всіх стратегій: **під час розгортання версії співіснують**, тож зміни мають бути зворотно сумісними — і в API, і, особливо, у схемі бази даних (див. розділ про міграції).
+
+### Версіонування та випуски
+
+Для бібліотек і API використовують **семантичне версіонування** `МАЖОР.МІНОР.ПАТЧ`: патч — виправлення без зміни інтерфейсу, мінор — нова сумісна функція, мажор — несумісна зміна. Якщо повідомлення комітів написано за стандартом Conventional Commits (лекція 14), версії та журнал змін (CHANGELOG) можна генерувати автоматично інструментами `release-please` або `semantic-release`: тип `fix` підніме патч, `feat` — мінор, `BREAKING CHANGE` — мажор.
+
+## Керування середовищами та конфігурацією
+
+### Багато середовищ
+
+Зміни не можна перевіряти одразу на реальних користувачах, тому застосунок проходить через послідовність середовищ:
+
+| Середовище | Призначення | Дані | Хто користується |
+|-----------|-------------|------|------------------|
+| **Development** | Розробка на комп'ютері | Вигадані, локальні | Розробник |
+| **Test / CI** | Автоматичні перевірки | Створюються тестами | Конвеєр |
+| **Staging** | Репетиція розгортання, що максимально схожа на production | Знеособлена копія або синтетичні | Команда, тестувальники |
+| **Production** | Реальний продукт | Реальні дані користувачів | Користувачі |
+
+Принципи: staging має якомога точніше повторювати production (та сама версія СУБД, той самий образ, схожа конфігурація); у нижчих середовищах не використовують реальні персональні дані користувачів (або знеособлюють їх); доступи до production мають мінімальне коло людей.
+
+### Принципи «дванадцятифакторного застосунку»
+
+Для конфігурації діє правило з методології Twelve-Factor App: **конфігурація зберігається в середовищі, а не в коді**. Застосунок — один і той самий для всіх середовищ, а різниться лише набір змінних середовища (адреса бази, ключі, режим). Супутні вимоги: журнали пишуться в стандартний вихід (`stdout`) як потік подій; застосунок не зберігає стан у локальній файловій системі (щоб його можна було безболісно замінити чи розмножити); процес швидко стартує і коректно завершується.
+
+Конфігурацію читають і **перевіряють** єдиний раз під час старту, як ми показали в лекції 13 (схема Zod для `process.env`): застосунок, у якому бракує обов'язкової змінної, має впасти одразу з чітким повідомленням, а не за годину при першому зверненні до неї.
+
+```text
+# .env.example — шаблон у репозиторії (без реальних значень!)
+NODE_ENV=development
+PORT=3000
+DATABASE_URL=postgres://app:app@localhost:5432/app
+JWT_SECRET=замініть-на-випадковий-рядок-від-32-символів
+```
+
+Файл `.env` з реальними значеннями **ніколи не потрапляє до репозиторію** (додається в `.gitignore`), натомість в репозиторії зберігається `.env.example`, який пояснює, які змінні потрібні. Node.js вміє читати такі файли без сторонніх бібліотек: `node --env-file=.env src/index.ts`.
+
+### Секрети
+
+**Секрети** (паролі, ключі API, токени, приватні ключі) вимагають окремого поводження.
+
+- **Ніколи не зберігайте їх у коді та в репозиторії**, навіть у приватному: історія Git пам'ятає все, а доступ до репозиторію з часом розширюється. Витік у публічний репозиторій автоматично виявляють боти за лічені хвилини. Якщо секрет потрапив у коміт — вважайте його скомпрометованим і **негайно замініть**; видалення коміту не допоможе.
+- **У конвеєрі** використовуйте секрети GitHub (Settings → Secrets and variables → Actions) на рівні репозиторію або середовища. Значення маскуються в журналах, але це не захист від зловмисного коду, що виконується в самому завданні — тому мінімізуйте коло секретів і не передавайте їх крокам, яким вони не потрібні.
+- **У виробництві** найкраще працюють спеціалізовані сховища секретів: менеджери хмарних провайдерів (AWS Secrets Manager, Google Secret Manager, Azure Key Vault), HashiCorp Vault або секрети оркестратора. Вони дають розмежування доступу, журнал звернень і ротацію.
+- **Ротація:** секрети треба періодично й за подією (звільнення працівника, підозра на витік) замінювати. Чим довшого життя секрет, тим більший ризик; тому кращі короткоживучі облікові дані (OIDC, токени з обмеженим терміном).
+- **Скануйте на витоки**: інструменти gitleaks чи вбудований у GitHub «push protection» блокують коміт, який містить схожі на ключі рядки.
+- **Не записуйте секрети в файли під час виконання робочого процесу.** Передавайте їх змінними середовища конкретного кроку: `env: { API_KEY: ${{ secrets.API_KEY }} }`.
+
+```yaml
+- name: Розгортання
+  env:
+    DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}   # доступний лише цьому кроку
+  run: ./scripts/deploy.sh production
+```
+
+## Docker для виробництва
+
+У лекції 14 ми використовували Docker для зручності розробки. Виробничий образ має інші вимоги: **малий розмір** (швидше розгортання й менша поверхня атаки), **безпека** (не від root, мінімум зайвого) та **відтворюваність**.
+
+### Багатоетапна збірка
+
+**Багатоетапна збірка** (multi-stage build) дозволяє використати «важке» середовище для збирання (компілятор, dev-залежності), а в підсумковий образ скопіювати лише результат.
+
+```dockerfile
+# Dockerfile
+# ---------- Етап 1: збирання ----------
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Спочатку лише маніфести залежностей — кешований шар
+COPY package*.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+
+# Усі залежності (разом з dev) потрібні для збирання
+RUN npm ci
+
+COPY . .
+RUN npx prisma generate && npm run build
+
+# ---------- Етап 2: виробничий образ ----------
+FROM node:24-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Лише виробничі залежності
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Скомпільований код з етапу збирання
+COPY --from=builder /app/dist ./dist
+
+# Запуск не від root
+USER node
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/health/live').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
+# exec-форма CMD, щоб процес Node.js отримував сигнали (SIGTERM) напряму
+CMD ["node", "dist/index.js"]
+```
+
+Що тут важливо, і які типові помилки обходить цей файл:
+
+- **Порядок етапів.** Збирання (`npm run build`) вимагає dev-залежностей (TypeScript, Vite). Тому в етапі збирання встановлюють **усі** залежності, і лише в підсумковому образі — `--omit=dev`. Типова помилка — спробувати зробити `npm ci --omit=dev` *до* збирання: збирання тоді впаде, бо немає компілятора. (Прапорець `--only=production`, який ще трапляється в старих інструкціях, застарів — використовуйте `--omit=dev`.)
+- **Клієнт Prisma 7** генерується в каталог вашого проєкту (`src/generated/prisma`) і при збиранні `tsc` потрапляє в `dist`. Окремо копіювати `node_modules/.prisma` більше не потрібно (так було в ранніх версіях).
+- **`USER node`** — образ `node` постачається з непривілейованим користувачем; запуск від root збільшує наслідки будь-якої вразливості.
+- **Обробка сигналів.** Оркестратор зупиняє контейнер сигналом `SIGTERM`. Якщо `CMD` написано у «shell-формі» (`CMD npm start`), сигнал отримає оболонка, а не Node.js, і застосунок не завершиться коректно. Тому використовуйте масивну форму й запускайте `node` безпосередньо. Якщо в контейнері запускається кілька процесів або потрібна обробка «процесів-зомбі», додайте мінімальний init (`docker run --init` або `tini`).
+- **`HEALTHCHECK`** дозволяє Docker та оркестраторам знати, чи живий застосунок. Використовуємо вбудований у Node.js `fetch`, а не додаткові утиліти на кшталт `curl`, яких у мінімальному образі немає.
+- **Версія Node.js.** Використовується активна LTS-версія 24; у жовтні 2026 року LTS-статус отримує Node.js 26 — тоді варто планувати міграцію (підтримка 24 триватиме до квітня 2028 року). Версію зазначайте конкретно, а для строгої відтворюваності фіксуйте образ за дайджестом (`node:24-alpine@sha256:…`).
+
+Файл `.dockerignore` (див. лекцію 14) обов'язково виключає `.env`, `.git`, `node_modules` — інакше секрети можуть потрапити в шари образу.
+
+### Безпека образів
+
+- **Скануйте образи на вразливості** під час збирання: Docker Scout (`docker scout cves`; команду `docker scan` вилучено) або Trivy та Grype. Завдання CI може падати, якщо знайдено критичні вразливості з наявним виправленням.
+- **Мінімальні базові образи**: `alpine`, `slim` або «бездистрибутивні» (distroless) образи, де немає оболонки й менеджера пакетів.
+- **Не кладіть секрети в образ** ані через `ENV`, ані через `COPY`, ані через `ARG` — вони залишаються в історії шарів. Для секретів під час збирання використовують `RUN --mount=type=secret`.
+- **Оновлюйте базові образи** регулярно (Dependabot/Renovate відстежують `FROM`).
+- **Підписуйте образи й публікуйте SBOM** (перелік компонентів) — вимога дедалі частіше постає і в регуляторів (Cyber Resilience Act у ЄС, лекція 16).
+
+### Коректне завершення роботи
+
+Контейнери постійно створюються й знищуються (оновлення, масштабування), тому застосунок мусить правильно реагувати на `SIGTERM`: припинити приймати нові з'єднання, дочекатися завершення поточних запитів і закрити з'єднання з базою.
+
+```typescript
+// src/index.ts
+const server = app.listen(env.PORT, () => logger.info({ port: env.PORT }, "Сервер запущено"));
+
+let shuttingDown = false;
+
+async function shutdown(signal: string) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, "Отримано сигнал, завершуємо роботу");
+
+    // Страхувальний таймер: якщо щось «зависло» — примусове завершення
+    setTimeout(() => process.exit(1), 10_000).unref();
+
+    server.close(async () => {          // перестаємо приймати нові з'єднання
+        await prisma.$disconnect();     // закриваємо базу
+        process.exit(0);
+    });
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+```
+
+## Міграції баз даних у виробництві
+
+### Чому міграції — найризикованіша частина розгортання
+
+Код можна відкотити за секунди, повернувши попередній образ. Дані — ні. Міграція, яка видалила стовпець або перетворила дані, не скасовується простим відкатом коду. До того ж під час розгортання **стара й нова версії застосунку недовго працюють одночасно**, звертаючись до тієї ж бази. Тому міграції проєктують так, щоб схема була сумісна з обома версіями.
+
+### Prisma Migrate: розробка та виробництво
+
+У Prisma є дві різні команди, які не можна плутати:
+
+```bash
+# Розробка: порівнює schema.prisma з базою, створює файл міграції та застосовує його
+npx prisma migrate dev --name add_user_phone
+
+# Виробництво і CI: лише застосовує вже створені міграції, нічого не генерує і не скидає
+npx prisma migrate deploy
+```
+
+Файли міграцій (SQL) зберігаються в репозиторії, проходять рецензію як звичайний код і застосовуються в усіх середовищах в одному порядку. `migrate dev` у виробництві **ніколи** не запускають: він може запропонувати скинути базу.
+
+### Шаблон «розширення і стиснення» (expand/contract)
+
+Безпечна зміна схеми без простою виконується кількома окремими розгортаннями. Розглянемо приклад: перейменування стовпця `name` на `full_name`. «Прямолінійна» міграція `RENAME COLUMN` зламає стару версію застосунку, яка ще працює під час розгортання. Правильно:
+
+```mermaid
+graph LR
+    A[1. Розширення<br/>додати full_name<br/>nullable] --> B[2. Код пише в обидва<br/>стовпці, читає старий]
+    B --> C[3. Перенести<br/>наявні дані]
+    C --> D[4. Код читає<br/>новий стовпець]
+    D --> E[5. Стиснення<br/>видалити name]
+```
+
+1. **Розширення (expand):** міграція додає новий стовпець, не ламаючи старий. Усі старі версії коду працюють.
+2. Нова версія коду записує дані в обидва стовпці.
+3. Фонова міграція переносить історичні дані.
+4. Наступне розгортання читає вже з нового стовпця.
+5. **Стиснення (contract):** коли жодна версія старого коду більше не працює, окремою міграцією видаляють старий стовпець.
+
+Так само безпечно діють при додаванні обов'язкового стовпця (спочатку nullable або зі значенням за замовчуванням, потім заповнення, потім обмеження `NOT NULL`), видаленні таблиць і зміні типів.
+
+Додаткові правила для PostgreSQL:
+
+- **Створюйте індекси без блокування запису:** `CREATE INDEX CONCURRENTLY` (у Prisma для цього доводиться редагувати згенерований SQL вручну, адже така команда не може виконуватися в транзакції).
+- **Остерігайтеся довгих блокувань:** деякі команди `ALTER TABLE` блокують таблицю на час виконання. На великих таблицях тестуйте міграцію на копії даних і задавайте `lock_timeout`, щоб міграція швидко відмовилася, а не заблокувала весь сервіс.
+- **Великі перенесення даних виконуйте порціями**, а не одним запитом.
+- **Робіть резервну копію перед ризикованою міграцією** (див. наступний розділ).
+
+### Автоматизація міграцій у конвеєрі
+
+Міграції виконують як **окремий крок розгортання до запуску нової версії застосунку**, а не при старті кожного екземпляра: інакше кілька реплік можуть одночасно змагатися за зміну схеми.
+
+```yaml
+migrate-production:
+  needs: [build, deploy-staging]
+  runs-on: ubuntu-latest
+  environment: production
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with: { node-version: 24, cache: npm }
+    - run: npm ci
+    - name: Застосувати міграції
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: npx prisma migrate deploy
+```
+
+Стратегія відкату: на практиці відкочувати міграції вниз рідко вдається безпечно. Тому дотримуються принципу **«виправлення вперед» (roll forward)**: якщо щось пішло не так, підготувати нову міграцію/версію, що виправляє проблему, а кращий захист — сумісні, невеликі міграції за схемою expand/contract та перевірка на staging.
+
+## Резервне копіювання та відновлення
+
+### Філософія
+
+Резервні копії — це страховка від людських помилок (`DROP TABLE` не там), збоїв обладнання, вірусів-шифрувальників і невдалих міграцій. Однак ключовий принцип такий: **резервна копія, відновлення з якої не перевірялося, — це лише надія**. Багато організацій виявляли відсутність придатних копій у момент катастрофи.
+
+Два показники визначають вимоги до стратегії:
+
+- **RPO** (Recovery Point Objective) — скільки даних ми готові втратити, виражене в часі (RPO = 1 година означає, що копії роблять щонайменше щогодини);
+- **RTO** (Recovery Time Objective) — за скільки часу ми маємо відновити роботу.
+
+Правило **3-2-1**: щонайменше **3** копії даних, на **2** різних типах носіїв, з яких **1** — поза основним місцем зберігання (інший регіон чи провайдер). Копії шифруються, а доступ до них обмежується (зловмисник, який отримав доступ до бази, не повинен мати змоги видалити й копії).
+
+### Способи резервного копіювання PostgreSQL
+
+| Метод | Опис | Коли застосовувати |
+|-------|------|---------------------|
+| **Логічна копія** (`pg_dump`) | SQL-вивантаження або архів схеми та даних | Невеликі й середні бази, перенесення між версіями |
+| **Фізична копія + архівація WAL** | Копія файлів кластера і безперервний потік журналу передзапису | Великі бази, відновлення на довільний момент часу (PITR) |
+| **Керовані сервіси** | Автоматичні знімки й PITR у хмарних СУБД (RDS, Cloud SQL, Neon, Supabase та ін.) | Найпростіший і найнадійніший варіант для більшості проєктів |
+
+Для навчального та невеликого проєкту підійде регулярний `pg_dump`. Приклад надійного скрипта (зверніть увагу на `set -euo pipefail`, який зупиняє виконання при будь-якій помилці, і на справжню перевірку архіву):
+
+```bash
+#!/usr/bin/env bash
+# scripts/backup.sh
+set -euo pipefail
+
+: "${DATABASE_URL:?Змінна DATABASE_URL не задана}"
+: "${BACKUP_DIR:=./backups}"
+
+mkdir -p "$BACKUP_DIR"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+FILE="$BACKUP_DIR/app-$STAMP.dump"
+
+# Формат custom (-Fc): стиснутий, дозволяє вибіркове відновлення
+pg_dump --format=custom --no-owner --dbname="$DATABASE_URL" --file="$FILE"
+
+# Перевірка: pg_restore --list прочитає структуру архіву; якщо архів пошкоджено — скрипт впаде
+pg_restore --list "$FILE" > /dev/null
+
+# Контрольна сума для виявлення пошкоджень під час зберігання
+sha256sum "$FILE" > "$FILE.sha256"
+
+# Ротація: видаляємо локальні копії старіше 14 днів
+find "$BACKUP_DIR" -name 'app-*.dump*' -mtime +14 -delete
+
+echo "Резервну копію створено: $FILE"
+```
+
+Прості перевірки на кшталт «файл існує» або `gunzip -t` лише підтверджують, що архів не пошкоджено як файл, але не свідчать, що з нього можна відновити базу. Справжня перевірка — **періодичне відновлення в тестове середовище**.
+
+Автоматизувати резервне копіювання можна розкладом у GitHub Actions (`on: schedule: - cron: "0 2 * * *"`), системним планувальником `cron` на сервері або засобами хмарного провайдера. Копії надсилають у зовнішнє сховище (S3-сумісне з увімкненим шифруванням і версіонуванням), а завершення з помилкою має викликати сповіщення, адже **мовчазна відмова резервного копіювання — найгірший сценарій**.
+
+### Відновлення
+
+```bash
+# 1. Створити порожню базу для відновлення (ніколи не відновлюйте поверх живої бази «наосліп»)
+createdb restore_check
+
+# 2. Відновити з архіву
+pg_restore --no-owner --dbname=restore_check --exit-on-error app-20261019-020000.dump
+
+# 3. Перевірити ключові дані
+psql restore_check -c "SELECT count(*) FROM users;"
+psql restore_check -c "SELECT max(created_at) FROM orders;"
+```
+
+План відновлення оформлюють письмово (runbook) і **тренуються за ним** — наприклад, раз на квартал виконують учбове відновлення й вимірюють фактичний RTO. Під час інциденту немає часу вигадувати процедуру.
+
+## Моніторинг та сповіщення
+
+### Спостережуваність: три стовпи
+
+Коли застосунок працює у виробництві, ви не можете «зазирнути» всередину. Моніторинг (знати, що щось не так) та спостережуваність (observability — вміти з'ясувати, чому) спираються на три види даних:
+
+| Стовп | Відповідає на запитання | Приклади |
+|-------|--------------------------|----------|
+| **Журнали** (logs) | Що саме сталося? | Структуровані записи pino (лекція 14) |
+| **Метрики** (metrics) | Скільки, як швидко, як часто? | Кількість запитів, тривалість, частка помилок, використання пам'яті |
+| **Трасування** (traces) | Куди пішов час на шляху запиту? | Ланцюжок: браузер → API → база → зовнішній сервіс |
+
+Відкритий стандарт збору всіх трьох видів — **OpenTelemetry (OTel)**. Він дає єдині бібліотеки інструментації (автоматичні для Express, HTTP, PostgreSQL, Prisma) та єдиний формат передачі даних, який розуміють практично всі системи спостережуваності (Grafana, Datadog, Honeycomb, Sentry та інші). Завдяки цьому ви не прив'язуєтеся до одного постачальника.
+
+```typescript
+// src/telemetry.ts — завантажується до всього іншого: node --import ./dist/telemetry.js dist/index.js
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+
+const sdk = new NodeSDK({
+    serviceName: "course-api",
+    traceExporter: new OTLPTraceExporter(),   // адреса задається змінними середовища OTEL_EXPORTER_OTLP_*
+    instrumentations: [getNodeAutoInstrumentations()],
+});
+
+sdk.start();
+process.on("SIGTERM", () => void sdk.shutdown());
+```
+
+### Метрики застосунку: Prometheus
+
+**Prometheus** — найпоширеніша система збору метрик (у парі з Grafana для візуалізації): вона періодично «опитує» (scrape) HTTP-адресу `/metrics` вашого застосунку. У Node.js для цього є бібліотека `prom-client`.
+
+```typescript
+// src/metrics.ts
+import client from "prom-client";
+import type { RequestHandler } from "express";
+
+client.collectDefaultMetrics();   // пам'ять, затримка циклу подій, збирач сміття тощо
+
+const httpDuration = new client.Histogram({
+    name: "http_request_duration_seconds",
+    help: "Тривалість HTTP-запитів",
+    labelNames: ["method", "route", "status"],
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+});
+
+export const metricsMiddleware: RequestHandler = (req, res, next) => {
+    const stop = httpDuration.startTimer();
+    // Вимірюємо після того, як відповідь вже відправлено, коли відомі код статусу й шаблон маршруту
+    res.on("finish", () => {
+        stop({
+            method: req.method,
+            route: req.route?.path ?? "unmatched",   // шаблон "/users/:id", а не конкретний "/users/42"
+            status: String(res.statusCode),
+        });
+    });
+    next();
+};
+
+export const metricsHandler: RequestHandler = async (_req, res) => {
+    res.set("Content-Type", client.register.contentType);
+    res.end(await client.register.metrics());
+};
+```
+
+Дві типові помилки, яких тут уникнуто. По-перше, **мітки (labels) повинні мати обмежену кількість значень**: якщо як мітку використати повну адресу `/users/42`, кожен користувач створить окремий часовий ряд, і система метрик «вибухне» (так звана висока кардинальність), тому використовуємо шаблон маршруту. По-друге, метрику записують у момент завершення відповіді (`finish`), коли вже відомий код статусу — інакше вимірюється не те. Також адресу `/metrics` не слід робити публічною: захистіть її мережевими правилами або автентифікацією.
+
+На що орієнтуватися в метриках: підхід **RED** для сервісів (**R**ate — кількість запитів, **E**rrors — частка помилок, **D**uration — тривалість) та **USE** для ресурсів (Utilization, Saturation, Errors).
+
+### Перевірки стану (health checks)
+
+Оркестратори та балансувальники мусять знати, чи справний екземпляр. Прийнято розрізняти два типи перевірок:
+
+- **Liveness** («живий») — процес працює і не завис. Невдача означає, що екземпляр треба перезапустити. Ця перевірка **не повинна залежати від зовнішніх систем**, інакше падіння бази призведе до безглуздого перезапуску всіх екземплярів.
+- **Readiness** («готовий») — екземпляр може обслуговувати трафік: є з'єднання з базою, завершено прогрів. Невдача означає, що екземпляр тимчасово виводять із балансування, але не перезапускають.
+
+```typescript
+app.get("/health/live", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+
+app.get("/health/ready", async (_req, res) => {
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        res.status(200).json({ status: "ready" });
+    } catch (error) {
+        logger.error({ err: error }, "Перевірка готовності не пройдена");
+        // Важливо: статус 503, а не 200 із текстом «помилка» — інакше система не помітить проблему
+        res.status(503).json({ status: "unavailable" });
+    }
+});
+```
+
+У відповідях health-ендпоінтів не розкривайте внутрішніх деталей (версії, адреси, тексти помилок): вони доступні потенційному зловмиснику.
+
+### Сповіщення: про що та як
+
+Сповіщення (alerting) — це точка, де моніторинг перетворюється на дію. Головна небезпека — **втома від сповіщень**: якщо вони приходять постійно й переважно марні, команда починає їх ігнорувати, і справжню проблему буде пропущено.
+
+Принципи:
+
+- **Сповіщайте про симптоми, що відчувають користувачі, а не про причини.** «Частка помилок 5xx вище 5% протягом 5 хвилин» — добре. «Процесор завантажений на 85%» — як правило, ні: якщо користувачам добре, будити людину не варто.
+- **Кожне сповіщення має вимагати дії** і мати посилання на інструкцію (runbook): що перевірити, як діяти.
+- **Використовуйте тривалість (`for`)**, щоб не реагувати на короткі сплески.
+- **Розрізняйте рівні серйозності:** критичні — негайно розбудити (дзвінок, push), попередження — у робочий чат, інформаційні — у дашборд.
+- Формулюйте цілі через **SLO** (service level objective, наприклад «99,9% запитів успішні за місяць») і сповіщайте про швидке «спалювання» бюджету помилок.
+
+Приклад правил для Prometheus (зверніть увагу, що частка помилок — це **відношення** двох швидкостей, а не їхня різниця чи окреме значення):
+
+```yaml
+groups:
+  - name: web-api
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+            /
+          sum(rate(http_request_duration_seconds_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Частка відповідей 5xx понад 5% протягом 5 хвилин"
+          runbook_url: "https://wiki.example.com/runbooks/high-error-rate"
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "95-й процентиль тривалості запитів перевищує 1 с"
+```
+
+Сповіщення маршрутизує Alertmanager: у Slack, Telegram, електронну пошту або систему чергувань (PagerDuty, Grafana OnCall). Для невеликих проєктів достатньо зовнішнього **моніторингу доступності** (UptimeRobot, Better Stack, Grafana Cloud Synthetic), який періодично перевіряє сайт ззовні й повідомляє про недоступність. Не менш важливий збір помилок з браузера та сервера у **Sentry** — він групує однакові помилки, показує, яка версія їх спричинила, і підключається до трекерів задач.
+
+### Інциденти та розбір без звинувачень
+
+Коли стався інцидент, пріоритет — **відновити роботу**, а вже потім шукати причину: відкотіть останнє розгортання, вимкніть перемикач функції, збільште ресурси. Після інциденту проводять **розбір** (postmortem): хронологія подій, першопричина, чому моніторинг або тести не виявили проблему раніше, які дії допоможуть уникнути повторення. Принцип «без звинувачень» принципово важливий: якщо людей карають за помилки, вони починають їх приховувати, і організація втрачає можливість вчитися.
+
 ## Висновки та найкращі практики
 
-Tailwind CSS представляє сучасний підхід до стилізації, який значно прискорює розробку та покращує підтримуваність коду. Основні принципи ефективного використання Tailwind:
+### Ключові принципи
 
-**Прийміть utility-first філософію:** спочатку це може здатися незвичним, але utility-first підхід забезпечує консистентність, передбачуваність та швидкість розробки. Не бійтеся довгих списків класів у JSX – це нормальна практика.
+Друга частина лекції зводиться до кількох принципів, які працюють і для невеликого студентського проєкту, і для великої компанії.
 
-**Використовуйте кастомізацію розумно:** Tailwind надає чудову систему дизайну з коробки, але не соромтеся кастомізувати її під потреби вашого проєкту. Додавайте власні кольори, spacing та інші значення через конфігураційний файл.
+1. **Автоматизуйте шлях до користувача.** Кожна зміна проходить один і той самий конвеєр: типи, лінтер, тести, збирання, розгортання.
+2. **Збирайте один артефакт і розгортайте його всюди**; відмінності — тільки в конфігурації.
+3. **Зберігайте секрети поза кодом**, давайте мінімальні права, віддавайте перевагу короткоживучим обліковим даним.
+4. **Міняйте схему бази безпечно:** невеликі, зворотно сумісні міграції, розширення — потім стиснення.
+5. **Перевіряйте резервні копії відновленням.**
+6. **Спостерігайте за системою** (журнали, метрики, трасування) і сповіщайте про симптоми, що відчуває користувач.
+7. **Вчіться з інцидентів** без пошуку винних.
 
-**Створюйте багаторазові компоненти:** замість дублювання довгих списків класів, інкапсулюйте повторювану логіку стилізації у React компоненти. Це забезпечує консистентність та спрощує підтримку.
+### Практичні рекомендації для веброзробників
 
-**Використовуйте responsive модифікатори:** Tailwind робить responsive дизайн інтуїтивним через префікси breakpoints. Завжди починайте з mobile-first підходу.
+- Починайте з малого: один робочий процес CI з типами, лінтером і тестами вже дає більшість користі.
+- Додавайте складність лише тоді, коли виникає потреба: Kubernetes, канаркові розгортання та OpenTelemetry не потрібні навчальному проєкту, але потрібно розуміти, навіщо вони існують.
+- Зробіть процес **нудним**: найкраще розгортання — те, якого ніхто не помічає.
+- Ставте цифри: вимірюйте показники DORA та Core Web Vitals; те, що не вимірюється, не покращується.
+- Пишіть документацію для майбутнього себе: `README` з командами запуску, runbook для інцидентів, ADR для рішень.
 
-**Інтегруйте Headless UI:** для складних інтерактивних компонентів як модальні вікна, випадаючі меню та табси, використовуйте Headless UI для забезпечення доступності без зайвого коду.
+### Майбутнє DevOps у веброзробці
 
-**Оптимізуйте для продакшену:** Tailwind автоматично видаляє невикористані класи в продакшн білді через PurgeCSS, але переконайтеся, що ваша конфігурація правильно налаштована для сканування всіх файлів.
-
-Розуміння та застосування цих принципів дозволить створювати красиві, консистентні та доступні інтерфейси швидше, ніж будь-коли раніше, забезпечуючи високу якість та підтримуваність коду в довгостроковій перспективі.
+Напрямки, що формують найближчі роки: **інженерія платформ** (platform engineering) — внутрішні платформи, які надають командам готові «золоті шляхи» розгортання без глибоких знань інфраструктури; **GitOps** — стан інфраструктури описується в Git, а система сама приводить кластер у відповідність; **інфраструктура як код** з Terraform та його відкритим форком OpenTofu; **безпека ланцюга постачання** (підписані збірки, SBOM, перевірка походження артефактів) — тема наступної лекції; **ШІ в експлуатації** — автоматичний аналіз журналів, пошук першопричин і перші агенти, що самостійно діагностують інциденти. Основи ж лишаються незмінними: малі зміни, автоматичні перевірки, швидкий зворотний зв'язок і культура навчання. У лекції 16 ми зосередимося на тому, як захистити створене та розгорнуте — на безпеці вебзастосунків.

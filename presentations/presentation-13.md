@@ -1,571 +1,808 @@
-# Форми та валідація в React
+# TypeScript у веброзробці
+
+## Навіщо TypeScript?
+
+### Проблема JavaScript
+
+- Динамічна типізація: помилки виявляються під час виконання, нерідко в користувача
+- Редактор не знає, які властивості має об'єкт
+- Рефакторинг великого проєкту — ручний пошук
+- Коментарі застарівають
+
+### Рішення
+
+**TypeScript** — надмножина JavaScript із системою типів, що перевіряє код **до запуску**
 
 ---
 
-## План лекції
+## Від JavaScript до TypeScript
 
-- Controlled vs Uncontrolled компоненти
-- React Hook Form основи
-- Валідація з Zod схемами
-- Кастомні input компоненти
-- Файлові завантаження
-- UX паттерни для форм
-
----
-
-## Проблеми роботи з формами
-
-**Основні виклики:**
-
-- Управління станом полів форми
-- Валідація даних в реальному часі
-- Обробка відправлення форми
-- Користувацький досвід (UX)
-- Доступність для всіх користувачів
-
-**React пропонує два підходи:**
-- Контрольовані компоненти (Controlled)
-- Неконтрольовані компоненти (Uncontrolled)
+```mermaid
+timeline
+    title Історія JavaScript та TypeScript
+    1995 : JavaScript народився
+    1997 : Стандарт ECMAScript
+    2009 : ES5 та JSON
+    2012 : Випуск TypeScript
+    2015 : ES6 (ES2015) — революція в мові
+    2020 : TypeScript — стандарт індустрії
+    2025 : Node.js запускає .ts-файли без збірки
+    2026 : TypeScript 6.0 та 7.0 (компілятор на Go)
+```
 
 ---
 
-## Controlled Components
+## Місце в курсі
 
-**Концепція:** значення поля повністю контролюється React через стан
+- Лекції 01–02: сучасний JavaScript, Node.js, Express
+- **Лекція 13:** шар гарантій — типи
+- Лекція 14: лінтер, форматер, хуки перевіряють код автоматично
+- Лекція 15: перевірка типів у конвеєрі CI
 
-```javascript
-function ControlledForm() {
-    const [email, setEmail] = useState('');
+---
 
-    return (
-        <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-        />
-    );
+## Як працює TypeScript
+
+### Дві ключові властивості
+
+**Стирання типів** — типи існують лише під час розробки; браузер і Node.js виконують звичайний JavaScript
+
+**Структурна типізація** — типи порівнюються за формою, а не за іменем
+
+### Наслідок
+
+Типи **не захищають** від некоректних даних під час виконання (API, форми) — потрібна окрема валідація
+
+---
+
+## Стирання типів: схема
+
+```mermaid
+graph LR
+    A[Файл .ts] --> B[Перевірка типів<br/>tsc --noEmit]
+    A --> C[Видалення типів<br/>tsc, Node.js або Vite]
+    C --> D[Звичайний JavaScript]
+    D --> E[Виконання<br/>Node.js або браузер]
+    B -.-> F[Помилки типів<br/>лише під час розробки]
+```
+
+**Перевірка типів і запуск — два окремі процеси**
+
+---
+
+## Стан екосистеми у 2026
+
+**TypeScript 6.0** (березень 2026) — «перехідний» випуск
+
+- `strict` увімкнено за замовчуванням
+- `module` = `esnext`, `types` порожній
+- застарілі параметри позначено deprecated
+
+**TypeScript 7.0** — нативний компілятор на Go
+
+- повна збірка швидша приблизно у 8–12 разів
+- стабільного API ще немає (очікується у 7.1) → typescript-eslint працює на 6.x
+
+**Node.js** запускає `.ts` напряму (видалення типів)
+
+---
+
+## Що вирішує TypeScript
+
+### Динамічна типізація
+
+```typescript
+function calculatePrice(price: number, quantity: number): number {
+    return price * quantity;
+}
+
+calculatePrice("100", "5"); // Помилка: рядок не є number
+```
+
+### Також
+
+- **Автодоповнення** — точні підказки в редакторі
+- **Рефакторинг** — компілятор показує всі місця змін
+- **Документація** — типи завжди актуальні
+
+---
+
+## Три способи запуску TypeScript
+
+| Спосіб | Перевірка типів | Коли використовувати |
+|--------|-----------------|----------------------|
+| `tsc` | Так | Збірка серверної частини, бібліотеки |
+| `node файл.ts` | Ні | Розробка, скрипти |
+| Vite | Ні | Клієнтська частина (React) |
+| `tsx` | Ні | Коли Node.js не вистачає |
+
+**Завжди додавайте окремо:** `tsc --noEmit`
+
+---
+
+## Стирані конструкції
+
+### Node.js видаляє лише «стирані» типи
+
+✅ анотації, `interface`, `type`, `import type`
+
+❌ `enum`, `namespace` із кодом, параметри-властивості конструктора
+
+### Прапорець `erasableSyntaxOnly`
+
+Забороняє нестирані конструкції ще на етапі перевірки
+
+---
+
+## Налаштування: tsconfig для Node.js
+
+```json
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "nodenext",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src"]
 }
 ```
 
-**Переваги:**
-- Повний контроль над даними
-- Валідація в реальному часі
-- Легке керування складною логікою
+---
 
-**Недоліки:**
-- Більше коду
-- Можливі проблеми з продуктивністю
+## Ключові параметри tsconfig
+
+**strict** — усі суворі перевірки (обов'язковий)
+
+**noUncheckedIndexedAccess** — `arr[0]` має тип `T | undefined`
+
+**verbatimModuleSyntax** — явні `import type`
+
+**erasableSyntaxOnly** — лише стирані конструкції
+
+**types** — у 6.0 за замовчуванням порожній: `["node"]`
 
 ---
 
-## Uncontrolled Components
+## tsconfig для клієнтської частини
 
-**Концепція:** значення зберігається в DOM, доступ через refs
-
-```javascript
-function UncontrolledForm() {
-    const emailRef = useRef();
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        console.log(emailRef.current.value);
-    };
-
-    return (
-        <form onSubmit={handleSubmit}>
-            <input type="email" ref={emailRef} />
-            <button type="submit">Відправити</button>
-        </form>
-    );
+```json
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "strict": true
+  },
+  "include": ["src"]
 }
 ```
 
-**Переваги:**
-- Менше коду
-- Краща продуктивність
-- Підходить для файлів
+Збірку виконує Vite, `tsc` лише перевіряє типи
 
 ---
 
-## React Hook Form: революція в формах
+## Базові типи
 
-**Чому React Hook Form?**
+```typescript
+let isDone: boolean = false;
+let age: number = 30;
+let name: string = "Іван";
+let list: number[] = [1, 2, 3];
+let tuple: [string, number] = ["привіт", 10];
 
-- 🚀 Висока продуктивність (мінімум ререндерів)
-- 📦 Малий розмір бандлу
-- ✅ Вбудована валідація
-- 🎯 Інтуїтивний API
-- 💪 TypeScript підтримка
-
-```bash
-npm install react-hook-form
+function log(message: string): void { console.log(message); }
+function fail(message: string): never { throw new Error(message); }
 ```
 
+Анотація зазвичай не потрібна — тип **виводиться**
+
 ---
 
-## React Hook Form: базове використання
+## Замість enum: as const
 
-```javascript
-import { useForm } from 'react-hook-form';
+```typescript
+const Role = {
+    Admin: "admin",
+    User: "user",
+    Moderator: "moderator",
+} as const;
 
-function RegistrationForm() {
-    const {
-        register,
-        handleSubmit,
-        formState: { errors }
-    } = useForm();
+type Role = (typeof Role)[keyof typeof Role];
+// "admin" | "user" | "moderator"
+```
 
-    const onSubmit = (data) => {
-        console.log(data);
-    };
+Одне оголошення — значення для коду **і** тип
 
-    return (
-        <form onSubmit={handleSubmit(onSubmit)}>
-            <input
-                {...register('email', {
-                    required: 'Email обов\'язковий'
-                })}
-            />
-            {errors.email && <span>{errors.email.message}</span>}
+---
 
-            <button type="submit">Зареєструватися</button>
-        </form>
-    );
+## any чи unknown?
+
+```typescript
+let notSure: any = 4;
+notSure.toFixed(); // компілюється, але може впасти
+
+let uncertain: unknown = 4;
+if (typeof uncertain === "number") {
+    uncertain.toFixed(); // після звуження типу
 }
 ```
 
+**Правило:** невідомий тип → `unknown`, а не `any`
+
 ---
 
-## React Hook Form: складні сценарії
+## Літеральні типи та satisfies
 
-**Динамічні поля з useFieldArray:**
+```typescript
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
-```javascript
-const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'teamMembers'
+const routes = {
+    home: { path: "/", auth: false },
+    profile: { path: "/profile", auth: true },
+} satisfies Record<string, { path: string; auth: boolean }>;
+```
+
+`satisfies` перевіряє відповідність, **не розширюючи** тип
+
+---
+
+## Звуження типів і дискримінантні об'єднання
+
+```typescript
+type LoadState =
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "success"; data: string[] }
+    | { status: "error"; message: string };
+
+switch (state.status) {
+    case "success": return state.data.length;
+    case "error":   return state.message;
+}
+```
+
+Усунення «неможливих» комбінацій `isLoading` + `error`
+
+---
+
+## Інтерфейси та типи
+
+```typescript
+interface User {
+    id: number;
+    email: string;
+    firstName?: string;       // необов'язкова
+    readonly createdAt: Date; // лише читання
+}
+
+interface AdminUser extends User {
+    permissions: string[];
+}
+
+type StringOrNumber = string | number;          // об'єднання
+type TimestampedEntity = Named & Timestamped;   // перетин
+```
+
+---
+
+## interface чи type?
+
+- **`interface`** — форма об'єктів і контракти класів; можна доповнювати (declaration merging)
+- **`type`** — об'єднання, перетини, кортежі, похідні типи
+
+**Головне — послідовність у межах проєкту**
+
+---
+
+## Функції
+
+```typescript
+function buildName(first: string, last?: string): string { /* ... */ }
+function greet(name: string, greeting = "Привіт"): string { /* ... */ }
+function sum(...numbers: number[]): number { /* ... */ }
+
+type MathOperation = (a: number, b: number) => number;
+
+function process(value: string): string;
+function process(value: number): number;
+function process(value: string | number) { /* ... */ }
+```
+
+---
+
+## TypeScript у Node.js
+
+```typescript
+// src/index.ts — імпорти з розширенням .ts
+import express from "express";
+import { env } from "./config/env.ts";
+
+const app = express();
+app.use(express.json());
+```
+
+- `npm run dev` → `node --watch src/index.ts`
+- `npm run typecheck` → `tsc --noEmit`
+- `npm run build` → `tsc` (`.ts` → `.js`)
+
+---
+
+## Змінні середовища з перевіркою
+
+```typescript
+import { z } from "zod";
+
+const EnvSchema = z.object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().int().positive().default(3000),
+    DATABASE_URL: z.url(),
+    JWT_SECRET: z.string().min(32),
 });
 
-return (
-    <>
-        {fields.map((field, index) => (
-            <div key={field.id}>
-                <input {...register(`teamMembers.${index}.name`)} />
-                <button onClick={() => remove(index)}>
-                    Видалити
-                </button>
-            </div>
-        ))}
-        <button onClick={() => append({ name: '' })}>
-            Додати учасника
-        </button>
-    </>
+export const env = EnvSchema.parse(process.env);
+```
+
+Застосунок падає **одразу** з зрозумілою помилкою
+
+---
+
+## Express і TypeScript
+
+```typescript
+interface UserParams { userId: string }
+
+app.get("/api/users/:userId", async (req: Request<UserParams>, res: Response) => {
+    const user = await userService.findById(Number(req.params.userId));
+    if (!user) { res.status(404).json({ error: "Не знайдено" }); return; }
+    res.json(user);
+});
+```
+
+`Request<Params, ResBody, ReqBody, Query>`
+
+⚠️ Анотації — **обіцянка**, а не гарантія: клієнт може надіслати будь-що
+
+---
+
+## Розширення Request: declaration merging
+
+### ❌ `AuthRequest extends Request`
+
+Конфліктує з `strictFunctionTypes`
+
+### ✅ Доповнення глобального типу
+
+```typescript
+declare global {
+    namespace Express {
+        interface Request {
+            user?: { id: number; email: string; role: UserRole };
+        }
+    }
+}
+export {};
+```
+
+---
+
+## Автентифікація: перевірка payload
+
+```typescript
+const TokenPayload = z.object({
+    sub: z.string(),
+    email: z.email(),
+    role: z.enum(["admin", "user", "moderator"]),
+});
+
+const payload = TokenPayload.parse(
+    jwt.verify(token, env.JWT_SECRET, { algorithms: ["HS256"] }),
+);
+req.user = { id: Number(payload.sub), email: payload.email, role: payload.role };
+```
+
+Токен не «приводимо» до типу — **перевіряємо схемою**
+
+---
+
+## Схема → тип (Zod 4)
+
+```typescript
+const CreateUserSchema = z.object({
+    email: z.email(),
+    password: z.string().min(15),
+    firstName: z.string().min(1),
+});
+
+type CreateUserBody = z.infer<typeof CreateUserSchema>;
+
+const parsed = CreateUserSchema.safeParse(req.body);
+if (!parsed.success) {
+    res.status(400).json({ errors: z.flattenError(parsed.error).fieldErrors });
+    return;
+}
+```
+
+Розбіжності між перевіркою й типом **неможливі**
+
+---
+
+## Організація типів
+
+```typescript
+export type CreateUserDTO =
+    Omit<User, "id" | "createdAt" | "updatedAt"> & { password: string };
+export type UpdateUserDTO = Partial<Pick<User, "firstName" | "lastName">>;
+export type UserResponse = Pick<User, "id" | "email" | "firstName">;
+
+export interface PaginatedResponse<T> {
+    items: T[];
+    total: number;
+    page: number;
+}
+```
+
+Типи **виводяться** з одного джерела — не копіюються
+
+---
+
+## Бази даних: Prisma 7
+
+```prisma
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+```
+
+```typescript
+// prisma.config.ts: datasource: { url: env("DATABASE_URL") }
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+export const prisma = new PrismaClient({ adapter });
+
+type UserWithPosts = Prisma.UserGetPayload<{ include: { posts: true } }>;
+```
+
+Sequelize 6: `InferAttributes`, `InferCreationAttributes`, `declare`
+
+---
+
+## React з TypeScript
+
+```bash
+npm create vite@latest my-app -- --template react-ts
+```
+
+- Create React App більше не підтримується
+- Звичайна функція замість `FC`
+- `ComponentProps<"button">` — успадкування атрибутів
+- У React 19 `ref` — звичайний проп, `forwardRef` не потрібен
+
+```tsx
+type ButtonProps = ComponentProps<"button"> & { variant?: "primary" | "danger" };
+```
+
+---
+
+## Хуки: стан як об'єднання
+
+```tsx
+type UserState =
+    | { status: "loading" }
+    | { status: "error"; error: Error }
+    | { status: "success"; user: User };
+
+const [state, setState] = useState<UserState>({ status: "loading" });
+
+useEffect(() => {
+    const controller = new AbortController();
+    fetchUser(userId, controller.signal).then(/* ... */);
+    return () => controller.abort(); // скасування запиту
+}, [userId]);
+```
+
+Для даних у виробництві — TanStack Query
+
+---
+
+## useReducer і мемоізація
+
+```tsx
+type CartAction =
+    | { type: "add"; productId: number }
+    | { type: "remove"; productId: number }
+    | { type: "clear" };
+```
+
+**React Compiler 1.0** мемоізує автоматично — ручні `useMemo`/`useCallback` потрібні лише у виняткових випадках
+
+---
+
+## Події та форми
+
+```tsx
+const onChange = (e: ChangeEvent<HTMLInputElement>) => e.target.value;
+const onSubmit = (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); };
+```
+
+### React 19: дії форми
+
+```tsx
+const [state, formAction, isPending] = useActionState(
+    async (_prev: FormState, formData: FormData): Promise<FormState> => { /* ... */ },
+    { error: null },
 );
 ```
 
+`formData.get()` → `FormDataEntryValue | null` — потрібне звуження
+
 ---
 
-## Zod: типобезпечна валідація
+## Контекст з TypeScript
 
-**Переваги Zod:**
+```tsx
+const AuthContext = createContext<AuthContextType | null>(null);
 
-- TypeScript-first бібліотека
-- Автоматична генерація типів
-- Виразний синтаксис
-- Асинхронна валідація
-- Трансформація даних
+// React 19: контекст сам є провайдером
+<AuthContext value={value}>{children}</AuthContext>
 
-```bash
-npm install zod @hookform/resolvers
+export function useAuth(): AuthContextType {
+    const context = use(AuthContext);
+    if (context === null) throw new Error("useAuth — лише всередині AuthProvider");
+    return context;
+}
 ```
 
+Споживач отримує тип **без** `| null`
+
 ---
 
-## Zod: базова схема
+## Узагальнені типи (generics)
 
-```javascript
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+```typescript
+function identity<T>(arg: T): T { return arg; }
 
-const schema = z.object({
-    username: z.string()
-        .min(3, 'Мінімум 3 символи')
-        .max(20, 'Максимум 20 символів'),
+function logLength<T extends { length: number }>(arg: T): T {
+    console.log(arg.length);
+    return arg;
+}
 
-    email: z.string()
-        .email('Некоректний email'),
-
-    password: z.string()
-        .min(8, 'Мінімум 8 символів')
-        .regex(/[A-Z]/, 'Потрібна велика літера'),
-
-    age: z.number()
-        .int()
-        .min(18, 'Вік від 18 років')
-});
-
-type FormData = z.infer<typeof schema>;
+interface PaginatedData<T> {
+    items: T[];
+    total: number;
+}
 ```
 
+`T` — «змінна для типу»
+
 ---
 
-## Zod + React Hook Form
+## Оператори типів
 
-```javascript
-const {
-    register,
-    handleSubmit,
-    formState: { errors }
-} = useForm<FormData>({
-    resolver: zodResolver(schema)
-});
+```typescript
+type UserKeys = keyof User;           // "id" | "email" | "age"
+type EmailType = User["email"];       // string
+type Defaults = typeof defaultsObj;   // тип значення
+```
 
-const onSubmit = (data: FormData) => {
-    // Дані вже провалідовані та типізовані!
-    console.log(data);
+Основа всіх допоміжних типів
+
+---
+
+## Вбудовані допоміжні типи
+
+| Тип | Дія |
+|-----|-----|
+| `Partial<T>` | усі властивості необов'язкові |
+| `Required<T>` | усі обов'язкові |
+| `Readonly<T>` | лише для читання |
+| `Pick<T, K>` / `Omit<T, K>` | вибрати / виключити поля |
+| `Record<K, V>` | об'єкт із заданими ключами |
+| `Exclude` / `Extract` / `NonNullable` | фільтрація об'єднань |
+| `ReturnType` / `Parameters` / `Awaited` | типи функцій і промісів |
+
+---
+
+## Власні допоміжні типи
+
+```typescript
+type DeepPartial<T> = {
+    [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
-return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-        <input {...register('username')} />
-        {errors.username && (
-            <span>{errors.username.message}</span>
-        )}
-        {/* інші поля */}
-    </form>
-);
-```
+type ElementOf<T> = T extends readonly (infer U)[] ? U : never;
 
----
-
-## Складні схеми Zod
-
-**Вкладені об'єкти та умовна валідація:**
-
-```javascript
-const projectSchema = z.object({
-    title: z.string().min(1),
-    budget: z.object({
-        amount: z.number().positive(),
-        currency: z.enum(['UAH', 'USD', 'EUR'])
-    }),
-    tags: z.array(z.string())
-        .min(1, 'Хоча б один тег')
-        .max(5, 'Максимум 5 тегів'),
-    team: z.array(
-        z.object({
-            name: z.string(),
-            role: z.enum(['developer', 'designer'])
-        })
-    ).min(1)
-}).refine(
-    data => data.budget.amount > 1000,
-    { message: 'Бюджет має бути більше 1000' }
-);
-```
-
----
-
-## Кастомні Input компоненти
-
-**Принципи створення:**
-
-- Інкапсуляція логіки та стилів
-- Підтримка forwardRef для refs
-- Доступність (a11y)
-- Гнучкість через props
-- Консистентний дизайн
-
-```javascript
-const Input = forwardRef(({
-    label,
-    error,
-    ...props
-}, ref) => {
-    return (
-        <div>
-            {label && <label>{label}</label>}
-            <input ref={ref} {...props} />
-            {error && <span>{error}</span>}
-        </div>
-    );
-});
-```
-
----
-
-## Password Input з індикатором
-
-```javascript
-const PasswordInput = forwardRef(({
-    showStrength = false,
-    ...props
-}, ref) => {
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-
-    const strength = calculateStrength(password);
-
-    return (
-        <div>
-            <input
-                ref={ref}
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                {...props}
-            />
-            <button onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? '🙈' : '👁️'}
-            </button>
-            {showStrength && <StrengthBar strength={strength} />}
-        </div>
-    );
-});
-```
-
----
-
-## Файлові завантаження
-
-**Базовий підхід:**
-
-```javascript
-function FileUpload() {
-    const { register, watch } = useForm();
-    const file = watch('avatar');
-
-    return (
-        <div>
-            <input
-                type="file"
-                accept="image/*"
-                {...register('avatar', {
-                    validate: {
-                        fileSize: files => {
-                            if (files[0]?.size > 5000000) {
-                                return 'Максимум 5MB';
-                            }
-                            return true;
-                        }
-                    }
-                })}
-            />
-            {file && file[0] && (
-                <ImagePreview file={file[0]} />
-            )}
-        </div>
-    );
+function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {
+    return items.map((item) => item[key]);
 }
 ```
 
+**Відображені** та **умовні** типи
+
 ---
 
-## Drag & Drop завантаження
+## Типізація API: проблема
 
-```javascript
-import { useDropzone } from 'react-dropzone';
+### `response.json()` повертає `any`
 
-function DragDropUpload() {
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        accept: { 'image/*': ['.jpeg', '.png'] },
-        maxSize: 5242880,
-        onDrop: (acceptedFiles) => {
-            console.log(acceptedFiles);
-        }
+```typescript
+async function getUser(): Promise<User> {
+    const response = await fetch("/api/user");
+    return response.json(); // компілятор мовчить!
+}
+```
+
+### Рішення
+
+`unknown` + **перевірка схемою**
+
+---
+
+## Результат як об'єднання
+
+```typescript
+type Result<T, E = ApiError> =
+    | { ok: true; data: T }
+    | { ok: false; error: E };
+
+const result = await userApi.getUserById(1);
+if (result.ok) {
+    console.log(result.data.firstName);   // User
+} else {
+    console.error(result.error.message);  // ApiError
+}
+```
+
+Компілятор **змушує** обробити обидва варіанти
+
+---
+
+## Типізований клієнт API
+
+```typescript
+async get<S extends z.ZodType>(path: string, schema: S): Promise<Result<z.infer<S>>> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+        headers: { "Content-Type": "application/json", ...init.headers },
     });
-
-    return (
-        <div {...getRootProps()}
-             className={isDragActive ? 'active' : ''}>
-            <input {...getInputProps()} />
-            <p>Перетягніть файли або клацніть для вибору</p>
-        </div>
-    );
+    const body: unknown = await response.json().catch(() => null);
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+        return { ok: false, error: { code: "INVALID_RESPONSE", message: z.prettifyError(parsed.error) } };
+    }
+    return { ok: true, data: parsed.data };
 }
 ```
 
 ---
 
-## UX паттерни: інлайн валідація
+## Type guards чи Zod?
 
-```javascript
-function SmartValidation() {
-    const { register, formState: { errors, touchedFields } }
-        = useForm({ mode: 'onBlur' });
+**Type guard** — `value is T`; для простих перевірок
 
-    return (
-        <div>
-            <input {...register('email', {
-                required: true,
-                pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-            })} />
-
-            {touchedFields.email && !errors.email && (
-                <span className="success">✓ Email валідний</span>
-            )}
-
-            {errors.email && (
-                <span className="error">
-                    {errors.email.message}
-                </span>
-            )}
-        </div>
-    );
-}
+```typescript
+function isUser(value: unknown): value is User { /* ... */ }
 ```
+
+⚠️ Легко «розсинхронізувати» з типом
+
+**Схема Zod** — тип виводиться автоматично
+
+Zod 4: `z.email()`, `z.url()`, `error.issues`, `z.prettifyError`
 
 ---
 
-## Багатокрокові форми
+## Міграція JS → TS
 
-```javascript
-function MultiStepForm() {
-    const [step, setStep] = useState(1);
-    const { register, trigger } = useForm();
-
-    const nextStep = async () => {
-        const fieldsToValidate = getFieldsForStep(step);
-        const isValid = await trigger(fieldsToValidate);
-
-        if (isValid) {
-            setStep(step + 1);
-        }
-    };
-
-    return (
-        <div>
-            <ProgressBar currentStep={step} totalSteps={3} />
-
-            {step === 1 && <PersonalInfo register={register} />}
-            {step === 2 && <AddressInfo register={register} />}
-            {step === 3 && <PaymentInfo register={register} />}
-
-            <button onClick={nextStep}>Далі</button>
-        </div>
-    );
+```json
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false,
+    "noEmit": true
+  }
 }
 ```
 
+⚠️ З TS 6.0 `strict` увімкнений за замовчуванням — для старого проєкту пишемо `"strict": false` **явно**
+
 ---
 
-## Автозбереження та відновлення
+## П'ять кроків міграції
 
-```javascript
-function AutoSaveForm() {
-    const { watch, reset } = useForm();
-    const formData = watch();
+1. Встановити TypeScript, `allowJs: true`, скрипт `typecheck` у CI
+2. Типи «знизу вгору»: утиліти → сервіси → обробники й компоненти
+3. Збільшувати строгість по одному параметру
+4. Типи для бібліотек (`@types/*`, власні `.d.ts`)
+5. Рефакторинг: дискримінантні об'єднання, `unknown`, схеми Zod
 
-    // Автозбереження після затримки
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            localStorage.setItem('draft', JSON.stringify(formData));
-        }, 1000);
-        return () => clearTimeout(timer);
-    }, [formData]);
+`@ts-expect-error` замість `@ts-ignore`
 
-    // Відновлення при завантаженні
-    useEffect(() => {
-        const saved = localStorage.getItem('draft');
-        if (saved) {
-            reset(JSON.parse(saved));
-        }
-    }, []);
+---
 
-    return <form>{/* ... */}</form>;
+## Бібліотеки без типів
+
+```typescript
+declare module "legacy-library" {
+    export interface Config { apiKey: string; endpoint: string }
+    export function initialize(config: Config): void;
+    export function fetchData(id: string): Promise<unknown>;
 }
 ```
 
+`unknown` змусить користувача перевірити результат
+
 ---
 
-## Доступність форм
+## Екосистема TypeScript
 
-**Основні принципи:**
+```mermaid
+graph TB
+    TS[TypeScript]
+    TS --> React[React + TS]
+    TS --> Node[Node.js + TS]
+    TS --> Tools[Інструменти]
 
-- Використовуйте `<label>` для всіх полів
-- Додавайте `aria-label` та `aria-describedby`
-- Позначайте помилки через `aria-invalid`
-- Забезпечте навігацію клавіатурою
-- Використовуйте семантичні елементи
+    React --> Vite[Vite]
+    React --> Next[Next.js]
+    Node --> Express[Express]
+    Node --> Nest[NestJS]
+    Node --> Prisma[Prisma / Drizzle]
 
-```javascript
-<div>
-    <label htmlFor="email">Email</label>
-    <input
-        id="email"
-        aria-invalid={!!errors.email}
-        aria-describedby={errors.email ? 'email-error' : undefined}
-    />
-    {errors.email && (
-        <span id="email-error" role="alert">
-            {errors.email.message}
-        </span>
-    )}
-</div>
+    Tools --> ESLint[ESLint + typescript-eslint]
+    Tools --> Prettier
+    Tools --> Vitest[Vitest / Jest]
+    Tools --> Zod[Zod]
 ```
 
 ---
 
 ## Найкращі практики
 
-**Вибір підходу:**
-- Контрольовані компоненти для складних форм
-- React Hook Form для оптимальної продуктивності
-- Zod для типобезпечної валідації
-
-**Валідація:**
-- Клієнтська валідація покращує UX
-- Серверна валідація обов'язкова для безпеки
-- Надавайте чіткі повідомлення про помилки
-
-**UX:**
-- Інлайн валідація для швидкого зворотного зв'язку
-- Прогрес-індикатори для багатокрокових форм
-- Автозбереження для довгих форм
+- **Не вимикайте строгість** — `strict`
+- Віддавайте перевагу **виведенню типів**; анотуйте межі модулів
+- `interface` — для об'єктів, `type` — для об'єднань; `as const` замість `enum`
+- **Перевіряйте дані на межах**: `unknown` + Zod
+- Моделюйте стани **дискримінантними об'єднаннями**
+- Уникайте `any`; **виводьте** типи, не копіюйте
+- Пишіть «стираний» TypeScript
 
 ---
 
-## Приклад: повна форма реєстрації
+## TypeScript у команді
 
-```javascript
-const schema = z.object({
-    name: z.string().min(2),
-    email: z.string().email(),
-    password: z.string().min(8)
-}).refine(data => data.password.includes(data.name) === false, {
-    message: 'Пароль не може містити ім\'я'
-});
-
-function Registration() {
-    const { register, handleSubmit, formState: { errors } }
-        = useForm({ resolver: zodResolver(schema) });
-
-    const onSubmit = async (data) => {
-        try {
-            await api.register(data);
-            navigate('/dashboard');
-        } catch (error) {
-            toast.error('Помилка реєстрації');
-        }
-    };
-
-    return <form onSubmit={handleSubmit(onSubmit)}>{/* ... */}</form>;
-}
-```
+- **Автоматизуйте:** `tsc --noEmit` в редакторі, хуку й CI (лекції 14–15)
+- **Рецензуйте типи**, а не лише логіку
+- Навчайте нових членів команди
+- Підтримуйте типи актуальними; генеруйте їх зі схеми API
 
 ---
 
-## Корисні ресурси
+## Майбутнє TypeScript
 
-**Бібліотеки:**
-- [React Hook Form](https://react-hook-form.com/)
-- [Zod](https://zod.dev/)
-- [React Dropzone](https://react-dropzone.js.org/)
+**Швидкість** — нативний компілятор 7.0 робить перевірку майже миттєвою
 
-**Статті:**
-- [Controlled vs Uncontrolled Components](https://react.dev/learn/sharing-state-between-components)
-- [Form Validation Best Practices](https://web.dev/sign-in-form-best-practices/)
+**Розмивання межі з JavaScript** — `.ts` без збірки; пропозиція вбудованих анотацій типів у ECMAScript
 
-**Інструменти:**
-- [Formik](https://formik.org/) - альтернатива RHF
-- [Yup](https://github.com/jquense/yup) - альтернатива Zod
+**Типи й ШІ** — точні контракти допомагають автоматично перевіряти згенерований код (лекція 16)
+
+---
+
+## Ключові висновки
+
+- TypeScript — **шар гарантій** над JavaScript; типи стираються
+- Перевірка типів і запуск — **окремі кроки**
+- Строгий режим, `unknown`, дискримінантні об'єднання
+- **Схема Zod** на межі системи — єдине джерело істини для перевірки й типу
+- Міграція — поступова
+- Далі: лінтер, форматер, хуки та архітектура (лекція 14)
