@@ -1,4 +1,4 @@
-# Лекція 13. TypeScript у веброзробці
+# Лекція 13 TypeScript у веброзробці
 
 ## Вступ до TypeScript: від JavaScript до типобезпеки
 

@@ -9,19 +9,8 @@
 | Лекція 03 Проєктування RESTful API | [Конспект лекції](lectures/lecture-03.md) | [Презентація](presentations/presentation-03.md) |
 | Лекція 04 Бази даних та ORM у веб-додатках | [Конспект лекції](lectures/lecture-04.md) | [Презентація](presentations/presentation-04.md) |
 | Лекція 05 Аутентифікація та безпека backend | [Конспект лекції](lectures/lecture-05.md) | [Презентація](presentations/presentation-05.md) |
-| Лекція 06 Тестування та деплой backend | [Конспект лекції](lectures/lecture-06.md) | [Презентація](presentations/presentation-06.md) |
+| Лекція 06 Тестування та розгортання серверної частини | [Конспект лекції](lectures/lecture-06.md) | [Презентація](presentations/presentation-06.md) |
 | Лекція 07 React: основи та сучасні підходи | [Конспект лекції](lectures/lecture-07.md) | [Презентація](presentations/presentation-07.md) |
-<<<<<<< Updated upstream
-| Лекція 08 Управління станом у React (Hooks, локальний і глобальний стан) | [Конспект лекції](lectures/lecture-10.md) | [Презентація](presentations/presentation-10.md) |
-| Лекція 09 Роутинг та навігація (React Router) | [Конспект лекції](lectures/lecture-11.md) | [Презентація](presentations/presentation-11.md) |
-| _Лекція 10 Форми, валідація та інтеграція з backend_ | [Конспект лекції](lectures/lecture-13.md) | [Презентація](presentations/presentation-13.md) |
-| _Лекція 11 Tailwind CSS та сучасна стилізація_ | [Конспект лекції](lectures/lecture-15.md) | [Презентація](presentations/presentation-15.md) |
-| _Лекція 12 Тестування React компонентів_ | [Конспект лекції](lectures/lecture-16.md) | [Презентація](presentations/presentation-16.md) |
-| _Лекція 13 TypeScript у веброзробці_ | [Конспект лекції](lectures/lecture-19.md) | [Презентація](presentations/presentation-19.md) |
-| _Лекція 14 Архітектурні паттерни та інструменти сучасної розробки_ | [Конспект лекції](lectures/lecture-21.md) | [Презентація](presentations/presentation-21.md) |
-| _Лекція 15 Продуктивність, оптимізація та DevOps_ | [Конспект лекції](lectures/lecture-22.md) | [Презентація](presentations/presentation-22.md) |
-| _Лекція 16 Безпека вебзастосунків та сучасні тенденції_| [Конспект лекції](lectures/lecture-23.md) | [Презентація](presentations/presentation-23.md) |
-=======
 | Лекція 08 Управління станом у React (Hooks, локальний і глобальний стан) | [Конспект лекції](lectures/lecture-08.md) | [Презентація](presentations/presentation-08.md) |
 | Лекція 09 Роутинг та навігація (React Router) | [Конспект лекції](lectures/lecture-09.md) | [Презентація](presentations/presentation-09.md) |
 | Лекція 10 Форми, валідація та інтеграція з backend | [Конспект лекції](lectures/lecture-10.md) | [Презентація](presentations/presentation-10.md) |
@@ -31,7 +20,6 @@
 | Лекція 14 Архітектурні паттерни та інструменти сучасної розробки | [Конспект лекції](lectures/lecture-14.md) | [Презентація](presentations/presentation-14.md) |
 | Лекція 15 Продуктивність, оптимізація та DevOps | [Конспект лекції](lectures/lecture-15.md) | [Презентація](presentations/presentation-15.md) |
 | Лекція 16 Безпека вебзастосунків та сучасні тенденції | [Конспект лекції](lectures/lecture-16.md) | [Презентація](presentations/presentation-16.md) |
->>>>>>> Stashed changes
 
 ---
 
